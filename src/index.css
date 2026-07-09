@@ -1,0 +1,255 @@
+/* ========== 暗金庙宇 —— 全局设计系统 ========== */
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@400;700&display=swap');
+
+:root {
+  /* 背景 */
+  --bg-deepest: #08080f;
+  --bg-card: #0f0f1a;
+  --bg-input: #1a1520;
+  /* 金色系 */
+  --gold-primary: #c9a96e;
+  --gold-bright: #f0d68a;
+  --gold-dark: #8b6914;
+  /* 辅色 */
+  --temple-red: #8b0000;
+  --cinnabar: #c0392b;
+  --text-body: #f5e6d3;
+  --text-dim: #8b7355;
+  /* 五行/吉凶 */
+  --color-ji: #4caf50;
+  --color-xiong: #f44336;
+  --color-zhong: #ff9800;
+  --color-info: #2196f3;
+  /* 字体 */
+  --font-title: 'ZCOOL XiaoWei', 'Ma Shan Zheng', 'STKaiti', '楷体', serif;
+  --font-body: 'Noto Serif SC', 'STSong', '宋体', serif;
+  /* 圆角 */
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 4px;
+  /* 阴影 */
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-gold: 0 8px 40px rgba(201,169,110,0.25);
+  /* 间距 */
+  --space-lg: 24px;
+  --space-md: 16px;
+  --space-sm: 12px;
+}
+
+/* ========== 全局重置 ========== */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-deepest) !important;
+  color: var(--text-body) !important;
+  font-family: var(--font-body);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Ant Design 全局覆盖 ========== */
+.ant-layout { background: transparent !important; }
+
+.ant-card {
+  border-radius: var(--radius-lg) !important;
+  border-color: rgba(201,169,110,0.15) !important;
+}
+
+.ant-card-head {
+  border-bottom-color: rgba(201,169,110,0.1) !important;
+}
+
+.ant-card-head-title { color: var(--gold-primary) !important; }
+
+.ant-input, .ant-input-number, .ant-select-selector, .ant-picker {
+  background: var(--bg-input) !important;
+  border-color: rgba(201,169,110,0.2) !important;
+  color: var(--text-body) !important;
+}
+
+.ant-input:hover, .ant-input-number:hover, .ant-select-selector:hover {
+  border-color: var(--gold-primary) !important;
+}
+
+.ant-input::placeholder { color: #555 !important; }
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark)) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-primary)) !important;
+}
+
+.ant-tabs-tab { color: var(--text-dim) !important; }
+.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--gold-primary) !important; }
+.ant-tabs-ink-bar { background: var(--gold-primary) !important; }
+
+.ant-divider { border-color: rgba(201,169,110,0.1) !important; }
+
+.ant-tag {
+  border-radius: var(--radius-xs) !important;
+}
+
+.ant-modal-content {
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(201,169,110,0.15) !important;
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom-color: rgba(201,169,110,0.1) !important;
+}
+
+.ant-modal-title { color: var(--gold-primary) !important; }
+
+.ant-drawer-content {
+  background: var(--bg-card) !important;
+}
+
+.ant-drawer-header {
+  border-bottom-color: rgba(201,169,110,0.1) !important;
+  background: transparent !important;
+}
+
+.ant-drawer-title { color: var(--gold-primary) !important; }
+
+.ant-select-dropdown, .ant-picker-dropdown {
+  background: var(--bg-card) !important;
+  border-color: rgba(201,169,110,0.15) !important;
+}
+
+.ant-message-notice-content {
+  background: var(--bg-card) !important;
+  color: var(--text-body) !important;
+  border: 1px solid rgba(201,169,110,0.15) !important;
+}
+
+/* ========== 暗金庙宇卡片通用样式 ========== */
+.mystic-card {
+  background: rgba(15,15,26,0.85) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(201,169,110,0.2) !important;
+  border-radius: var(--radius-lg) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.mystic-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(201,169,110,0.3), transparent, rgba(201,169,110,0.3));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.mystic-card:hover {
+  box-shadow: var(--shadow-gold) !important;
+}
+
+/* ========== 金色脉动光晕 ========== */
+@keyframes goldPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(201,169,110,0.2); }
+  50% { box-shadow: 0 0 40px rgba(201,169,110,0.4); }
+}
+
+.gold-pulse {
+  animation: goldPulse 2s ease-in-out infinite;
+}
+
+/* ========== 呼吸闪烁 ========== */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.breathe {
+  animation: breathe 1.5s ease-in-out infinite;
+}
+
+/* ========== 金色旋转加载 ========== */
+@keyframes goldSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.gold-spin {
+  animation: goldSpin 2s linear infinite;
+}
+
+/* ========== 淡入滑入 ========== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* ========== 光晕跟随 (JS控制) ========== */
+#app-mouse-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,169,110,0.03) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  :root {
+    --space-lg: 16px;
+    --space-md: 12px;
+    --space-sm: 8px;
+  }
+
+  body { font-size: 14px; }
+
+  #app-mouse-glow { display: none; }
+}
+
+/* ========== 页面过渡 ========== */
+.page-enter {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.page-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 300ms ease-in, transform 300ms ease-in;
+}
+
+/* ========== 移动端降级 ========== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
