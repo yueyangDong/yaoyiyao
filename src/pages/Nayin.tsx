@@ -4,7 +4,7 @@ import {
   InputNumber, Divider, message,
 } from 'antd';
 import { useUser } from '../context/UserContext';
-import { SearchOutlined } from '@ant-design/icons';
+import { Waves, Search } from 'lucide-react';
 import { NAYIN_MAP, NAYIN_LIST, getNayin, getYearNayin } from '../utils/nayinTexts';
 
 const { Title, Text } = Typography;
@@ -61,24 +61,33 @@ export default function Nayin() {
       item.wuxing.includes(searchText)
   );
 
+  const wuxingClassMap: Record<string, string> = {
+    '金': 'tag-metal',
+    '木': 'tag-wood',
+    '水': 'tag-water',
+    '火': 'tag-fire',
+    '土': 'tag-earth',
+  };
+
   const columns = [
     { title: '干支', dataIndex: 'ganzhi', key: 'ganzhi', width: 80,
-      render: (v: string) => <Text strong>{v}</Text> },
+      render: (v: string) => <Text strong style={{ color: 'var(--text-primary)' }}>{v}</Text> },
     { title: '纳音', dataIndex: 'nayin', key: 'nayin', width: 100,
-      render: (v: string) => <Tag color="gold">{v}</Tag> },
+      render: (v: string) => <Tag>{v}</Tag> },
     { title: '五行', dataIndex: 'wuxing', key: 'wuxing', width: 60,
-      render: (v: string) => {
-        const colors: Record<string, string> = { '金': 'gold', '木': 'green', '水': 'blue', '火': 'red', '土': 'orange' };
-        return <Tag color={colors[v] || 'default'}>{v}</Tag>;
-      } },
-    { title: '解读', dataIndex: 'desc', key: 'desc', ellipsis: true },
+      render: (v: string) => <Tag className={wuxingClassMap[v] || ''}>{v}</Tag> },
+    { title: '解读', dataIndex: 'desc', key: 'desc', ellipsis: true,
+      render: (v: string) => <span style={{ color: 'var(--text-body)' }}>{v}</span> },
   ];
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#c9a96e', fontFamily: 'var(--font-title)', letterSpacing: 4 }}>🌊 纳音查询</Title>
+      <Title level={3} style={{ textAlign: 'center', color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontWeight: 600, letterSpacing: 4 }}>
+        <Waves size={28} strokeWidth={1.5} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+        纳音查询
+      </Title>
 
-      <Card title="干支查询" style={{ marginBottom: 16 }}>
+      <Card className="glass-card" title="干支查询" style={{ marginBottom: 16 }}>
         <Space>
           <Input
             placeholder='输入干支，如"甲子"'
@@ -87,13 +96,13 @@ export default function Nayin() {
             style={{ width: 200 }}
             onPressEnter={handleGanzhiSearch}
           />
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleGanzhiSearch}>
+          <Button type="primary" icon={<Search size={16} />} onClick={handleGanzhiSearch}>
             查询纳音
           </Button>
         </Space>
       </Card>
 
-      <Card title="年份查询" style={{ marginBottom: 16 }}>
+      <Card className="glass-card" title="年份查询" style={{ marginBottom: 16 }}>
         <Space>
           <InputNumber
             min={1900}
@@ -103,7 +112,7 @@ export default function Nayin() {
             onChange={(v) => setYearInput(v || null)}
             style={{ width: 120 }}
           />
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleYearSearch}>
+          <Button type="primary" icon={<Search size={16} />} onClick={handleYearSearch}>
             查询年份纳音
           </Button>
         </Space>
@@ -113,22 +122,22 @@ export default function Nayin() {
       </Card>
 
       {result && (
-        <Card className="mystic-card" style={{ marginBottom: 16 }}>
-          <Title level={4} style={{ color: '#c9a96e' }}>
+        <Card className="glass-card" style={{ marginBottom: 16 }}>
+          <Title level={4} style={{ color: 'var(--text-primary)' }}>
             {result.type === 'ganzhi' ? `干支「${result.data.ganzhi}」` : `${yearInput}年（${result.data.ganzhi}年）`}
           </Title>
           <Space size="large" style={{ marginBottom: 12 }}>
-            <Text strong style={{ fontSize: 20, color: '#f0d68a' }}>{result.data.nayin}</Text>
-            <Tag color={({ '金': 'gold', '木': 'green', '水': 'blue', '火': 'red', '土': 'orange' } as any)[result.data.wuxing]}>
+            <Text strong style={{ fontSize: 20, color: 'var(--text-primary)' }}>{result.data.nayin}</Text>
+            <Tag className={wuxingClassMap[result.data.wuxing] || ''}>
               五行属{result.data.wuxing}
             </Tag>
           </Space>
           <Divider />
-          <Text>{result.data.desc}</Text>
+          <Text style={{ color: 'var(--text-body)' }}>{result.data.desc}</Text>
         </Card>
       )}
 
-      <Card title="六十甲子纳音全表">
+      <Card className="glass-card" title="六十甲子纳音全表">
         <Input.Search
           placeholder="搜索干支、纳音或五行..."
           value={searchText}

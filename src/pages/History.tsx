@@ -1,25 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Typography, List, Tag, Button, Space, Popconfirm, Empty, Select } from 'antd';
+import { DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import {
-  CalendarOutlined, StarOutlined, FireOutlined, ThunderboltOutlined,
-  ExperimentOutlined, HomeOutlined, SmileOutlined, CloudOutlined,
-  DeleteOutlined, ArrowLeftOutlined,
-} from '@ant-design/icons';
+  Binary, Star, Sparkles, Flower2, Compass, Moon,
+  ScrollText, Waves, History as HistoryIcon,
+} from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 const { Title, Text } = Typography;
 
 const MODULE_INFO: Record<string, { title: string; icon: React.ReactNode; color: string }> = {
-  bazi: { title: '八字排盘', icon: <CalendarOutlined />, color: '#e74c3c' },
-  ziwei: { title: '紫微斗数', icon: <StarOutlined />, color: '#9b59b6' },
-  nayin: { title: '纳音查询', icon: <FireOutlined />, color: '#e67e22' },
-  liuyao: { title: '六爻大衍', icon: <ThunderboltOutlined />, color: '#2ecc71' },
-  meihua: { title: '梅花易数', icon: <ExperimentOutlined />, color: '#3498db' },
-  fengshui: { title: '风水相宅', icon: <HomeOutlined />, color: '#1abc9c' },
-  mianxiang: { title: '看面相', icon: <SmileOutlined />, color: '#f39c12' },
-  dream: { title: '周公解梦', icon: <CloudOutlined />, color: '#9c27b0' },
-  lingqian: { title: '灵签抽签', icon: <CloudOutlined />, color: '#c9a96e' },
+  bazi: { title: '八字排盘', icon: <Binary size={16} strokeWidth={1.5} />, color: '#5B8C5A' },
+  ziwei: { title: '紫微斗数', icon: <Star size={16} strokeWidth={1.5} />, color: '#4A5B6B' },
+  nayin: { title: '纳音查询', icon: <Waves size={16} strokeWidth={1.5} />, color: '#5B8C5A' },
+  liuyao: { title: '六爻占卜', icon: <Sparkles size={16} strokeWidth={1.5} />, color: '#C4A45A' },
+  meihua: { title: '梅花易数', icon: <Flower2 size={16} strokeWidth={1.5} />, color: '#C75B5B' },
+  fengshui: { title: '风水相宅', icon: <Compass size={16} strokeWidth={1.5} />, color: '#C4A45A' },
+  dream: { title: '周公解梦', icon: <Moon size={16} strokeWidth={1.5} />, color: '#4A5B6B' },
+  lingqian: { title: '灵签抽签', icon: <ScrollText size={16} strokeWidth={1.5} />, color: '#9B9B9B' },
 };
 
 function formatDateTime(isoStr: string): string {
@@ -39,12 +38,17 @@ export default function History() {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')}>返回首页</Button>
-        <Title level={3} style={{ margin: 0, color: '#8b4513' }}>📋 查询历史</Title>
+      <Space style={{ marginBottom: 20 }}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/')}>返回</Button>
+        <Title level={3} style={{
+          margin: 0, fontSize: 'var(--text-2xl)', fontFamily: 'var(--font-title)',
+          fontWeight: 500, color: 'var(--text-primary)',
+        }}>
+          查询历史
+        </Title>
       </Space>
 
-      <Card>
+      <Card className="glass-card" styles={{ body: { padding: '20px' } }}>
         <Space style={{ marginBottom: 16 }} wrap>
           <Select
             allowClear
@@ -72,7 +76,7 @@ export default function History() {
         </Space>
 
         {filtered.length === 0 ? (
-          <Empty description={history.length === 0 ? '暂无查询记录，快去试试各模块吧！' : '该模块暂无记录'} />
+          <Empty description={history.length === 0 ? '暂无查询记录' : '该模块暂无记录'} />
         ) : (
           <List
             dataSource={filtered}
@@ -81,30 +85,35 @@ export default function History() {
               return (
                 <List.Item
                   actions={[
-                    <Button
-                      key="recheck"
-                      type="link"
-                      onClick={() => navigate(`/${item.module}`)}
-                    >
+                    <Button key="recheck" type="link" onClick={() => navigate(`/${item.module}`)}>
                       重新查询
                     </Button>,
                   ]}
+                  style={{ padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}
                 >
                   <List.Item.Meta
                     avatar={
-                      <Tag color={info.color} style={{ fontSize: 16, padding: '4px 8px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 36, height: 36, borderRadius: 10,
+                        background: `${info.color}14`, color: info.color,
+                      }}>
                         {info.icon}
-                      </Tag>
+                      </span>
                     }
                     title={
                       <Space>
-                        <Text strong>{info.title}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text strong style={{ fontSize: 'var(--text-base)' }}>{info.title}</Text>
+                        <Text type="secondary" style={{ fontSize: 'var(--text-xs)' }}>
                           {formatDateTime(item.timestamp)}
                         </Text>
                       </Space>
                     }
-                    description={item.resultSummary || '无摘要'}
+                    description={
+                      <Text style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                        {item.resultSummary || '无摘要'}
+                      </Text>
+                    }
                   />
                 </List.Item>
               );

@@ -2,11 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import {
   Card, Select, Button, Typography, Space, Divider,
-  Tag, Row, Col, Descriptions, Tooltip, InputNumber, Radio, Alert,
+  Tag, Row, Col, Descriptions, InputNumber, Radio, Alert,
 } from 'antd';
-import { HomeOutlined, UserOutlined } from '@ant-design/icons';
+import { Compass, User } from 'lucide-react';
 import {
-  HOUSE_DIRECTIONS, STAR_NAMES, GONGE_POSITIONS,
+  HOUSE_DIRECTIONS, STAR_NAMES,
   calcFengshui, Direction, FengshuiResult,
 } from '../utils/fengshuiUtils';
 
@@ -105,16 +105,22 @@ export default function Fengshui() {
     const star = STAR_NAMES[starName];
     if (!star) return {};
     return star.ji === '吉'
-      ? { background: '#f6ffed', color: '#52c41a', borderColor: '#b7eb8f' }
-      : { background: '#fff2f0', color: '#ff4d4f', borderColor: '#ffa39e' };
+      ? { background: 'var(--bg-card-solid)', color: 'var(--wx-wood)', borderColor: 'var(--border-light)' }
+      : { background: 'rgba(199,91,91,0.03)', color: 'var(--wx-fire)', borderColor: 'rgba(199,91,91,0.08)' };
   };
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>风水相宅</Title>
+      <Title level={3} style={{ textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600 }}>
+        风水相宅
+      </Title>
 
       {/* 宅主信息 */}
-      <Card title={<><UserOutlined /> 宅主信息（选填，用于人宅匹配）</>} size="small" style={{ marginBottom: 16 }}>
+      <Card
+        title={<span><User size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />宅主信息（选填，用于人宅匹配）</span>}
+        size="small"
+        style={{ marginBottom: 16 }}
+      >
         <Space wrap>
           <Text>出生年份：</Text>
           <InputNumber min={1940} max={2010} placeholder="1990" value={ownerYear} onChange={setOwnerYear} style={{ width: 100 }} />
@@ -124,12 +130,16 @@ export default function Fengshui() {
             <Radio.Button value="female">女</Radio.Button>
           </Radio.Group>
           {ownerMingGua && (
-            <Tag color={ownerMingGua.type === '东四命' ? 'blue' : 'orange'}>
+            <Tag style={{
+              background: ownerMingGua.type === '东四命' ? 'rgba(91,140,90,0.06)' : 'rgba(196,164,90,0.06)',
+              color: ownerMingGua.type === '东四命' ? 'var(--wx-wood)' : 'var(--wx-earth)',
+              border: 'none',
+            }}>
               {ownerMingGua.type} · {ownerMingGua.guaName}命
             </Tag>
           )}
         </Space>
-        <Paragraph style={{ fontSize: 12, color: '#888', marginTop: 8 }}>
+        <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
           东四命（坎离震巽）适合住东四宅，西四命（乾坤艮兑）适合住西四宅。
         </Paragraph>
       </Card>
@@ -168,7 +178,7 @@ export default function Fengshui() {
                 options={DIRECTIONS.map((d) => ({ value: d, label: `${d}方` }))} />
             </Col>
           </Row>
-          <Button type="primary" size="large" icon={<HomeOutlined />} onClick={handleCalc}
+          <Button type="primary" size="large" icon={<Compass size={16} />} onClick={handleCalc}
             disabled={!sitting || !door || !bedroom || !kitchen}>
             分析风水
           </Button>
@@ -191,37 +201,147 @@ export default function Fengshui() {
           <Card title="宅卦信息" style={{ marginBottom: 16 }}>
             <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
               <Descriptions.Item label="住宅坐向">{result.house.name}</Descriptions.Item>
-              <Descriptions.Item label="宅卦"><Tag color="purple">{result.house.gua}宅</Tag></Descriptions.Item>
+              <Descriptions.Item label="宅卦">
+                <Tag style={{ background: 'rgba(155,155,155,0.06)', color: 'var(--wx-metal)', border: 'none' }}>
+                  {result.house.gua}宅
+                </Tag>
+              </Descriptions.Item>
               <Descriptions.Item label="宅型">
-                <Tag color={result.house.type === '东四宅' ? 'blue' : 'orange'}>{result.house.type}</Tag>
+                <Tag style={{
+                  background: result.house.type === '东四宅' ? 'rgba(91,140,90,0.06)' : 'rgba(196,164,90,0.06)',
+                  color: result.house.type === '东四宅' ? 'var(--wx-wood)' : 'var(--wx-earth)',
+                  border: 'none',
+                }}>
+                  {result.house.type}
+                </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="分析"><Text>{result.analysis}</Text></Descriptions.Item>
             </Descriptions>
           </Card>
 
-          <Card title="九宫方位吉凶图" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, maxWidth: 360, margin: '0 auto' }}>
-              {GONGE_POSITIONS.map((pos) => {
-                if (pos.direction === '中') {
+          <Card title="罗盘九宫吉凶图" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <svg viewBox="0 0 400 400" width="100%" style={{ maxWidth: 400 }}>
+                {/* 罗盘背景 */}
+                <circle cx={200} cy={200} r={192} fill="var(--bg-card-solid)" stroke="var(--border-light)" strokeWidth={2} />
+                <circle cx={200} cy={200} r={148} fill="none" stroke="var(--border-light)" strokeWidth={1.5} />
+                <circle cx={200} cy={200} r={82} fill="none" stroke="var(--border-light)" strokeWidth={1} />
+
+                {/* 绘制8个方位扇区 */}
+                {(() => {
+                  const dirAngles: Record<string, number> = {
+                    '南': -90, '西南': -45, '西': 0, '西北': 45,
+                    '北': 90, '东北': 135, '东': 180, '东南': -135,
+                  };
+                  const degToRad = (d: number) => (d * Math.PI) / 180;
+                  const cx = 200, cy = 200, outerR = 186, midR = 148, innerR = 82;
+
+                  return DIRECTIONS.map((dir) => {
+                    const centerDeg = dirAngles[dir];
+                    const startDeg = centerDeg - 22.5;
+                    const endDeg = centerDeg + 22.5;
+                    const sr = degToRad(startDeg), er = degToRad(endDeg);
+                    const midDeg = degToRad(centerDeg);
+
+                    const x1o = cx + outerR * Math.cos(sr), y1o = cy + outerR * Math.sin(sr);
+                    const x2o = cx + outerR * Math.cos(er), y2o = cy + outerR * Math.sin(er);
+                    const x1i = cx + innerR * Math.cos(sr), y1i = cy + innerR * Math.sin(sr);
+                    const x2i = cx + innerR * Math.cos(er), y2i = cy + innerR * Math.sin(er);
+
+                    const starName = result.starMap[dir];
+                    const star = STAR_NAMES[starName];
+                    const style = getStarStyle(starName);
+                    const isJi = star?.ji === '吉';
+
+                    // 方位标签位置(外圈中间)
+                    const labelR = (outerR + midR) / 2;
+                    const labelX = cx + labelR * Math.cos(midDeg);
+                    const labelY = cy + labelR * Math.sin(midDeg);
+
+                    // 星名位置(内圈)
+                    const starR = (midR + innerR) / 2;
+                    const starX = cx + starR * Math.cos(midDeg);
+                    const starY = cy + starR * Math.sin(midDeg);
+
+                    // 标识坐向
+                    const isSitting = sitting === dir;
+
+                    return (
+                      <g key={dir}>
+                        {/* 扇区 */}
+                        <path
+                          d={`M${x1o},${y1o} L${x2o},${y2o} A${outerR},${outerR} 0 0,1 ${x2o},${y2o} L${x2o},${y2o}`}
+                          fill="none" stroke="var(--border-light)" strokeWidth={0.5}
+                        />
+                        {/* 扇区背景 */}
+                        <path
+                          d={`M${x1o},${y1o} A${outerR},${outerR} 0 0,1 ${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR} 0 0,0 ${x1i},${y1i} Z`}
+                          fill={isSitting ? 'rgba(0,0,0,0.06)' : isJi ? 'rgba(91,140,90,0.03)' : 'rgba(199,91,91,0.03)'}
+                          stroke="var(--border-light)" strokeWidth={0.8}
+                        />
+
+                        {/* 方位名 */}
+                        <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="central"
+                          fontSize={14} fontWeight={700} fill="var(--text-primary)" fontFamily="var(--font-display)">
+                          {dir}
+                        </text>
+
+                        {/* 星名 + 吉凶 */}
+                        <text x={starX} y={starY - 8} textAnchor="middle" dominantBaseline="central"
+                          fontSize={11} fontWeight={600} fill={style.color || 'var(--text-primary)'}>
+                          {starName}
+                        </text>
+                        <text x={starX} y={starY + 10} textAnchor="middle" dominantBaseline="central"
+                          fontSize={9} fill={isJi ? 'var(--wx-wood)' : 'var(--wx-fire)'}>
+                          {star?.ji || '-'}
+                        </text>
+
+                        {/* 坐向标记 */}
+                        {isSitting && (
+                          <circle cx={cx + (outerR + 10) * Math.cos(midDeg)} cy={cy + (outerR + 10) * Math.sin(midDeg)}
+                            r={5} fill="var(--text-primary)" />
+                        )}
+                      </g>
+                    );
+                  });
+                })()}
+
+                {/* 中心 — 中宫 + 宅卦 */}
+                <circle cx={200} cy={200} r={82} fill="rgba(0,0,0,0.02)" stroke="var(--border-light)" strokeWidth={1} />
+                <text x={200} y={192} textAnchor="middle" fontSize={13} fontWeight={700}
+                  fill="var(--text-primary)" fontFamily="var(--font-display)">中宫</text>
+                <text x={200} y={210} textAnchor="middle" fontSize={12}
+                  fill="var(--text-body)">{result.house.gua}宅</text>
+                <text x={200} y={226} textAnchor="middle" fontSize={10}
+                  fill="var(--text-secondary)">{result.house.type}</text>
+
+                {/* 罗盘指针(指向坐方) */}
+                {sitting && (() => {
+                  const dirAngles: Record<string, number> = {
+                    '南': -90, '西南': -45, '西': 0, '西北': 45,
+                    '北': 90, '东北': 135, '东': 180, '东南': -135,
+                  };
+                  const angle = dirAngles[sitting] ?? 0;
+                  const rad = (angle * Math.PI) / 180;
+                  const needleLen = 70;
+                  const nx = 200 + needleLen * Math.cos(rad);
+                  const ny = 200 + needleLen * Math.sin(rad);
                   return (
-                    <div key="center" style={{ padding: 12, textAlign: 'center', background: '#f0f0f0', borderRadius: 4, minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text type="secondary">中宫</Text>
-                    </div>
+                    <g>
+                      <line x1={200} y1={200} x2={nx} y2={ny}
+                        stroke="var(--wx-fire)" strokeWidth={2} strokeLinecap="round" />
+                      <polygon
+                        points={`${nx},${ny} ${200 + 10 * Math.cos(rad + 2.5)},${200 + 10 * Math.sin(rad + 2.5)} ${200 + 10 * Math.cos(rad - 2.5)},${200 + 10 * Math.sin(rad - 2.5)}`}
+                        fill="var(--wx-fire)" />
+                      <circle cx={200} cy={200} r={6} fill="var(--wx-fire)" opacity={0.5} />
+                    </g>
                   );
-                }
-                const starName = result.starMap[pos.direction];
-                const star = STAR_NAMES[starName];
-                const style = getStarStyle(starName);
-                return (
-                  <Tooltip key={pos.direction} title={STAR_DETAIL[starName]?.desc || ''}>
-                    <div style={{ padding: 8, textAlign: 'center', borderRadius: 4, minHeight: 85, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px solid ${style.borderColor || '#d9d9d9'}`, background: style.background || '#fff', cursor: 'pointer' }}>
-                      <Text strong style={{ fontSize: 12, color: style.color }}>{pos.label}</Text>
-                      <Text style={{ fontSize: 12, color: style.color }}>{starName}</Text>
-                      <Tag color={star?.ji === '吉' ? 'success' : 'error'} style={{ fontSize: 10, marginTop: 2 }}>{star?.ji || '-'}</Tag>
-                    </div>
-                  </Tooltip>
-                );
-              })}
+                })()}
+
+                {/* 十字线 */}
+                <line x1={200} y1={18} x2={200} y2={382} stroke="var(--border-light)" strokeWidth={0.5} />
+                <line x1={18} y1={200} x2={382} y2={200} stroke="var(--border-light)" strokeWidth={0.5} />
+              </svg>
             </div>
           </Card>
 
@@ -234,14 +354,21 @@ export default function Fengshui() {
               const hasDoor = door === dir;
               const hasBed = bedroom === dir;
               const hasKitchen = kitchen === dir;
+              const isJi = STAR_NAMES[starName]?.ji === '吉';
               return (
-                <div key={dir} style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: STAR_NAMES[starName]?.ji === '吉' ? '#f6ffed' : '#fff2f0' }}>
-                  <Text strong>{dir}方 — {starName}（{STAR_NAMES[starName]?.ji}）</Text>
-                  {hasDoor && <Tag color="blue" style={{ marginLeft: 8 }}>大门在此</Tag>}
-                  {hasBed && <Tag color="green" style={{ marginLeft: 4 }}>卧室在此</Tag>}
-                  {hasKitchen && <Tag color="orange" style={{ marginLeft: 4 }}>厨房在此</Tag>}
-                  <Paragraph style={{ fontSize: 13, marginTop: 4, marginBottom: 2 }}>{detail.desc}</Paragraph>
-                  <Text style={{ fontSize: 12, color: '#1890ff' }}>适合用途：{detail.suitable}</Text>
+                <div key={dir} style={{
+                  marginBottom: 12, padding: '10px 14px', borderRadius: 8,
+                  background: isJi ? '#ffffff' : 'rgba(199,91,91,0.03)',
+                  border: `1px solid ${isJi ? 'var(--border-light)' : 'rgba(199,91,91,0.08)'}`,
+                }}>
+                  <Text strong style={{ color: isJi ? 'var(--text-primary)' : 'var(--text-body)' }}>
+                    {dir}方 — {starName}（{STAR_NAMES[starName]?.ji}）
+                  </Text>
+                  {hasDoor && <Tag style={{ marginLeft: 8, background: 'rgba(74,91,107,0.06)', color: 'var(--wx-water)', border: 'none' }}>大门在此</Tag>}
+                  {hasBed && <Tag style={{ marginLeft: 4, background: 'rgba(91,140,90,0.06)', color: 'var(--wx-wood)', border: 'none' }}>卧室在此</Tag>}
+                  {hasKitchen && <Tag style={{ marginLeft: 4, background: 'rgba(196,164,90,0.06)', color: 'var(--wx-earth)', border: 'none' }}>厨房在此</Tag>}
+                  <Paragraph style={{ fontSize: 13, marginTop: 4, marginBottom: 2, color: 'var(--text-body)' }}>{detail.desc}</Paragraph>
+                  <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>适合用途：{detail.suitable}</Text>
                 </div>
               );
             })}

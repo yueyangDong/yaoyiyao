@@ -8,7 +8,8 @@ import Nayin from './pages/Nayin';
 import Liuyao from './pages/Liuyao';
 import Meihua from './pages/Meihua';
 import Fengshui from './pages/Fengshui';
-import Mianxiang from './pages/Mianxiang';
+
+import AncientBooks from './pages/AncientBooks';
 import Dream from './pages/Dream';
 import Lingqian from './pages/Lingqian';
 import History from './pages/History';
@@ -26,7 +27,8 @@ export default function App() {
           <Route path="/liuyao" element={<Liuyao />} />
           <Route path="/meihua" element={<Meihua />} />
           <Route path="/fengshui" element={<Fengshui />} />
-          <Route path="/mianxiang" element={<Mianxiang />} />
+          <Route path="/ancient" element={<AncientBooks />} />
+
           <Route path="/dream" element={<Dream />} />
           <Route path="/lingqian" element={<Lingqian />} />
           <Route path="/history" element={<History />} />

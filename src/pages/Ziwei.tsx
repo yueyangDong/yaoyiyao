@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button, Typography, Row, Col,
-  Tag, Space, message, Radio, Descriptions, Alert, Divider, Select, Checkbox,
+  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox,
 } from 'antd';
 import { useUser } from '../context/UserContext';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
+import {
+  Star, Sun, Moon, Calendar, BookOpen, Sparkles,
+  AlertTriangle, Lightbulb, ClipboardList, BarChart3, Home,
+} from 'lucide-react';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -69,8 +73,145 @@ const SIHUA_EFFECT: Record<string, string> = {
 };
 
 const SIHUA_COLORS: Record<string, string> = {
-  '禄': '#e74c3c', '权': '#3498db', '科': '#2ecc71', '忌': '#e67e22',
+  '禄': 'var(--wx-wood)', '权': 'var(--wx-water)', '科': 'var(--wx-earth)', '忌': 'var(--wx-fire)',
 };
+
+// SVG星图组件 — 圆形十二宫命盘
+function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarDate, fiveElementName, gender }: {
+  gongData: any[]; mingGongName: string; shenGongName: string;
+  solarDate: string; lunisolarDate: string; fiveElementName: string; gender: string;
+}) {
+  const cx = 260, cy = 260, outerR = 240, innerR = 100;
+  const midR = (outerR + innerR) / 2;
+
+  // 按名称索引宫位
+  const gongMap: Record<string, any> = {};
+  for (const g of gongData) gongMap[g.name] = g;
+
+  // 顺时针排列十二宫，从顶部(午位)开始
+  const GONG_ORDER = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'];
+
+  const orderedGongs = GONG_ORDER.map(name => gongMap[name]).filter(Boolean);
+
+  const degToRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const getSectorPath = (i: number) => {
+    const startDeg = -90 + i * 30;
+    const endDeg = startDeg + 30;
+    const sr = degToRad(startDeg), er = degToRad(endDeg);
+    const x1o = cx + outerR * Math.cos(sr), y1o = cy + outerR * Math.sin(sr);
+    const x2o = cx + outerR * Math.cos(er), y2o = cy + outerR * Math.sin(er);
+    const x1i = cx + innerR * Math.cos(sr), y1i = cy + innerR * Math.sin(sr);
+    const x2i = cx + innerR * Math.cos(er), y2i = cy + innerR * Math.sin(er);
+    const largeArc = 0;
+    return `M${x1o},${y1o} A${outerR},${outerR} 0 ${largeArc},1 ${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR} 0 ${largeArc},0 ${x1i},${y1i} Z`;
+  };
+
+  const getTextPos = (i: number, r: number) => {
+    const midDeg = -90 + i * 30 + 15;
+    const rad = degToRad(midDeg);
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  // 获取四化颜色
+  const sihuaColors: Record<string, string> = { '禄': 'var(--wx-wood)', '权': 'var(--wx-water)', '科': 'var(--wx-earth)', '忌': 'var(--wx-fire)' };
+
+  const starColor = (star: any) => {
+    if (star.sihua) return sihuaColors[star.sihua] || '#888';
+    return 'var(--text-primary)';
+  };
+
+  return (
+    <svg viewBox="0 0 520 520" width="100%" style={{ maxWidth: 520, display: 'block', margin: '0 auto' }}>
+      {/* 外圈装饰 */}
+      <circle cx={cx} cy={cy} r={outerR + 6} fill="none" stroke="var(--border-light)" strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="var(--border-light)" strokeWidth={1} />
+      <circle cx={cx} cy={cy} r={innerR} fill="none" stroke="var(--border-light)" strokeWidth={1} />
+
+      {/* 十二宫扇形 */}
+      {orderedGongs.map((gong, i) => {
+        const isMing = gong?.name === '命宫';
+        const isShen = gong?.isShenGong;
+        const majorStars = gong?.majorStars || [];
+        const minorStars = gong?.minorStars || [];
+        const labelPos = getTextPos(i, outerR - 28);
+        const starPos = getTextPos(i, midR + 10);
+        const stemPos = getTextPos(i, outerR - 50);
+
+        return (
+          <g key={i}>
+            {/* 扇形背景 */}
+            <path
+              d={getSectorPath(i)}
+              fill={isMing ? 'rgba(0,0,0,0.04)' : isShen ? 'rgba(196,164,90,0.04)' : 'rgba(0,0,0,0.01)'}
+              stroke="var(--border-light)"
+              strokeWidth={0.5}
+            />
+
+            {/* 分隔线 */}
+            {i < 12 && (
+              <line
+                x1={cx + innerR * Math.cos(degToRad(-90 + i * 30))}
+                y1={cy + innerR * Math.sin(degToRad(-90 + i * 30))}
+                x2={cx + outerR * Math.cos(degToRad(-90 + i * 30))}
+                y2={cy + outerR * Math.sin(degToRad(-90 + i * 30))}
+                stroke="var(--border-light)"
+                strokeWidth={0.5}
+              />
+            )}
+
+            {/* 干支 */}
+            <text x={stemPos.x} y={stemPos.y} textAnchor="middle" fontSize={10}
+              fill="var(--text-secondary)" fontFamily="var(--font-display)">
+              {gong?.stem}{gong?.branch}
+            </text>
+
+            {/* 宫名 */}
+            <text x={labelPos.x} y={labelPos.y} textAnchor="middle"
+              fontSize={isMing ? 15 : 13}
+              fontWeight={isMing ? 700 : 500}
+              fill={isMing ? 'var(--text-primary)' : 'var(--text-primary)'}
+              fontFamily="var(--font-display)">
+              {gong?.name}宫
+              {isShen ? '·身' : ''}
+            </text>
+
+            {/* 主星 */}
+            {majorStars.slice(0, 3).map((s: any, si: number) => (
+              <text key={`ms-${si}`} x={starPos.x} y={starPos.y + si * 15} textAnchor="middle"
+                fontSize={11} fontWeight={600} fill={starColor(s)} fontFamily="var(--font-display)">
+                {s.name}{s.sihua ? `化${s.sihua}` : ''}
+              </text>
+            ))}
+
+            {/* 辅星(简略) */}
+            {minorStars.length > 0 && majorStars.length < 2 && (
+              <text x={starPos.x} y={starPos.y + (majorStars.length || 0) * 15 + 2} textAnchor="middle"
+                fontSize={9} fill="var(--text-secondary)">
+                {minorStars.slice(0, 3).join(' ')}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* 中心信息 */}
+      <text x={cx} y={cy - 36} textAnchor="middle" fontSize={13} fontWeight={600}
+        fill="var(--text-primary)" fontFamily="var(--font-display)">紫微斗数</text>
+      <text x={cx} y={cy - 14} textAnchor="middle" fontSize={11}
+        fill="var(--text-body)">命宫：{mingGongName}</text>
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize={11}
+        fill="var(--text-body)">身宫：{shenGongName}</text>
+      <text x={cx} y={cy + 26} textAnchor="middle" fontSize={11}
+        fill="var(--text-body)">五行局：{fiveElementName}</text>
+      <text x={cx} y={cy + 46} textAnchor="middle" fontSize={10}
+        fill="var(--text-secondary)">{solarDate}</text>
+
+      {/* 内圈装饰 */}
+      <circle cx={cx} cy={cy} r={innerR - 2} fill="none" stroke="var(--border-light)" strokeWidth={0.5} strokeDasharray="4,4" />
+    </svg>
+  );
+}
 
 export default function Ziwei() {
   const { profile, currentUser, addHistory } = useUser();
@@ -256,10 +397,10 @@ export default function Ziwei() {
   };
 
   const getStarColor = (star: any): string => {
-    if (star.sihua) return SIHUA_COLORS[star.sihua] || '#666';
+    if (star.sihua) return SIHUA_COLORS[star.sihua] || '#888';
     const ziweiStars = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
-    if (ziweiStars.includes(star.name)) return '#9b59b6';
-    return '#666';
+    if (ziweiStars.includes(star.name)) return 'var(--wx-metal)';
+    return 'var(--text-secondary)';
   };
 
   // 生成某宫的白话解读
@@ -306,17 +447,17 @@ export default function Ziwei() {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>紫微斗数</Title>
+      <Title level={3} style={{ textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-2xl)' }}>紫微斗数</Title>
 
       {currentUser ? (
         <Alert
-          message={<span>📋 当前使用档案：<strong>{currentUser.name}</strong>（{currentUser.gender}·{currentUser.birthCalendar === 'solar' ? '公历' : '农历'}·{currentUser.birthYear}.{currentUser.birthMonth}.{currentUser.birthDay}）</span>}
+          message={<span><ClipboardList size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />当前使用档案：<strong>{currentUser.name}</strong>（{currentUser.gender}·{currentUser.birthCalendar === 'solar' ? '公历' : '农历'}·{currentUser.birthYear}.{currentUser.birthMonth}.{currentUser.birthDay}）</span>}
           type="success" showIcon style={{ marginBottom: 16 }}
           action={<Button size="small" type="link" onClick={() => window.location.href = '/profile'}>切换档案</Button>}
         />
       ) : (
         <Alert
-          message="💡 创建个人档案后，可一键自动填入，无需每次手动输入。"
+          message={<span><Lightbulb size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />创建个人档案后，可一键自动填入，无需每次手动输入。</span>}
           type="info" showIcon style={{ marginBottom: 16 }}
           action={<Button size="small" type="primary" onClick={() => window.location.href = '/profile'}>立即创建</Button>}
         />
@@ -332,8 +473,8 @@ export default function Ziwei() {
           {/* 公历/农历切换 */}
           <Form.Item label="时间类型" style={{ marginBottom: 12 }}>
             <Radio.Group value={calendarType} onChange={(e) => { setCalendarType(e.target.value); form.resetFields(['month', 'day']); }}>
-              <Radio.Button value="solar">🌞 公历</Radio.Button>
-              <Radio.Button value="lunar">🌙 农历</Radio.Button>
+              <Radio.Button value="solar"><Sun size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />公历</Radio.Button>
+              <Radio.Button value="lunar"><Moon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />农历</Radio.Button>
             </Radio.Group>
             {calendarType === 'lunar' && (
               <Checkbox
@@ -419,13 +560,15 @@ export default function Ziwei() {
       {ziweiData && (
         <>
           {/* 结果头部：公历+农历对照 */}
-          <Card className="mystic-card" style={{ marginBottom: 16 }}>
+          <Card style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <div style={{ textAlign: 'center' }}>
-              <Title level={4} style={{ color: '#c9a96e', marginBottom: 8 }}>📅 出生时间</Title>
+              <Title level={4} style={{ color: 'var(--text-primary)', marginBottom: 8, fontFamily: 'var(--font-display)', fontWeight: 500 }}>
+                <Calendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />出生时间
+              </Title>
               <Space direction="vertical" size={4}>
-                <Text strong style={{ fontSize: 15 }}>公历：{ziweiData.solarDate}</Text>
-                <Text strong style={{ fontSize: 15 }}>农历：{ziweiData.lunisolarDate}</Text>
-                <Text>
+                <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>公历：{ziweiData.solarDate}</Text>
+                <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>农历：{ziweiData.lunisolarDate}</Text>
+                <Text style={{ color: 'var(--text-body)' }}>
                   性别：{ziweiData.gender === 'male' ? '男' : '女'} |
                   命宫：{ziweiData.mingGongName} |
                   身宫：{ziweiData.shenGongName} |
@@ -436,8 +579,21 @@ export default function Ziwei() {
             </div>
           </Card>
 
+          {/* SVG星图命盘 */}
+          <Card title={<span style={{ color: 'var(--text-primary)' }}>命盘星图</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+            <StarChart
+              gongData={ziweiData.gongData}
+              mingGongName={ziweiData.mingGongName}
+              shenGongName={ziweiData.shenGongName}
+              solarDate={ziweiData.solarDate}
+              lunisolarDate={ziweiData.lunisolarDate}
+              fiveElementName={ziweiData.fiveElementName}
+              gender={ziweiData.gender}
+            />
+          </Card>
+
           {/* 十二宫详情卡片 */}
-          <Card title="十二宫详解" style={{ marginBottom: 16 }}>
+          <Card title={<span style={{ color: 'var(--text-primary)' }}>十二宫详解</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <Row gutter={[12, 12]}>
               {ziweiData.gongData.map((gong: any, idx: number) => {
                 const isMing = gong.name === '命宫';
@@ -451,19 +607,20 @@ export default function Ziwei() {
                       size="small"
                       title={
                         <Space size={4}>
+                          <Home size={14} style={{ color: 'var(--text-secondary)', marginRight: 2 }} />
                           <Text strong style={{
-                            color: isMing ? '#e74c3c' : '#8b4513',
+                            color: 'var(--text-primary)',
                             fontSize: 15,
                           }}>
-                            🏠 {gong.name}宫（{gong.stem}{gong.branch}宫）
+                            {gong.name}宫（{gong.stem}{gong.branch}宫）
                           </Text>
-                          {gong.isLaiYin && <Tag color="orange" style={{ fontSize: 10 }}>来因</Tag>}
-                          {isMing && <Tag color="red" style={{ fontSize: 10 }}>核心</Tag>}
+                          {gong.isLaiYin && <Tag style={{ fontSize: 10, background: 'rgba(196,164,90,0.08)', color: 'var(--wx-earth)', border: 'none' }}>来因</Tag>}
+                          {isMing && <Tag style={{ fontSize: 10, background: 'rgba(199,91,91,0.08)', color: 'var(--wx-fire)', border: 'none' }}>核心</Tag>}
                         </Space>
                       }
                       style={{
-                        borderColor: isMing ? '#e74c3c' : undefined,
-                        background: isMing ? '#fff8f6' : '#fff',
+                        border: isMing ? '1px solid var(--border-light)' : '1px solid var(--border-light)',
+                        background: isMing ? 'rgba(0,0,0,0.02)' : '#fff',
                         height: '100%',
                       }}
                       styles={{ body: { padding: '10px 14px' } }}
@@ -490,13 +647,13 @@ export default function Ziwei() {
 
                       {/* 大白话解释 */}
                       <div style={{
-                        background: '#fdf8f0',
+                        background: 'rgba(0,0,0,0.02)',
                         padding: '8px 10px',
                         borderRadius: 6,
                         marginTop: 6,
                       }}>
-                        <Text style={{ fontSize: 12, color: '#555', lineHeight: 1.7 }}>
-                          📖 {getGongExplanation(gong)}
+                        <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7 }}>
+                          <BookOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />{getGongExplanation(gong)}
                         </Text>
                       </div>
                     </Card>
@@ -507,22 +664,22 @@ export default function Ziwei() {
           </Card>
 
           {/* 命盘总结 */}
-          <Card title="📊 命盘总结" style={{ marginBottom: 16, borderColor: '#d4a574' }}>
+          <Card title={<span><BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘总结</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Card size="small" title="✨ 命盘亮点" style={{ background: '#f6ffed', borderColor: '#b7eb8f' }}>
+                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.highlights.map((h: string, i: number) => (
-                      <li key={i} style={{ marginBottom: 6, fontSize: 13 }}>{h}</li>
+                      <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{h}</li>
                     ))}
                   </ul>
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card size="small" title="⚠️ 需要注意" style={{ background: '#fffbe6', borderColor: '#ffe58f' }}>
+                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.warnings.map((w: string, i: number) => (
-                      <li key={i} style={{ marginBottom: 6, fontSize: 13 }}>{w}</li>
+                      <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{w}</li>
                     ))}
                   </ul>
                 </Card>
@@ -531,8 +688,8 @@ export default function Ziwei() {
 
             <Divider />
 
-            <Card size="small" title="🔮 整体运势" style={{ background: '#fdf8f0' }}>
-              <Paragraph style={{ fontSize: 14, marginBottom: 0 }}>
+            <Card size="small" title={<span><Sparkles size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />整体运势</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
+              <Paragraph style={{ fontSize: 14, marginBottom: 0, color: 'var(--text-body)' }}>
                 综合来看，命盘格局清朗，整体运势不错。建议多关注命宫和官禄宫所指引的方向，
                 发挥命盘中吉星的优势，同时对化忌所在的宫位多花些心思经营。
                 记住：紫微斗数不是让你认命，而是帮你更好地了解自己的优势和短板，
@@ -542,13 +699,13 @@ export default function Ziwei() {
           </Card>
 
           {/* 四化说明 */}
-          <Card title="四化星说明" size="small" style={{ marginBottom: 16 }}>
+          <Card title={<span style={{ color: 'var(--text-primary)' }}>四化星说明</span>} size="small" style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <Row gutter={[16, 8]}>
               {Object.entries(SIHUA_COLORS).map(([key, color]) => (
                 <Col xs={12} sm={6} key={key}>
                   <Space>
                     <Tag color={color} style={{ fontSize: 16, padding: '4px 12px' }}>{key}</Tag>
-                    <Text style={{ fontSize: 12 }}>{SIHUA_EFFECT[key]}</Text>
+                    <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{SIHUA_EFFECT[key]}</Text>
                   </Space>
                 </Col>
               ))}

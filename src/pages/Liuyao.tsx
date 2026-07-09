@@ -3,7 +3,7 @@ import {
   Card, Button, Typography, Space, Tag, Divider,
   Row, Col, Radio, message, Alert, Collapse, Select, Descriptions,
 } from 'antd';
-import { ThunderboltOutlined, ReloadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Sparkles, RefreshCw, HelpCircle } from 'lucide-react';
 import { dayan, decodePan, threeNumberQiGua, manualQiGua } from 'iching-shifa';
 import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 import { useUser } from '../context/UserContext';
@@ -37,6 +37,67 @@ const LIUQIN_STATUS: Record<string, string> = {
   '用神休囚': '用神失月建之助，力量不足。不是最佳时机，先准备积蓄力量。',
   '世应': '世爻=你自己，应爻=对方/外部环境。应爻生世爻→外界对你有利。',
 };
+
+// 六爻SVG卦象组件
+function HexagramSVG({ yaoList, size = 180 }: { yaoList: any[]; size?: number }) {
+  const w = size, h = size * 0.9;
+  const lineW = size * 0.65, lineH = 7, cornerR = 3;
+  const gap = (h - 16) / 6, startY = 8;
+  const cx = w / 2;
+  const lines = [...yaoList].reverse(); // top(6th) → bottom(1st)
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ maxWidth: w }}>
+      {lines.map((yao: any, i: number) => {
+        const y = startY + i * gap;
+        const isYang = yao.yaoValue === 7 || yao.yaoValue === 9;
+        const isMoving = yao.isMoving;
+        const baseColor = isMoving ? 'var(--text-primary)' : 'var(--text-disabled)';
+
+        return (
+          <g key={i}>
+            {/* 世应标记 */}
+            <text x={cx - lineW / 2 - 10} y={y + 5} textAnchor="end" fontSize={10}
+              fill={yao.shiYing === '世' ? 'var(--wx-wood)' : 'var(--wx-water)'} fontWeight={600}>
+              {yao.shiYing === '世' ? '世' : yao.shiYing === '应' ? '应' : ''}
+            </text>
+
+            {isYang ? (
+              <rect x={cx - lineW / 2} y={y - lineH / 2} width={lineW} height={lineH}
+                rx={cornerR} fill={baseColor} opacity={isMoving ? 1 : 0.45} />
+            ) : (
+              <>
+                <rect x={cx - lineW / 2} y={y - lineH / 2} width={lineW * 0.42}
+                  height={lineH} rx={cornerR} fill={baseColor} opacity={isMoving ? 1 : 0.45} />
+                <rect x={cx + lineW / 2 - lineW * 0.42} y={y - lineH / 2}
+                  width={lineW * 0.42} height={lineH} rx={cornerR} fill={baseColor} opacity={isMoving ? 1 : 0.45} />
+              </>
+            )}
+
+            {/* 动爻标记 */}
+            {isMoving && (
+              <g>
+                <circle cx={cx + lineW / 2 + 16} cy={y} r={9} fill="none"
+                  stroke="var(--wx-fire)" strokeWidth={1.5} opacity={0.8}>
+                  <animate attributeName="r" values="9;12;9" dur="1.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+                <text x={cx + lineW / 2 + 16} y={y + 4} textAnchor="middle" fontSize={13}
+                  fill="var(--wx-fire)" fontWeight="bold">
+                  {isYang ? '○' : '×'}
+                </text>
+              </g>
+            )}
+
+            {/* 爻位号 */}
+            <text x={cx - lineW / 2 - 24} y={y + 5} textAnchor="end" fontSize={9}
+              fill="var(--text-disabled)">{yao.position}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 export default function Liuyao() {
   const { currentUser, addHistory } = useUser();
@@ -156,27 +217,27 @@ export default function Liuyao() {
     const parts: string[] = [];
 
     // 基本定位
-    parts.push(`📍 用神定位：问「${type}」看「${targetLiuQin}」，位于第${yongYao.position}爻（${yongYao.naJia}），五行属${yongYao.wuXing}。`);
+    parts.push(`[用神定位] 问「${type}」看「${targetLiuQin}」，位于第${yongYao.position}爻（${yongYao.naJia}），五行属${yongYao.wuXing}。`);
 
     // 动爻判断
     if (yongYao.isMoving) {
-      parts.push(`🔄 动爻：此爻为动爻！表示你所问的事情正在变化之中，不会维持现状，很快会有进展或转折。`);
+      parts.push(`[动爻] 此爻为动爻！表示你所问的事情正在变化之中，不会维持现状，很快会有进展或转折。`);
     } else {
-      parts.push(`⏸️ 静爻：此爻为静爻，所问之事短期内不会有大的变化，维持现有状态。`);
+      parts.push(`[静爻] 此爻为静爻，所问之事短期内不会有大的变化，维持现有状态。`);
     }
 
     // 世应判断
     if (yongYao.shiYing === '世') {
-      parts.push(`✅ 持世：用神持世大吉！这件事的主动权在你手里，你说了算。尤其是自己创业、主动追求的事情会很有利。`);
+      parts.push(`[持世] 用神持世大吉！这件事的主动权在你手里，你说了算。尤其是自己创业、主动追求的事情会很有利。`);
     } else if (yongYao.shiYing === '应') {
-      parts.push(`👤 临应：用神临应，事情的关键在于对方/外部环境。你需要多关注外部因素，主动权不完全在你手中。`);
+      parts.push(`[临应] 用神临应，事情的关键在于对方/外部环境。你需要多关注外部因素，主动权不完全在你手中。`);
     }
 
     // 旬空判断
     if (pan.dayKong) {
       const yaoZhi = yongYao.naJia?.slice(-2).charAt(1) || yongYao.naJia?.slice(-1) || '';
       if (pan.dayKong.includes(yaoZhi)) {
-        parts.push(`⚠️ 旬空：用神所在的「${yaoZhi}」为旬空之支，事情目前"空"——有名无实、尚未落实。需要等待出空之时（填实或冲空）才会显现实质。`);
+        parts.push(`[旬空] 用神所在的「${yaoZhi}」为旬空之支，事情目前"空"——有名无实、尚未落实。需要等待出空之时（填实或冲空）才会显现实质。`);
       }
     }
 
@@ -184,7 +245,7 @@ export default function Liuyao() {
     if (pan.monthJian) {
       const monthZhi = pan.monthJian;
       const wx = yongYao.wuXing;
-      parts.push(`🌙 月建：当前月建为「${monthZhi}」，用神五行属「${wx}」。月建对用神的影响需要结合具体生克关系来定——月建生用神则旺，克用神则衰。`);
+      parts.push(`[月建] 当前月建为「${monthZhi}」，用神五行属「${wx}」。月建对用神的影响需要结合具体生克关系来定——月建生用神则旺，克用神则衰。`);
     }
 
     // 六兽信息
@@ -198,7 +259,7 @@ export default function Liuyao() {
         '玄武': '玄武主暗昧、盗贼，事情有暗箱操作或隐私方面需要注意。',
       };
       if (liuShouInfo[yongYao.liuShou]) {
-        parts.push(`🐉 六兽：${liuShouInfo[yongYao.liuShou]}`);
+        parts.push(`[六兽] ${liuShouInfo[yongYao.liuShou]}`);
       }
     }
 
@@ -221,39 +282,31 @@ export default function Liuyao() {
     setYongShenType(null);
   };
 
-  const renderYaoLine = (yao: any, idx: number) => {
-    const isYang = yao.yaoValue === 7 || yao.yaoValue === 9;
-    const isMoving = yao.isMoving;
-    const color = isMoving ? '#e74c3c' : '#333';
-    return (
-      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-        <Text style={{ fontSize: 28, fontFamily: 'monospace', color }}>
-          {isYang ? '═══════' : '══  ══'} {isMoving ? (isYang ? '○' : '×') : ''}
-        </Text>
-        <Space size={2}>
-          <Tag style={{ fontSize: 10 }} color="blue">{yao.liuQin}</Tag>
-          <Tag style={{ fontSize: 10 }}>{yao.liuShou}</Tag>
-          <Tag style={{ fontSize: 10 }} color={yao.shiYing === '世' ? 'red' : 'green'}>{yao.shiYing}</Tag>
-          {isMoving && <Tag style={{ fontSize: 10 }} color="volcano">动</Tag>}
-        </Space>
-      </div>
-    );
-  };
-
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>六爻大衍</Title>
+      <Title level={3} style={{ textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600 }}>
+        六爻大衍
+      </Title>
 
-      <Alert message="使用 iching-shifa 进行排盘，自动完成装卦（六亲、六兽、世应、纳甲）。" type="info" showIcon style={{ marginBottom: 16 }} />
+      <Alert
+        message="使用 iching-shifa 进行排盘，自动完成装卦（六亲、六兽、世应、纳甲）。"
+        type="info"
+        showIcon
+        style={{ marginBottom: 16, background: '#fff' }}
+      />
 
       {/* 用神选择 */}
-      <Card title={<><QuestionCircleOutlined /> 用神选择指南</>} size="small" style={{ marginBottom: 16, background: '#f0f8ff' }}>
+      <Card
+        title={<><HelpCircle size={16} /> 用神选择指南</>}
+        size="small"
+        style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+      >
         <Row gutter={[8, 8]}>
           {YONGSHEN_GUIDE.map((item, i) => (
             <Col xs={24} sm={12} key={i}>
               <Paragraph style={{ fontSize: 13, marginBottom: 4 }}>
-                <Text strong>{item.question} → 「{item.liuqin}」</Text>
-                <br /><Text type="secondary">{item.reason}</Text>
+                <Text strong style={{ color: 'var(--text-primary)' }}>{item.question} 「{item.liuqin}」</Text>
+                <br /><Text style={{ color: 'var(--text-secondary)' }}>{item.reason}</Text>
               </Paragraph>
             </Col>
           ))}
@@ -261,10 +314,10 @@ export default function Liuyao() {
       </Card>
 
       {/* 起卦方式 */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
-            <Text strong>起卦方式：</Text>
+            <Text strong style={{ color: 'var(--text-primary)' }}>起卦方式：</Text>
             <Radio.Group value={mode} onChange={(e) => { setMode(e.target.value); resetAll(); }} style={{ marginLeft: 12 }}>
               <Radio.Button value="dayan">大衍筮法</Radio.Button>
               <Radio.Button value="threeNum">三数起卦</Radio.Button>
@@ -276,10 +329,10 @@ export default function Liuyao() {
 
           {mode === 'dayan' && (
             <div style={{ textAlign: 'center' }}>
-              <Button type="primary" size="large" icon={<ThunderboltOutlined />} onClick={handleDayan}>
+              <Button type="primary" size="large" icon={<Sparkles size={16} />} onClick={handleDayan}>
                 大衍筮法起卦
               </Button>
-              <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+              <Text style={{ color: 'var(--text-secondary)', display: 'block', marginTop: 8 }}>
                 自动模拟五十根蓍草"四营三变"，生成六爻。心里默念你要问的事。
               </Text>
             </div>
@@ -289,11 +342,11 @@ export default function Liuyao() {
             <div style={{ textAlign: 'center' }}>
               <Space>
                 <input type="number" min={1} placeholder="上卦数" value={num1 ?? ''} onChange={(e) => { const v = e.target.value; setNum1(v === '' ? undefined : Number(v)); }}
-                  style={{ width: 80, padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: 4 }} />
+                  style={{ width: 80, padding: '4px 8px', border: '1px solid var(--border-input)', borderRadius: 'var(--radius-input)' }} />
                 <input type="number" min={1} placeholder="下卦数" value={num2 ?? ''} onChange={(e) => { const v = e.target.value; setNum2(v === '' ? undefined : Number(v)); }}
-                  style={{ width: 80, padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: 4 }} />
+                  style={{ width: 80, padding: '4px 8px', border: '1px solid var(--border-input)', borderRadius: 'var(--radius-input)' }} />
                 <input type="number" min={1} placeholder="动爻数" value={num3 ?? ''} onChange={(e) => { const v = e.target.value; setNum3(v === '' ? undefined : Number(v)); }}
-                  style={{ width: 80, padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: 4 }} />
+                  style={{ width: 80, padding: '4px 8px', border: '1px solid var(--border-input)', borderRadius: 'var(--radius-input)' }} />
               </Space>
               <div style={{ marginTop: 12 }}>
                 <Button type="primary" onClick={handleThreeNum}>三数起卦</Button>
@@ -306,7 +359,7 @@ export default function Liuyao() {
               <Space wrap>
                 {manualYaoValues.map((v, i) => (
                   <Space key={i} direction="vertical" size={0}>
-                    <Text style={{ fontSize: 11 }}>第{i + 1}爻</Text>
+                    <Text style={{ fontSize: 11, color: 'var(--text-secondary)' }}>第{i + 1}爻</Text>
                     <Select value={v} onChange={(val) => { const arr = [...manualYaoValues]; arr[i] = val; setManualYaoValues(arr); }}
                       style={{ width: 90 }} options={[
                         { value: 6, label: '6 老阴×' }, { value: 7, label: '7 少阳' },
@@ -325,8 +378,8 @@ export default function Liuyao() {
 
       {/* 大衍过程日志 */}
       {dayanLog.length > 0 && (
-        <Card title="大衍筮法推演日志" style={{ marginBottom: 16 }}>
-          <div style={{ maxHeight: 300, overflow: 'auto', background: '#1a1a2e', color: '#e0c27b', padding: 16, borderRadius: 8, fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+        <Card title="大衍筮法推演日志" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+          <div style={{ maxHeight: 300, overflow: 'auto', background: 'rgba(0,0,0,0.02)', color: 'var(--text-body)', padding: 16, borderRadius: 8, fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap' }}>
             {dayanLog.join('\n')}
           </div>
         </Card>
@@ -336,24 +389,26 @@ export default function Liuyao() {
       {pan && (
         <>
           {/* 卦象总览 */}
-          <Card title="卦象排盘" style={{ marginBottom: 16, borderColor: '#8b4513' }}>
+          <Card title="卦象排盘" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
-                <Card size="small" title="本卦" className="mystic-card" style={{ textAlign: 'center' }}>
-                  <Title level={4} style={{ color: '#c0392b' }}>{pan.benGua.guaName}</Title>
-                  {[...pan.benGua.yaoList].reverse().map((y: any, i: number) => renderYaoLine(y, 5 - i))}
+                <Card size="small" title="本卦 · 开始" style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
+                  <Title level={4} style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)', marginBottom: 4 }}>{pan.benGua.guaName}</Title>
+                  <HexagramSVG yaoList={pan.benGua.yaoList} size={180} />
                 </Card>
               </Col>
               <Col xs={24} sm={8}>
-                <Card size="small" title="互卦" style={{ textAlign: 'center', background: '#f0f8ff' }}>
-                  <Title level={5}>{pan.huGua?.guaName || '—'}</Title>
-                  <Text type="secondary">中间发展过程</Text>
+                <Card size="small" title="互卦 · 过程" style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
+                  <Title level={5} style={{ color: 'var(--text-primary)' }}>{pan.huGua?.guaName || '—'}</Title>
+                  {pan.huGua?.yaoList && <HexagramSVG yaoList={pan.huGua.yaoList} size={160} />}
+                  <Text style={{ color: 'var(--text-secondary)' }}>中间发展过程</Text>
                 </Card>
               </Col>
               <Col xs={24} sm={8}>
-                <Card size="small" title="变卦" style={{ textAlign: 'center', background: '#f0fff0' }}>
-                  <Title level={5}>{pan.zhiGua?.guaName || '—'}</Title>
-                  <Text type="secondary">动爻：{pan.dongYaoCount}个</Text>
+                <Card size="small" title="变卦 · 结果" style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
+                  <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 4 }}>{pan.zhiGua?.guaName || '—'}</Title>
+                  {pan.zhiGua?.yaoList && <HexagramSVG yaoList={pan.zhiGua.yaoList} size={180} />}
+                  <Text style={{ color: 'var(--text-secondary)' }}>动爻：{pan.dongYaoCount}个</Text>
                 </Card>
               </Col>
             </Row>
@@ -370,7 +425,7 @@ export default function Liuyao() {
           </Card>
 
           {/* 三层说明：古文原文 + 直译 + 白话 */}
-          <Card title="卦辞解读" style={{ marginBottom: 16 }}>
+          <Card title="卦辞解读" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
             <Collapse defaultActiveKey={['plain']} items={[
               {
                 key: 'original',
@@ -379,28 +434,28 @@ export default function Liuyao() {
                   <>
                     {gua64Text ? (
                       <>
-                        <Paragraph><Text strong>卦辞：</Text>{gua64Text.gua_ci}</Paragraph>
-                        {gua64Text.tuan_ci && <Paragraph><Text strong>彖辞：</Text>{gua64Text.tuan_ci}</Paragraph>}
-                        {gua64Text.da_xiang && <Paragraph><Text strong>大象：</Text>{gua64Text.da_xiang}</Paragraph>}
+                        <Paragraph><Text strong style={{ color: 'var(--text-primary)' }}>卦辞：</Text>{gua64Text.gua_ci}</Paragraph>
+                        {gua64Text.tuan_ci && <Paragraph><Text strong style={{ color: 'var(--text-primary)' }}>彖辞：</Text>{gua64Text.tuan_ci}</Paragraph>}
+                        {gua64Text.da_xiang && <Paragraph><Text strong style={{ color: 'var(--text-primary)' }}>大象：</Text>{gua64Text.da_xiang}</Paragraph>}
                         <Divider>爻辞</Divider>
                         {gua64Text.yao_ci?.map((yc: string, i: number) => {
                           const isMoving = pan.benGua.yaoList[i]?.isMoving;
                           return (
                             <Paragraph key={i}>
-                              <Text strong={isMoving} style={{ color: isMoving ? '#e74c3c' : undefined }}>
+                              <Text strong={isMoving} style={{ color: isMoving ? '#1A1A1A' : undefined }}>
                                 {yc}
                               </Text>
-                              {isMoving && <Tag color="red" style={{ marginLeft: 8 }}>动爻</Tag>}
+                              {isMoving && <Tag style={{ marginLeft: 8 }}>动爻</Tag>}
                             </Paragraph>
                           );
                         })}
                       </>
                     ) : (
                       <>
-                        <Paragraph><Text strong>卦辞：</Text>{pan.benGua.guaCi}</Paragraph>
+                        <Paragraph><Text strong style={{ color: 'var(--text-primary)' }}>卦辞：</Text>{pan.benGua.guaCi}</Paragraph>
                         {pan.benGua.yaoList.map((y: any, i: number) => (
                           <Paragraph key={i}>
-                            <Text strong={y.isMoving} style={{ color: y.isMoving ? '#e74c3c' : undefined }}>
+                            <Text strong={y.isMoving} style={{ color: y.isMoving ? '#1A1A1A' : undefined }}>
                               第{y.position}爻{y.isMoving ? '（动）' : ''}：{y.naJia} {y.wuXing} {y.liuQin} {y.liuShou} {y.shiYing}
                             </Text>
                           </Paragraph>
@@ -414,20 +469,20 @@ export default function Liuyao() {
                 key: 'plain',
                 label: '第二层：白话解读',
                 children: (
-                  <div style={{ padding: 8, background: '#f6ffed', borderRadius: 8 }}>
-                    <Paragraph style={{ fontSize: 14 }}>
-                      <Text strong>iching-shifa 自动断语：</Text>
+                  <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.02)' }}>
+                    <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
+                      <Text strong style={{ color: 'var(--text-primary)' }}>iching-shifa 自动断语：</Text>
                       {pan.explanation || '暂无自动断语'}
                     </Paragraph>
                     {pan.dongYaoCount > 0 ? (
-                      <Paragraph style={{ fontSize: 14 }}>
+                      <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
                         此卦有{pan.dongYaoCount}个动爻。动爻代表事情正在变化的关键节点，需重点关注变爻对应的爻辞。
                         {pan.dongYaoCount === 1 && '单爻动以本卦变爻爻辞为主。'}
                         {pan.dongYaoCount === 2 && '两爻动以本卦二变爻之上爻为主。'}
                         {pan.dongYaoCount >= 3 && '三爻及以上变动较大，以变卦卦辞为主。'}
                       </Paragraph>
                     ) : (
-                      <Paragraph style={{ fontSize: 14 }}>此卦无动爻，以本卦卦辞为主。事情维持现状，短期不会有大的变化。</Paragraph>
+                      <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>此卦无动爻，以本卦卦辞为主。事情维持现状，短期不会有大的变化。</Paragraph>
                     )}
                   </div>
                 ),
@@ -439,9 +494,9 @@ export default function Liuyao() {
                   <Row gutter={[8, 8]}>
                     {Object.entries(LIUQIN_STATUS).map(([key, val]) => (
                       <Col xs={24} sm={12} key={key}>
-                        <Card size="small">
-                          <Text strong style={{ fontSize: 13 }}>{key}：</Text>
-                          <Text style={{ fontSize: 12 }}>{val}</Text>
+                        <Card size="small" style={{ borderColor: 'var(--border-light)' }}>
+                          <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{key}：</Text>
+                          <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{val}</Text>
                         </Card>
                       </Col>
                     ))}
@@ -452,10 +507,10 @@ export default function Liuyao() {
           </Card>
 
           {/* 用神分析 */}
-          <Card title="用神分析" style={{ marginBottom: 16 }}>
+          <Card title="用神分析" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
             <Row gutter={[12, 12]}>
               <Col xs={24} sm={8}>
-                <Card size="small" title="选择问事类型" style={{ background: '#0f0f1a' }}>
+                <Card size="small" title="选择问事类型" style={{ borderColor: 'var(--border-light)' }}>
                   <Space direction="vertical" style={{ width: '100%' }}>
                     {Object.entries(YONGSHEN_MAP).map(([k, v]) => (
                       <Button
@@ -465,7 +520,7 @@ export default function Liuyao() {
                         size="small"
                         onClick={() => handleYongShenSelect(k)}
                       >
-                        {k} → {v}
+                        {k} {v}
                       </Button>
                     ))}
                   </Space>
@@ -473,19 +528,19 @@ export default function Liuyao() {
               </Col>
               <Col xs={24} sm={16}>
                 {yongShenAnalysis ? (
-                  <div style={{ padding: 12, background: 'rgba(15,15,26,0.8)', borderRadius: 8 }}>
+                  <div style={{ padding: 12, background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
                     {yongShenAnalysis.split('\n\n').map((p, i) => (
-                      <Paragraph key={i} style={{ fontSize: 14, marginBottom: 6 }}>{p}</Paragraph>
+                      <Paragraph key={i} style={{ fontSize: 14, marginBottom: 6, color: 'var(--text-body)' }}>{p}</Paragraph>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ padding: 16, textAlign: 'center', color: '#aaa' }}>
-                    <Text type="secondary">点击左侧按钮选择你想问的事情，系统会自动为你分析用神的吉凶状态</Text>
+                  <div style={{ padding: 16, textAlign: 'center' }}>
+                    <Text style={{ color: 'var(--text-secondary)' }}>点击左侧按钮选择你想问的事情，系统会自动为你分析用神的吉凶状态</Text>
                   </div>
                 )}
                 {pan && yongShenType && (
                   <div style={{ marginTop: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                    <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                       参考资料：本卦「{pan.benGua.guaName}」{pan.dongYaoCount > 0 ? `有${pan.dongYaoCount}个动爻` : '无动爻'}
                       | 月建「{pan.monthJian}」| 日空「{pan.dayKong}」
                     </Text>
@@ -497,8 +552,8 @@ export default function Liuyao() {
 
           {/* 综合断语 */}
           {pan && yongShenType && yongShenAnalysis && (
-            <Card title="🔮 综合断语" className="mystic-card" style={{ marginBottom: 16 }}>
-              <Paragraph style={{ fontSize: 14 }}>
+            <Card title="综合断语" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+              <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
                 {(() => {
                   const targetLiuQin = YONGSHEN_MAP[yongShenType];
                   const yongYao = pan.benGua.yaoList.find((y: any) => y.liuQin === targetLiuQin);
@@ -531,7 +586,7 @@ export default function Liuyao() {
                   }
 
                   if (pan.dongYaoCount >= 3) {
-                    summary += '由于动爻较多（≥3），事情发展会比较曲折，最终结果以变卦为准。';
+                    summary += '由于动爻较多（>=3），事情发展会比较曲折，最终结果以变卦为准。';
                   }
 
                   if (pan.dongYaoCount === 0) {
@@ -541,32 +596,32 @@ export default function Liuyao() {
                   return summary;
                 })()}
               </Paragraph>
-              <Paragraph style={{ fontSize: 12, color: '#888' }}>
-                ⚠ 以上分析基于卦象六亲生克关系，仅供娱乐参考。六爻占卜讲究"无事不占"，心中有事所想时起卦最准。
+              <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                以上分析基于卦象六亲生克关系，仅供娱乐参考。六爻占卜讲究"无事不占"，心中有事所想时起卦最准。
               </Paragraph>
             </Card>
           )}
 
           {/* 六爻详细列表 */}
-          <Card title="六爻详细信息" size="small" style={{ marginBottom: 16 }}>
+          <Card title="六爻详细信息" size="small" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
             {[...pan.benGua.yaoList].reverse().map((y: any, i: number) => (
-              <div key={i} style={{ padding: '6px 8px', marginBottom: 4, background: y.isMoving ? '#fff2f0' : '#fafafa', borderRadius: 4 }}>
+              <div key={i} style={{ padding: '6px 8px', marginBottom: 4, background: y.isMoving ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 4 }}>
                 <Space wrap size={4}>
-                  <Text strong>第{y.position}爻</Text>
+                  <Text strong style={{ color: 'var(--text-primary)' }}>第{y.position}爻</Text>
                   <Tag>{y.naJia}</Tag>
-                  <Tag color="blue">{y.wuXing}</Tag>
-                  <Tag color="purple">{y.liuQin}</Tag>
+                  <Tag>{y.wuXing}</Tag>
+                  <Tag>{y.liuQin}</Tag>
                   <Tag>{y.liuShou}</Tag>
-                  <Tag color={y.shiYing === '世' ? 'red' : 'green'}>{y.shiYing}</Tag>
-                  {y.isMoving && <Tag color="volcano">动爻</Tag>}
-                  <Text type="secondary" style={{ fontSize: 11 }}>星宿：{y.xingXiu} 纳音：{y.naYin}</Text>
+                  <Tag>{y.shiYing === '世' ? '世' : '应'}</Tag>
+                  {y.isMoving && <Tag>动爻</Tag>}
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>星宿：{y.xingXiu} 纳音：{y.naYin}</Text>
                 </Space>
               </div>
             ))}
           </Card>
 
           <div style={{ textAlign: 'center' }}>
-            <Button onClick={resetAll} icon={<ReloadOutlined />} size="large">重新起卦</Button>
+            <Button onClick={resetAll} icon={<RefreshCw size={16} />} size="large">重新起卦</Button>
           </div>
         </>
       )}

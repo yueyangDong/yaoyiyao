@@ -11,10 +11,10 @@ import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial
 
 const { Title, Text, Paragraph } = Typography;
 
-// 五行配色
-const WX_COLORS: Record<string, string> = { '木': '#4caf50', '火': '#f44336', '土': '#ff9800', '金': '#ffc107', '水': '#2196f3' };
-const WX_BG: Record<string, string> = { '木': '#e8f5e9', '火': '#ffebee', '土': '#fff3e0', '金': '#fffde7', '水': '#e3f2fd' };
-const WX_ICON: Record<string, string> = { '木': '🌳', '火': '🔥', '土': '⛰️', '金': '💎', '水': '💧' };
+// 五行配色 (使用设计系统 CSS 变量)
+const WX_COLORS: Record<string, string> = { '木': 'var(--wx-wood)', '火': 'var(--wx-fire)', '土': 'var(--wx-earth)', '金': 'var(--wx-metal)', '水': 'var(--wx-water)' };
+const WX_BG: Record<string, string> = { '木': 'rgba(91,140,90,0.08)', '火': 'rgba(199,91,91,0.08)', '土': 'rgba(196,164,90,0.08)', '金': 'rgba(155,155,155,0.08)', '水': 'rgba(74,91,107,0.08)' };
+const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
 // 十神白话解释
 const SHISHEN_PLAIN: Record<string, string> = {
@@ -715,7 +715,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
       if (tgHeMap[tgList[i]]?.he === tgList[j]) {
         const hua = tgHeMap[tgList[i]].hua;
         results.push({
-          type: '合', subtype: '天干五合', color: '#52c41a',
+          type: '合', subtype: '天干五合', color: 'var(--wx-wood)',
           desc: `${pn(i)}天干「${tgList[i]}」与${pn(j)}天干「${tgList[j]}」→ ${tgList[i]}${tgList[j]}合化${hua}。${pn(i)}和${pn(j)}之间有"化学反应"，两个层面的人事物会深度关联、相互影响。`,
         });
       }
@@ -736,7 +736,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
         const key = dzList[i] + dzList[j];
         const hua = dzLiuHeHua[key] || '';
         results.push({
-          type: '合', subtype: '地支六合', color: '#52c41a',
+          type: '合', subtype: '地支六合', color: 'var(--wx-wood)',
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}合化${hua}。两柱关系紧密和谐，互帮互助，事情容易达成共识。`,
         });
       }
@@ -758,7 +758,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
       const pillars_ = matched.map((dz) => pn(dzList.indexOf(dz))).join('、');
       const isFull = matched.length === 3 && ju.names.every((n) => dzList.includes(n));
       results.push({
-        type: '合', subtype: `地支三合${isFull ? '全' : '半'}局`, color: '#52c41a',
+        type: '合', subtype: `地支三合${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)',
         desc: `${pillars_}形成${ju.desc}${isFull ? '（全合）' : '（半合）'}。${isFull ? '三合局力量强大，相当于三柱抱团形成合力，该五行能量极强。' : '半合局也有一定力量，但不如全合完整，等待大运流年补齐第三个地支时会完全激活。'}`,
       });
     }
@@ -779,7 +779,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
       const pillars_ = matched.map((dz) => pn(dzList.indexOf(dz))).join('、');
       const isFull = matched.length === 3;
       results.push({
-        type: '合', subtype: `地支三会${isFull ? '全' : '半'}局`, color: '#52c41a',
+        type: '合', subtype: `地支三会${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)',
         desc: `${pillars_}形成${ju.dir}局${isFull ? '（全会）' : '（半会）'}。三会局是地支最强的合局，相当于三柱"抱团"形成超级区域性力量，比三合局力量更大。`,
       });
     }
@@ -797,7 +797,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
         const wxB = chongWx[dzList[j]];
         const isSameWx = wxA === wxB;
         results.push({
-          type: '冲', subtype: '地支六冲', color: '#f44336',
+          type: '冲', subtype: '地支六冲', color: 'var(--wx-fire)',
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}冲（${wxA}${wxB}${isSameWx ? '土土相冲' : '相冲'}）。${isSameWx ? '同类相冲为"比冲"，主内心矛盾和反复。' : '异类相冲代表两个领域之间的冲突和对立。'}冲代表变动和不安，${pn(i)}和${pn(j)}所代表的领域容易动荡、换环境或出现分离。`,
         });
       }
@@ -810,7 +810,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   // 无礼之刑：子卯
   if (dzList.includes('子') && dzList.includes('卯')) {
     results.push({
-      type: '刑', subtype: '无礼之刑', color: '#fa8c16',
+      type: '刑', subtype: '无礼之刑', color: 'var(--color-warn)',
       desc: `子卯相刑（无礼之刑）：子水+卯木，看似相生实则相刑。容易因言行不当、礼节不周而得罪人，注意口舌是非和人际摩擦。`,
     });
   }
@@ -818,7 +818,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   const shiShiXing = ['寅', '巳', '申'].filter((n) => dzList.includes(n));
   if (shiShiXing.length >= 2) {
     results.push({
-      type: '刑', subtype: '恃势之刑', color: '#fa8c16',
+      type: '刑', subtype: '恃势之刑', color: 'var(--color-warn)',
       desc: `${shiShiXing.join('、')} → 恃势之刑。仗势欺人反被欺，容易卷入权力斗争和利益冲突。${shiShiXing.length === 3 ? '三刑俱全，需特别注意。' : '半刑已显端倪，在相关年份补齐会爆发。'}`,
     });
   }
@@ -826,7 +826,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   const wuEnXing = ['丑', '戌', '未'].filter((n) => dzList.includes(n));
   if (wuEnXing.length >= 2) {
     results.push({
-      type: '刑', subtype: '无恩之刑', color: '#fa8c16',
+      type: '刑', subtype: '无恩之刑', color: 'var(--color-warn)',
       desc: `${wuEnXing.join('、')} → 无恩之刑。恩将仇报或被恩将仇报，合伙做事要格外小心，容易因利益分配反目成仇。${wuEnXing.length === 3 ? '三刑俱全，合伙需慎之又慎。' : ''}`,
     });
   }
@@ -837,7 +837,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     const dups = ziXingFound.filter((dz, i) => ziXingFound.indexOf(dz) !== i);
     if (dups.length > 0) {
       results.push({
-        type: '刑', subtype: '自刑', color: '#fa8c16',
+        type: '刑', subtype: '自刑', color: 'var(--color-warn)',
         desc: `命局中有重复出现的地支（${[...new Set(dups)].join('、')}）→ 自刑。自己跟自己过不去，容易钻牛角尖、自我纠结、过度内耗。事情没你想的那么糟，学着放下。`,
       });
     }
@@ -854,7 +854,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     for (let j = i + 1; j < dzList.length; j++) {
       if (liuHai[dzList[i]] === dzList[j]) {
         results.push({
-          type: '害', subtype: '地支六害', color: '#1890ff',
+          type: '害', subtype: '地支六害', color: 'var(--wx-water)',
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}害（穿害）。害比冲更隐蔽，是暗箭伤人、背后使绊子。表面看着没事，暗地里有人拆台。需要多留心眼，不要轻信他人。`,
         });
       }
@@ -872,7 +872,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     for (let j = i + 1; j < dzList.length; j++) {
       if (liuPo[dzList[i]] === dzList[j]) {
         results.push({
-          type: '破', subtype: '地支六破', color: '#722ed1',
+          type: '破', subtype: '地支六破', color: 'var(--wx-metal)',
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}破。"破"就是互相拆台捣乱，两柱之间明合暗破，表面关系还行、背地里互相伤害。合作中要小心面和心不和的局面。`,
         });
       }
@@ -1404,14 +1404,14 @@ export default function Bazi() {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>八字排盘</Title>
+      <Title level={3} style={{ textAlign: 'center', color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontWeight: 600 }}>八字排盘</Title>
 
       {/* 档案提示 */}
       {currentUser ? (
         <Alert
           message={
             <span>
-              📋 当前使用档案：<strong>{currentUser.name}</strong>
+              当前使用档案：<strong>{currentUser.name}</strong>
               （{currentUser.gender}·{currentUser.birthCalendar === 'solar' ? '公历' : '农历'}·{currentUser.birthYear}.{currentUser.birthMonth}.{currentUser.birthDay}）
             </span>
           }
@@ -1426,7 +1426,7 @@ export default function Bazi() {
         />
       ) : (
         <Alert
-          message="💡 创建个人档案后，可一键自动填入，无需每次手动输入。"
+          message="创建个人档案后，可一键自动填入，无需每次手动输入。"
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
@@ -1519,8 +1519,8 @@ export default function Bazi() {
           <Card
             style={{
               marginBottom: 16,
-              background: 'linear-gradient(135deg, #fff8e1 0%, #fff3cd 50%, #ffe082 100%)',
-              border: '2px solid #ffc107',
+              background: 'var(--bg-card-solid)',
+              border: '1px solid var(--border-light)',
             }}
           >
             <Row align="middle" gutter={[16, 8]}>
@@ -1530,7 +1530,12 @@ export default function Bazi() {
                     日主：<span style={{ color: WX_COLORS[baziData.dayWx], fontSize: 22 }}>{baziData.dayGan}（{baziData.dayWx}）{WX_ICON[baziData.dayWx]}</span>
                   </Text>
                   {strengthAnalysis && (
-                    <Tag color={strengthAnalysis.level === '身强' ? 'red' : strengthAnalysis.level === '身弱' ? 'blue' : 'green'} style={{ fontSize: 14 }}>
+                    <Tag style={{
+                      fontSize: 14,
+                      background: strengthAnalysis.level === '身强' ? 'rgba(199,91,91,0.08)' : strengthAnalysis.level === '身弱' ? 'rgba(74,91,107,0.08)' : 'rgba(91,140,90,0.08)',
+                      color: strengthAnalysis.level === '身强' ? 'var(--wx-fire)' : strengthAnalysis.level === '身弱' ? 'var(--wx-water)' : 'var(--wx-wood)',
+                      border: 'none',
+                    }}>
                       {strengthAnalysis.level}
                     </Tag>
                   )}
@@ -1562,7 +1567,7 @@ export default function Bazi() {
             {/* 功能栏 */}
             <div style={{
               display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12,
-              paddingBottom: 8, borderBottom: '1px solid #f0f0f0',
+              paddingBottom: 8, borderBottom: '1px solid var(--border-light)',
               overflowX: 'auto',
             }}>
               {(() => {
@@ -1587,9 +1592,6 @@ export default function Bazi() {
                       type={isActive ? 'primary' : 'default'}
                       style={{
                         fontSize: 12, padding: '2px 10px',
-                        background: isActive ? '#e0c27b' : undefined,
-                        borderColor: isActive ? '#c49b3f' : undefined,
-                        color: isActive ? '#5c3d00' : undefined,
                       }}
                       onClick={() => setActiveRow(isActive ? null : row.key)}
                     >
@@ -1630,20 +1632,20 @@ export default function Bazi() {
             <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
               <table style={{
                 width: '100%', minWidth: 480, borderCollapse: 'collapse',
-                border: '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden',
+                border: '1px solid var(--border-light)', borderRadius: 8, overflow: 'hidden',
                 fontSize: 13,
               }}>
                 <thead>
                   <tr>
-                    <th style={{ padding: '6px 8px', background: '#fafafa', borderBottom: '2px solid #d9d9d9', textAlign: 'center', minWidth: 60, fontWeight: 'normal', color: '#888', fontSize: 12 }}>
+                    <th style={{ padding: '6px 8px', background: 'rgba(0,0,0,0.02)', borderBottom: '2px solid var(--border-light)', textAlign: 'center', minWidth: 60, fontWeight: 'normal', color: 'var(--text-secondary)', fontSize: 12 }}>
                       项目
                     </th>
                     {baziData.pillars.map((p, idx) => (
                       <th key={`hdr-${idx}`} style={{
-                        padding: '10px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 15,
-                        background: idx === 2 ? '#fff7e6' : '#fafafa',
-                        borderBottom: '2px solid #d9d9d9',
-                        color: idx === 2 ? '#ad6800' : '#555',
+                        padding: '10px 6px', textAlign: 'center', fontWeight: 600, fontSize: 15,
+                        background: idx === 2 ? 'rgba(196,164,90,0.04)' : 'rgba(0,0,0,0.02)',
+                        borderBottom: '2px solid var(--border-light)',
+                        color: 'var(--text-primary)',
                         minWidth: 90,
                       }}>
                         {p.pillar}{idx === 2 ? ' ★日主' : ''}
@@ -1654,15 +1656,15 @@ export default function Bazi() {
                 <tbody>
                   {(() => {
                     const dayIdx = 2;
-                    const hlBg = (idx: number) => idx === dayIdx ? '#fff7e6' : '#fff';
-                    const hlBorder = (idx: number) => idx < 3 ? '1px solid #e8e8e8' : 'none';
+                    const hlBg = (idx: number) => idx === dayIdx ? 'rgba(196,164,90,0.04)' : '#fff';
+                    const hlBorder = (idx: number) => idx < 3 ? '1px solid var(--border-light)' : 'none';
 
                     // ---- 行1: 十神 ----
                     const row1 = (
-                      <tr key="shishen" style={{ background: activeRow === 'shishen' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'shishen' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>十神</td>
+                      <tr key="shishen" style={{ background: activeRow === 'shishen' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'shishen' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>十神</td>
                         {baziData.pillars.map((p, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'shishen' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'shishen' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
                             <Tag color="purple" style={{ fontSize: 13, margin: 0 }}>
                               {idx === dayIdx ? '日主★' : (p.shiShen || '-')}
                             </Tag>
@@ -1673,11 +1675,11 @@ export default function Bazi() {
 
                     // ---- 行2: 天干 ----
                     const row2 = (
-                      <tr key="tiangan" style={{ background: activeRow === 'tiangan' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'tiangan' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>天干</td>
+                      <tr key="tiangan" style={{ background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>天干</td>
                         {baziData.pillars.map((p, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'tiangan' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: '#8b4513' }}>{p.tianGan}</Text>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                            <Text strong style={{ fontSize: 20, color: 'var(--text-primary)' }}>{p.tianGan}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1685,11 +1687,11 @@ export default function Bazi() {
 
                     // ---- 行3: 地支 ----
                     const row3 = (
-                      <tr key="dizhi" style={{ background: activeRow === 'dizhi' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dizhi' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>地支</td>
+                      <tr key="dizhi" style={{ background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>地支</td>
                         {baziData.pillars.map((p, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dizhi' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: '#8b4513' }}>{p.diZhi}</Text>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                            <Text strong style={{ fontSize: 20, color: 'var(--text-primary)' }}>{p.diZhi}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1697,16 +1699,16 @@ export default function Bazi() {
 
                     // ---- 行4: 藏干 ----
                     const row4 = (
-                      <tr key="canggan" style={{ background: activeRow === 'canggan' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'canggan' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>藏干</td>
+                      <tr key="canggan" style={{ background: activeRow === 'canggan' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'canggan' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>藏干</td>
                         {baziData.pillars.map((p, idx) => {
                           const ssArr = (p.shiShenZhi || '').split('/').filter(Boolean);
                           return (
-                            <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'canggan' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx), verticalAlign: 'top' }}>
+                            <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'canggan' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx), verticalAlign: 'top' }}>
                               {p.cangGan && p.cangGan.length > 0 ? (
                                 p.cangGan.map((cg, ci) => (
                                   <div key={ci} style={{ margin: '2px 0', fontSize: 13 }}>
-                                    <Text style={{ color: '#555' }}>{cg}</Text>
+                                    <Text style={{ color: 'var(--text-body)' }}>{cg}</Text>
                                     <Text type="secondary" style={{ fontSize: 11, marginLeft: 2 }}>({ssArr[ci] || '?'})</Text>
                                   </div>
                                 ))
@@ -1719,12 +1721,12 @@ export default function Bazi() {
 
                     // ---- 行5: 支神 ----
                     const row5 = (
-                      <tr key="zhishen" style={{ background: activeRow === 'zhishen' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'zhishen' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>支神</td>
+                      <tr key="zhishen" style={{ background: activeRow === 'zhishen' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'zhishen' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>支神</td>
                         {baziData.pillars.map((p, idx) => {
                           const ssArr = (p.shiShenZhi || '').split('/').filter(Boolean);
                           return (
-                            <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'zhishen' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                            <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'zhishen' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
                               {ssArr.length > 0 ? ssArr.map((s, si) => (
                                 <div key={si} style={{ margin: '2px 0' }}>
                                   <Tag color="geekblue" style={{ fontSize: 11, margin: 0 }}>{s}</Tag>
@@ -1738,10 +1740,10 @@ export default function Bazi() {
 
                     // ---- 行6: 纳音 ----
                     const row6 = (
-                      <tr key="nayin" style={{ background: activeRow === 'nayin' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'nayin' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>纳音</td>
+                      <tr key="nayin" style={{ background: activeRow === 'nayin' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'nayin' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>纳音</td>
                         {baziData.pillars.map((p, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'nayin' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'nayin' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
                             <Tag color="gold" style={{ fontSize: 12, margin: 0 }}>{p.nayin}</Tag>
                           </td>
                         ))}
@@ -1750,10 +1752,10 @@ export default function Bazi() {
 
                     // ---- 行7: 空亡 ----
                     const row7 = (
-                      <tr key="kongwang" style={{ background: activeRow === 'kongwang' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'kongwang' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>空亡</td>
+                      <tr key="kongwang" style={{ background: activeRow === 'kongwang' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'kongwang' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>空亡</td>
                         {baziData.xunKong.map((xk, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'kongwang' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'kongwang' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
                             <Tag color="default" style={{ fontSize: 12, margin: 0 }}>{xk || '—'}</Tag>
                           </td>
                         ))}
@@ -1762,14 +1764,14 @@ export default function Bazi() {
 
                     // ---- 行8: 地势 ----
                     const csColor: Record<string, string> = {
-                      '长生': '#52c41a', '沐浴': '#1890ff', '冠带': '#722ed1', '临官': '#fa8c16', '帝旺': '#f44336',
-                      '衰': '#999', '病': '#999', '死': '#999', '墓': '#999', '绝': '#999', '胎': '#52c41a', '养': '#52c41a',
+                      '长生': 'var(--wx-wood)', '沐浴': 'var(--wx-water)', '冠带': 'var(--wx-metal)', '临官': 'var(--color-warn)', '帝旺': 'var(--wx-fire)',
+                      '衰': 'var(--text-secondary)', '病': 'var(--text-secondary)', '死': 'var(--text-secondary)', '墓': 'var(--text-secondary)', '绝': 'var(--text-secondary)', '胎': 'var(--wx-wood)', '养': 'var(--wx-wood)',
                     };
                     const row8 = (
-                      <tr key="dishi" style={{ background: activeRow === 'dishi' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dishi' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>地势</td>
+                      <tr key="dishi" style={{ background: activeRow === 'dishi' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dishi' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>地势</td>
                         {baziData.diShi.map((ds, idx) => (
-                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dishi' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                          <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dishi' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
                             {ds ? (
                               <Tag color={csColor[ds] || 'default'} style={{ fontSize: 12, margin: 0 }}>{ds}</Tag>
                             ) : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>}
@@ -1780,33 +1782,27 @@ export default function Bazi() {
 
                     // ---- 行9: 自坐 ----
                     const row9 = (
-                      <tr key="zizuo" style={{ background: activeRow === 'zizuo' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'zizuo' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>自坐</td>
+                      <tr key="zizuo" style={{ background: activeRow === 'zizuo' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'zizuo' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>自坐</td>
                         {baziData.ziZuo.map((zz, idx) => (
-                          <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'zizuo' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <div style={{ fontSize: 13, fontWeight: 'bold', color: '#8b4513' }}>{zz.text}</div>
-                            <div style={{ fontSize: 11, color: '#888' }}>{zz.sub}</div>
-                            <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{zz.judgment}</div>
+                          <td key={idx} style={{ padding: '6px 4px', textAlign: 'center', background: activeRow === 'zizuo' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
+                            <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--text-primary)' }}>{zz.text}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{zz.sub}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-disabled)', marginTop: 2 }}>{zz.judgment}</div>
                           </td>
                         ))}
                       </tr>
                     );
 
                     // ---- 行10: 神煞 ----
-                    const emoji: Record<string, string> = {
-                      '天乙贵人': '⭐', '太极贵人': '☯️', '文昌': '📚', '学堂': '🎓', '词馆': '🗣️',
-                      '将星': '👑', '华盖': '☂️', '驿马': '🐴', '桃花': '💮', '红鸾': '💒', '天喜': '🎉',
-                      '羊刃': '⚔️', '劫煞': '💀', '灾煞': '⚠️', '孤辰': '🏝️', '寡宿': '🏚️',
-                      '天德贵人': '🛡️', '月德贵人': '🌙', '空亡': '⭕', '金舆': '🚗',
-                      '禄神': '💰', '魁罡': '🔱', '福星贵人': '🌟', '天厨贵人': '🍽️', '国印贵人': '📜',
-                    };
+                    const emoji: Record<string, string> = {};
                     const row10 = (
-                      <tr key="shensha" style={{ background: activeRow === 'shensha' ? '#fffbe6' : 'transparent', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'shensha' ? '#fff3cd' : '#fafafa', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: 12, color: '#666' }}>神煞</td>
+                      <tr key="shensha" style={{ background: activeRow === 'shensha' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'shensha' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>神煞</td>
                         {baziData.pillars.map((p, idx) => {
                           const pillarSS = shenShaByPillar[p.pillar] || [];
                           return (
-                            <td key={idx} style={{ padding: '4px 2px', background: activeRow === 'shensha' ? '#fffbe6' : hlBg(idx), borderBottom: hlBorder(idx), verticalAlign: 'top' }}>
+                            <td key={idx} style={{ padding: '4px 2px', background: activeRow === 'shensha' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx), verticalAlign: 'top' }}>
                               {pillarSS.length === 0 ? (
                                 <Text type="secondary" style={{ fontSize: 11 }}>—</Text>
                               ) : (
@@ -1814,10 +1810,14 @@ export default function Bazi() {
                                   <div key={si} style={{ margin: '1px 0' }}>
                                     <Tooltip title={ss.desc}>
                                       <Tag
-                                        color={ss.type === '吉' ? 'green' : ss.type === '凶' ? 'red' : 'blue'}
-                                        style={{ fontSize: 10, margin: 0, cursor: 'pointer' }}
+                                        style={{
+                                          fontSize: 10, margin: 0, cursor: 'pointer',
+                                          background: ss.type === '吉' ? 'rgba(91,140,90,0.08)' : ss.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
+                                          color: ss.type === '吉' ? 'var(--wx-wood)' : ss.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
+                                          border: 'none',
+                                        }}
                                       >
-                                        {emoji[ss.name] || '🔹'} {ss.name}
+                                        {ss.name}
                                       </Tag>
                                     </Tooltip>
                                   </div>
@@ -1854,7 +1854,7 @@ export default function Bazi() {
                 </Col>
                 <Col xs={24} md={12}>
                   {yongShenRec && (
-                    <div style={{ background: '#fdf8f0', padding: 12, borderRadius: 8 }}>
+                    <div style={{ background: 'rgba(196,164,90,0.04)', padding: 12, borderRadius: 8 }}>
                       <Title level={5}>用神推荐</Title>
                       <Paragraph>
                         <Text strong>喜用五行：</Text>
@@ -1865,7 +1865,7 @@ export default function Bazi() {
                         ))}
                       </Paragraph>
                       <Paragraph style={{ fontSize: 13 }}>{yongShenRec.desc}</Paragraph>
-                      <Paragraph style={{ fontSize: 12, color: '#888' }}>
+                      <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         生活小建议：{yongShenRec.yongShen.map((wx) => {
                           const tips: Record<string, string> = {
                             '木': '多穿绿色衣服，养植物，往东方发展',
@@ -1903,7 +1903,7 @@ export default function Bazi() {
                       <Tag color={info.level === '旺' ? 'red' : info.level === '弱' ? 'blue' : info.level === '缺' ? 'default' : 'green'}>
                         {info.level}
                       </Tag>
-                      <Text style={{ fontSize: 11, display: 'block', color: '#666' }}>{info.desc}</Text>
+                      <Text style={{ fontSize: 11, display: 'block', color: 'var(--text-secondary)' }}>{info.desc}</Text>
                     </Card>
                   </Col>
                 ))}
@@ -1915,15 +1915,15 @@ export default function Bazi() {
           <Card title="命格分析" style={{ marginBottom: 16 }}>
             <Row gutter={16}>
               <Col xs={24} md={8}>
-                <Card size="small" style={{ textAlign: 'center', background: '#fdf8f0' }}>
-                  <Title level={2} style={{ color: '#8b4513', marginBottom: 0 }}>{baziData.mingGe.geName}</Title>
+                <Card size="small" style={{ textAlign: 'center', background: 'rgba(196,164,90,0.04)' }}>
+                  <Title level={2} style={{ color: 'var(--text-primary)', marginBottom: 0 }}>{baziData.mingGe.geName}</Title>
                   <Tag color="volcano" style={{ marginTop: 8, fontSize: 14 }}>{baziData.mingGe.geType}</Tag>
                   <Tag color="gold">{baziData.mingGe.score}</Tag>
                 </Card>
               </Col>
               <Col xs={24} md={16}>
                 <Paragraph style={{ fontSize: 14 }}>{baziData.mingGe.desc}</Paragraph>
-                <ul style={{ paddingLeft: 20, fontSize: 13, color: '#555' }}>
+                <ul style={{ paddingLeft: 20, fontSize: 13, color: 'var(--text-body)' }}>
                   {baziData.mingGe.details.map((d, i) => (
                     <li key={i} style={{ marginBottom: 4 }}>{d}</li>
                   ))}
@@ -1944,12 +1944,16 @@ export default function Bazi() {
                       <Card
                         size="small"
                         style={{
-                          borderLeft: `4px solid ${sha.type === '吉' ? '#52c41a' : sha.type === '凶' ? '#f44336' : '#1890ff'}`,
-                          background: sha.type === '吉' ? '#f6ffed' : sha.type === '凶' ? '#fff2f0' : '#fafafa',
+                          borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
+                          background: sha.type === '吉' ? 'rgba(91,140,90,0.06)' : sha.type === '凶' ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)',
                         }}
                       >
                         <Space>
-                          <Tag color={sha.type === '吉' ? 'green' : sha.type === '凶' ? 'red' : 'blue'}>
+                          <Tag style={{
+                            background: sha.type === '吉' ? 'rgba(91,140,90,0.08)' : sha.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
+                            color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
+                            border: 'none',
+                          }}>
                             {sha.type}
                           </Tag>
                           <Text strong>{sha.name}</Text>
@@ -1983,7 +1987,7 @@ export default function Bazi() {
                 >
                   <Space>
                     <Tag color={r.color}>{r.type}</Tag>
-                    <Tag color={r.color === '#52c41a' ? 'green' : r.color === '#f44336' ? 'red' : r.color === '#fa8c16' ? 'orange' : r.color === '#1890ff' ? 'blue' : 'purple'} style={{ fontSize: 11 }}>
+                    <Tag color={r.color === 'var(--wx-wood)' ? 'green' : r.color === 'var(--wx-fire)' ? 'red' : r.color === 'var(--color-warn)' ? 'orange' : r.color === 'var(--wx-water)' ? 'blue' : 'purple'} style={{ fontSize: 11 }}>
                       {r.subtype}
                     </Tag>
                   </Space>
@@ -2011,12 +2015,12 @@ export default function Bazi() {
                   && baziData.dayun.startAge + (i + 1) * 10 >= currentYear - baziData.birthYear;
                 return (
                   <Col xs={12} sm={8} md={6} key={i}>
-                    <Card size="small" style={{ borderColor: isCurrent ? '#e74c3c' : undefined, background: isCurrent ? '#fff2f0' : undefined }}>
+                    <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(199,91,91,0.06)' : undefined }}>
                       <Space direction="vertical" size={0}>
-                        <Text strong style={{ fontSize: 16, color: isCurrent ? '#e74c3c' : '#8b4513' }}>{step.ganZhi}</Text>
+                        <Text strong style={{ fontSize: 16, color: isCurrent ? 'var(--wx-fire)' : 'var(--text-primary)' }}>{step.ganZhi}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{step.startAge}~{step.endAge}岁</Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}~{step.endYear}年</Text>
-                        {isCurrent && <Tag color="red">当前大运</Tag>}
+                        {isCurrent && <Tag style={{ background: 'rgba(199,91,91,0.08)', color: 'var(--wx-fire)', border: 'none' }}>当前大运</Tag>}
                       </Space>
                     </Card>
                   </Col>
@@ -2040,7 +2044,7 @@ export default function Bazi() {
               <Button onClick={handleLiunian}>查询流年</Button>
             </Space>
             {liunianResult && (
-              <div style={{ marginTop: 12, padding: 12, background: '#f6f6f6', borderRadius: 8 }}>
+              <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
                 <Text>{liunianResult}</Text>
               </div>
             )}
@@ -2062,8 +2066,7 @@ export default function Bazi() {
                 {liuYueMonths.map((m, i) => {
                   const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
                   const isBad = m.desc.includes('官杀') || m.desc.includes('压力');
-                  const bgColor = isGood ? '#f6ffed' : isBad ? '#fff2f0' : '#fafafa';
-                  const tagColor = isGood ? 'green' : isBad ? 'red' : 'blue';
+                  const bgColor = isGood ? 'rgba(91,140,90,0.06)' : isBad ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)';
                   return (
                     <Col xs={8} sm={6} md={4} key={i}>
                       <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
@@ -2071,7 +2074,7 @@ export default function Bazi() {
                         <br />
                         <Tag color={WX_COLORS[m.wx]} style={{ fontSize: 13 }}>{m.ganZhi}</Tag>
                         <br />
-                        <Text style={{ fontSize: 11, color: isGood ? '#52c41a' : isBad ? '#f44336' : '#888' }}>{m.desc}</Text>
+                        <Text style={{ fontSize: 11, color: isGood ? 'var(--wx-wood)' : isBad ? 'var(--wx-fire)' : 'var(--text-secondary)' }}>{m.desc}</Text>
                       </Card>
                     </Col>
                   );
@@ -2103,10 +2106,10 @@ export default function Bazi() {
                         <Card size="small" style={{
                           textAlign: 'center',
                           padding: 2,
-                          background: isGood ? '#f6ffed' : isBad ? '#fff2f0' : isWeekend ? '#f0f0f0' : '#fff',
+                          background: isGood ? 'rgba(91,140,90,0.06)' : isBad ? 'rgba(199,91,91,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
                           borderColor: isWeekend ? '#ccc' : undefined,
                         }}>
-                          <Text style={{ fontSize: 10, color: '#aaa' }}>{d.day}日</Text>
+                          <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
                           <br />
                           <Text strong style={{ fontSize: 12, color: WX_COLORS[d.wx] }}>{d.ganZhi}</Text>
                         </Card>
@@ -2120,88 +2123,88 @@ export default function Bazi() {
 
           {/* ========== 六大领域分析 ========== */}
           <Divider orientation="left" style={{ marginTop: 24 }}>
-            <Title level={4} style={{ margin: 0, color: '#8b4513' }}>🔮 六大人生领域分析</Title>
+            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-title)' }}>六大人生领域分析</Title>
           </Divider>
 
           {/* 爱情婚姻 */}
           {loveAnalysis && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>💕</span> 爱情婚姻</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #e91e63', borderRadius: 8 }}
-              styles={{ body: { background: 'linear-gradient(135deg, #fce4ec 0%, #fff 100%)' } }}
+              title="爱情婚姻"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-fire)' }}
+              styles={{ body: { background: 'rgba(199,91,91,0.02)' } }}
             >
               <Paragraph><Text strong>配偶特征：</Text>{loveAnalysis.spouseFeature}</Paragraph>
               <Paragraph><Text strong>婚姻质量：</Text>{loveAnalysis.marriageQuality}</Paragraph>
               <Paragraph><Text strong>桃花运势：</Text>{loveAnalysis.peachBlossom}</Paragraph>
-              <Paragraph><Text strong style={{ color: '#e91e63' }}>建议：</Text>{loveAnalysis.advice}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-fire)' }}>建议：</Text>{loveAnalysis.advice}</Paragraph>
             </Card>
           )}
 
           {/* 事业财运 */}
           {careerAnalysis && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>💼</span> 事业财运</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #2196f3', borderRadius: 8 }}
-              styles={{ body: { background: 'linear-gradient(135deg, #e3f2fd 0%, #fff 100%)' } }}
+              title="事业财运"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-water)' }}
+              styles={{ body: { background: 'rgba(74,91,107,0.02)' } }}
             >
               <Paragraph><Text strong>事业方向：</Text>{careerAnalysis.direction}</Paragraph>
               <Paragraph><Text strong>赚钱方式：</Text>{careerAnalysis.moneyMethod}</Paragraph>
               <Paragraph><Text strong>财运走势：</Text>{careerAnalysis.fortuneTrend}</Paragraph>
               <Paragraph><Text strong>贵人运：</Text>{careerAnalysis.nobleHelp}</Paragraph>
-              <Paragraph><Text strong style={{ color: '#2196f3' }}>建议：</Text>{careerAnalysis.advice}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-water)' }}>建议：</Text>{careerAnalysis.advice}</Paragraph>
             </Card>
           )}
 
           {/* 身体健康 */}
           {healthAnalysis && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>🏥</span> 身体健康</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #4caf50', borderRadius: 8 }}
-              styles={{ body: { background: 'linear-gradient(135deg, #e8f5e9 0%, #fff 100%)' } }}
+              title="身体健康"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-wood)' }}
+              styles={{ body: { background: 'rgba(91,140,90,0.02)' } }}
             >
               <Paragraph><Text strong>体质概况：</Text>{healthAnalysis.bodyOverview}</Paragraph>
               <Paragraph><Text strong>需要留意的方面：</Text></Paragraph>
               <ul style={{ paddingLeft: 20 }}>
                 {healthAnalysis.concerns.map((c, i) => <li key={i} style={{ marginBottom: 6, fontSize: 14 }}>{c}</li>)}
               </ul>
-              <Paragraph><Text strong style={{ color: '#4caf50' }}>养生建议：</Text>{healthAnalysis.wellnessAdvice}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-wood)' }}>养生建议：</Text>{healthAnalysis.wellnessAdvice}</Paragraph>
             </Card>
           )}
 
           {/* 家庭亲情 */}
           {familyAnalysis && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>👨‍👩‍👧</span> 家庭亲情</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #ff9800', borderRadius: 8 }}
-              styles={{ body: { background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)' } }}
+              title="家庭亲情"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-earth)' }}
+              styles={{ body: { background: 'rgba(196,164,90,0.02)' } }}
             >
               <Paragraph><Text strong>与父母关系：</Text>{familyAnalysis.parentRelation}</Paragraph>
               <Paragraph><Text strong>兄弟姐妹：</Text>{familyAnalysis.siblings}</Paragraph>
               <Paragraph><Text strong>家庭氛围：</Text>{familyAnalysis.familyAtmosphere}</Paragraph>
-              <Paragraph><Text strong style={{ color: '#ff9800' }}>建议：</Text>{familyAnalysis.advice}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-earth)' }}>建议：</Text>{familyAnalysis.advice}</Paragraph>
             </Card>
           )}
 
           {/* 社交朋友 */}
           {socialAnalysis && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>🤝</span> 社交朋友</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #9c27b0', borderRadius: 8 }}
-              styles={{ body: { background: 'linear-gradient(135deg, #f3e5f5 0%, #fff 100%)' } }}
+              title="社交朋友"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-metal)' }}
+              styles={{ body: { background: 'rgba(155,155,155,0.02)' } }}
             >
               <Paragraph><Text strong>社交特质：</Text>{socialAnalysis.socialTrait}</Paragraph>
               <Paragraph><Text strong>朋友质量：</Text>{socialAnalysis.friendQuality}</Paragraph>
               <Paragraph><Text strong>贵人类型：</Text>{socialAnalysis.nobleType}</Paragraph>
-              <Paragraph><Text strong style={{ color: '#9c27b0' }}>合伙建议：</Text>{socialAnalysis.partnerAdvice}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-metal)' }}>合伙建议：</Text>{socialAnalysis.partnerAdvice}</Paragraph>
             </Card>
           )}
 
           {/* 综合运势总览 */}
           {fortuneOverview && (
             <Card
-              title={<><span style={{ fontSize: 18 }}>🔮</span> 运势总览</>}
-              style={{ marginBottom: 16, borderLeft: '5px solid #e0c27b', borderRadius: 8, borderTop: '2px solid #e0c27b' }}
-              styles={{ body: { background: 'linear-gradient(135deg, #fffde7 0%, #fdf8f0 50%, #fff 100%)' } }}
+              title="运势总览"
+              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-earth)' }}
+              styles={{ body: { background: 'rgba(196,164,90,0.02)' } }}
             >
               <Paragraph>
                 <Text strong>人生关键词：</Text>

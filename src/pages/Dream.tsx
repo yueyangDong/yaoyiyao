@@ -6,6 +6,11 @@ import {
 import {
   SearchOutlined, BulbOutlined, TagsOutlined, FireOutlined, HistoryOutlined,
 } from '@ant-design/icons';
+import {
+  Moon, Search as SearchIcon,
+  PawPrint, User, Leaf, Package, Zap,
+  Home, Cloud, Ghost, Building, Dices,
+} from 'lucide-react';
 import { ALL_DREAMS, DREAM_CATEGORIES, PINYIN_MAP, DreamEntry } from '../data/dreamData';
 import { useUser } from '../context/UserContext';
 
@@ -25,6 +30,32 @@ function getSearchHistory(): string[] {
 function setSearchHistory(keywords: string[]) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(keywords.slice(0, 10)));
 }
+
+// Category -> lucide-react icon mapping (replaces emoji)
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  '动物': <PawPrint size={28} />,
+  '人物': <User size={28} />,
+  '植物': <Leaf size={28} />,
+  '物品': <Package size={28} />,
+  '活动': <Zap size={28} />,
+  '生活': <Home size={28} />,
+  '自然': <Cloud size={28} />,
+  '鬼神': <Ghost size={28} />,
+  '建筑': <Building size={28} />,
+};
+
+// Smaller icons for inline use (modal title, etc.)
+const CATEGORY_ICONS_SMALL: Record<string, React.ReactNode> = {
+  '动物': <PawPrint size={20} />,
+  '人物': <User size={20} />,
+  '植物': <Leaf size={20} />,
+  '物品': <Package size={20} />,
+  '活动': <Zap size={20} />,
+  '生活': <Home size={20} />,
+  '自然': <Cloud size={20} />,
+  '鬼神': <Ghost size={20} />,
+  '建筑': <Building size={20} />,
+};
 
 export default function Dream() {
   const { currentUser, addHistory } = useUser();
@@ -55,7 +86,7 @@ export default function Dream() {
       }
 
       if (matchKey || matchTag || matchCategory || matchPinyin) {
-        results.push({ value: keyword, label: `${DREAM_CATEGORIES[entry.category]?.emoji || ''} ${keyword} - ${entry.title}` });
+        results.push({ value: keyword, label: `${keyword} - ${entry.title}` });
         if (results.length >= 10) break;
       }
     }
@@ -134,10 +165,24 @@ export default function Dream() {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>周公解梦</Title>
+      {/* Title — clean text, no emoji, display font */}
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <Moon size={28} style={{ color: 'var(--text-primary)', marginRight: 8, verticalAlign: 'middle' }} />
+        <Title level={3} style={{
+          display: 'inline',
+          fontFamily: 'var(--font-display)',
+          color: 'var(--text-primary)',
+          fontWeight: 600,
+        }}>
+          周公解梦
+        </Title>
+      </div>
 
       {/* 搜索框 */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{
+        marginBottom: 16,
+        borderColor: 'var(--border-light)',
+      }}>
         <AutoComplete
           options={searchOptions}
           value={searchText}
@@ -148,25 +193,31 @@ export default function Dream() {
           <Input.Search
             size="large"
             placeholder="输入梦到的关键词，如蛇、水、飞..."
-            enterButton={<><SearchOutlined /> 解梦</>}
+            enterButton={<><SearchIcon size={16} /> 解梦</>}
             onSearch={handleSearch}
             onChange={(e) => setSearchText(e.target.value)}
           />
         </AutoComplete>
-        <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+        <Text style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
           支持拼音首字母搜索（如"she"→"蛇"），输入关键词或点击热门梦境直接查看。
         </Text>
 
         {/* 搜索历史 */}
         {history.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>
+            <Text style={{ fontSize: 12, marginRight: 8, color: 'var(--text-secondary)' }}>
               <HistoryOutlined /> 最近搜索：
             </Text>
             {history.slice(0, 5).map((h) => (
               <Tag
                 key={h}
-                style={{ cursor: 'pointer', marginBottom: 4 }}
+                style={{
+                  cursor: 'pointer',
+                  marginBottom: 4,
+                  background: 'rgba(0,0,0,0.04)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-light)',
+                }}
                 onClick={() => handleSearch(h)}
               >
                 {h}
@@ -177,7 +228,10 @@ export default function Dream() {
       </Card>
 
       {/* 分类九宫格 */}
-      <Card title={<><TagsOutlined /> 分类浏览</>} style={{ marginBottom: 16 }}>
+      <Card
+        title={<Space><TagsOutlined /> 分类浏览</Space>}
+        style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+      >
         <Row gutter={[12, 12]}>
           {Object.entries(DREAM_CATEGORIES).map(([key, cat]) => (
             <Col xs={8} sm={8} md={8} lg={8} xl={8} key={key}>
@@ -187,15 +241,17 @@ export default function Dream() {
                 style={{
                   textAlign: 'center',
                   cursor: 'pointer',
-                  background: selectedCategory === key ? '#e6f7ff' : '#fff',
-                  borderColor: selectedCategory === key ? '#1890ff' : '#d9d9d9',
+                  background: selectedCategory === key ? 'rgba(0,0,0,0.02)' : '#fff',
+                  borderColor: selectedCategory === key ? 'var(--text-primary)' : 'var(--border-light)',
                 }}
                 onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}
               >
-                <div style={{ fontSize: 28 }}>{cat.emoji}</div>
-                <Text strong style={{ fontSize: 13 }}>{cat.name}</Text>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                  {CATEGORY_ICONS[key]}
+                </div>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{cat.name}</Text>
                 <br />
-                <Text type="secondary" style={{ fontSize: 11 }}>{cat.desc}</Text>
+                <Text style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{cat.desc}</Text>
               </Card>
             </Col>
           ))}
@@ -205,16 +261,25 @@ export default function Dream() {
       {/* 分类列表（选中分类后显示） */}
       {selectedCategory && (
         <Card
-          title={`${DREAM_CATEGORIES[selectedCategory]?.emoji} ${DREAM_CATEGORIES[selectedCategory]?.name}`}
+          title={<Space>{CATEGORY_ICONS_SMALL[selectedCategory]} <span>{DREAM_CATEGORIES[selectedCategory]?.name}</span></Space>}
           extra={<Button size="small" onClick={() => setSelectedCategory(null)}>关闭</Button>}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
         >
           <Row gutter={[6, 6]}>
             {filteredByCategory.map((entry) => (
               <Col xs={12} sm={8} md={6} key={entry.keyword}>
                 <Tag
-                  style={{ cursor: 'pointer', padding: '4px 10px', fontSize: 13, marginBottom: 4, width: '100%', textAlign: 'center' }}
-                  color="blue"
+                  style={{
+                    cursor: 'pointer',
+                    padding: '4px 10px',
+                    fontSize: 13,
+                    marginBottom: 4,
+                    width: '100%',
+                    textAlign: 'center',
+                    background: 'rgba(74,91,107,0.08)',
+                    color: 'var(--wx-water)',
+                    border: '1px solid rgba(74,91,107,0.12)',
+                  }}
                   onClick={() => handleOpenDream(entry)}
                 >
                   {entry.title}
@@ -227,13 +292,22 @@ export default function Dream() {
       )}
 
       {/* 热门梦境标签云 */}
-      <Card title={<><FireOutlined /> 热门梦境</>} style={{ marginBottom: 16 }}>
+      <Card
+        title={<Space><FireOutlined /> 热门梦境</Space>}
+        style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+      >
         <Space wrap size={[8, 8]}>
           {HOT_KEYWORDS.map((kw) => (
             <Tag
               key={kw}
-              color="volcano"
-              style={{ cursor: 'pointer', padding: '6px 14px', fontSize: 14 }}
+              style={{
+                cursor: 'pointer',
+                padding: '6px 14px',
+                fontSize: 14,
+                background: 'rgba(212,148,58,0.08)',
+                color: 'var(--color-warn)',
+                border: '1px solid rgba(212,148,58,0.12)',
+              }}
               onClick={() => {
                 const entry = ALL_DREAMS.find((d) => d.keyword === kw || d.tags.includes(kw));
                 if (entry) handleOpenDream(entry);
@@ -249,11 +323,11 @@ export default function Dream() {
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <Button
           size="large"
-          icon={<BulbOutlined />}
+          icon={<Dices size={20} />}
           onClick={handleRandom}
           style={{ height: 48, fontSize: 16, padding: '0 36px' }}
         >
-          🎲 随机解梦
+          随机解梦
         </Button>
       </div>
 
@@ -261,9 +335,17 @@ export default function Dream() {
       <Modal
         title={selectedDream ? (
           <Space>
-            <Text style={{ fontSize: 20 }}>{DREAM_CATEGORIES[selectedDream.category]?.emoji}</Text>
-            <Text strong style={{ fontSize: 18 }}>{selectedDream.title}</Text>
-            <Tag color="purple">{DREAM_CATEGORIES[selectedDream.category]?.name}</Tag>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {CATEGORY_ICONS_SMALL[selectedDream.category]}
+            </span>
+            <Text strong style={{ fontSize: 18, color: 'var(--text-primary)' }}>{selectedDream.title}</Text>
+            <Tag style={{
+              background: 'rgba(155,155,155,0.08)',
+              color: 'var(--wx-metal)',
+              border: '1px solid rgba(155,155,155,0.12)',
+            }}>
+              {DREAM_CATEGORIES[selectedDream.category]?.name}
+            </Tag>
           </Space>
         ) : '解梦详情'}
         open={modalOpen}
@@ -279,18 +361,27 @@ export default function Dream() {
               fontSize: 14,
               lineHeight: 1.8,
               marginBottom: 16,
-              background: '#fdf8f0',
+              background: 'rgba(0,0,0,0.02)',
               padding: 16,
               borderRadius: 8,
+              color: 'var(--text-body)',
             }}>
               {selectedDream.content}
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>相关标签：</Text>
+              <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>相关标签：</Text>
               <Space wrap size={[4, 4]} style={{ marginLeft: 8 }}>
                 {selectedDream.tags.map((tag) => (
-                  <Tag key={tag} style={{ fontSize: 11 }}
+                  <Tag
+                    key={tag}
+                    style={{
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.04)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-light)',
+                    }}
                     onClick={() => {
                       const entry = ALL_DREAMS.find((d) => d.tags.includes(tag) && d.keyword !== selectedDream.keyword);
                       if (entry) setSelectedDream(entry);
@@ -305,13 +396,17 @@ export default function Dream() {
             {/* 相关梦境推荐 */}
             {relatedDreams.length > 0 && (
               <>
-                <Divider>相关梦境推荐</Divider>
+                <Divider style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-light)' }}>相关梦境推荐</Divider>
                 <Row gutter={[6, 6]}>
                   {relatedDreams.map((d) => (
                     <Col key={d.keyword}>
                       <Tag
-                        style={{ cursor: 'pointer' }}
-                        color="blue"
+                        style={{
+                          cursor: 'pointer',
+                          background: 'rgba(74,91,107,0.08)',
+                          color: 'var(--wx-water)',
+                          border: '1px solid rgba(74,91,107,0.12)',
+                        }}
                         onClick={() => setSelectedDream(d)}
                       >
                         {d.title}

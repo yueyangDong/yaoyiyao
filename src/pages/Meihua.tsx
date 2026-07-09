@@ -4,6 +4,7 @@ import {
   Tag, Row, Col, Radio, message, Descriptions, Alert,
 } from 'antd';
 import { ExperimentOutlined } from '@ant-design/icons';
+import { Flower2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, MeiHuaResult } from '../utils/meihuaUtils';
 
@@ -75,18 +76,39 @@ export default function Meihua() {
   };
 
   const getWxColor = (wx: string) => {
-    const colors: Record<string, string> = { '金': '#ffc107', '木': '#4caf50', '水': '#2196f3', '火': '#f44336', '土': '#ff9800' };
-    return colors[wx] || 'default';
+    const colors: Record<string, string> = {
+      '金': 'var(--wx-metal)',
+      '木': 'var(--wx-wood)',
+      '水': 'var(--wx-water)',
+      '火': 'var(--wx-fire)',
+      '土': 'var(--wx-earth)',
+    };
+    return colors[wx] || 'var(--text-secondary)';
   };
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ textAlign: 'center', color: '#8b4513' }}>梅花易数</Title>
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <Title
+          level={3}
+          style={{
+            textAlign: 'center',
+            fontFamily: 'var(--font-display)',
+            color: 'var(--text-primary)',
+            fontWeight: 600,
+            fontSize: 'var(--text-2xl)',
+            margin: 0,
+          }}
+        >
+          <Flower2 size={24} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          梅花易数
+        </Title>
+      </div>
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
-            <Text strong>起卦方式：</Text>
+            <Text strong style={{ color: 'var(--text-primary)' }}>起卦方式：</Text>
             <Radio.Group value={mode} onChange={(e) => { setMode(e.target.value); setResult(null); }} style={{ marginLeft: 12 }}>
               <Radio.Button value="date">当前时间起卦</Radio.Button>
               <Radio.Button value="manual">手动输入数字</Radio.Button>
@@ -97,7 +119,7 @@ export default function Meihua() {
               <Col><InputNumber min={1} placeholder="上卦数" value={num1} onChange={setNum1} style={{ width: 100 }} /></Col>
               <Col><InputNumber min={1} placeholder="下卦数" value={num2} onChange={setNum2} style={{ width: 100 }} /></Col>
               <Col><InputNumber min={1} placeholder="动爻数" value={num3} onChange={setNum3} style={{ width: 100 }} /></Col>
-              <Col><Text type="secondary">输入3个数（如日期、门牌号、随意数字）</Text></Col>
+              <Col><Text style={{ color: 'var(--text-secondary)' }}>输入3个数（如日期、门牌号、随意数字）</Text></Col>
             </Row>
           )}
           <Button type="primary" size="large" icon={<ExperimentOutlined />} onClick={handleCalc}>
@@ -109,37 +131,40 @@ export default function Meihua() {
       {result && (
         <>
           {/* 三卦：开始-过程-结果 */}
-          <Card title="本卦 → 互卦 → 变卦（事情发展的三个阶段）" style={{ marginBottom: 16 }}>
+          <Card
+            title={<span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>本卦 → 互卦 → 变卦（事情发展的三个阶段）</span>}
+            style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+          >
             <Alert
               message="本卦代表事情的开始/现状，互卦代表中间发展过程，变卦代表最终结果/变化趋势。三卦串联起来就是事情从开始到结束的完整故事。"
               type="info" showIcon style={{ marginBottom: 16 }}
             />
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
-                <Card size="small" title="本卦 · 开始" className="mystic-card" style={{ textAlign: 'center' }}>
+                <Card size="small" title={<span style={{ color: 'var(--text-primary)' }}>本卦 · 开始</span>} className="mystic-card" style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
                   <div style={{ fontSize: 48 }}>{result.benGuaSymbol}</div>
-                  <Title level={5}>{result.benGuaName}</Title>
-                  <Text type="secondary">代表：你当前的状况、事情的开端</Text>
+                  <Title level={5} style={{ color: 'var(--text-primary)' }}>{result.benGuaName}</Title>
+                  <Text style={{ color: 'var(--text-secondary)' }}>代表：你当前的状况、事情的开端</Text>
                 </Card>
               </Col>
               <Col xs={24} sm={8}>
-                <Card size="small" title="互卦 · 过程" style={{ textAlign: 'center', background: '#f0f8ff' }}>
+                <Card size="small" title={<span style={{ color: 'var(--text-primary)' }}>互卦 · 过程</span>} style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
                   <div style={{ fontSize: 48 }}>{result.huGuaSymbol}</div>
-                  <Title level={5}>{result.huGuaName}</Title>
-                  <Text type="secondary">代表：事情发展的中间阶段</Text>
+                  <Title level={5} style={{ color: 'var(--text-primary)' }}>{result.huGuaName}</Title>
+                  <Text style={{ color: 'var(--text-secondary)' }}>代表：事情发展的中间阶段</Text>
                 </Card>
               </Col>
               <Col xs={24} sm={8}>
-                <Card size="small" title="变卦 · 结果" style={{ textAlign: 'center', background: '#f0fff0' }}>
+                <Card size="small" title={<span style={{ color: 'var(--text-primary)' }}>变卦 · 结果</span>} style={{ textAlign: 'center', borderColor: 'var(--border-light)' }}>
                   <div style={{ fontSize: 48 }}>{result.bianGuaSymbol}</div>
-                  <Title level={5}>{result.bianGuaName}</Title>
-                  <Text type="secondary">代表：事情的最终走向（动爻：第{result.dongYao}爻）</Text>
+                  <Title level={5} style={{ color: 'var(--text-primary)' }}>{result.bianGuaName}</Title>
+                  <Text style={{ color: 'var(--text-secondary)' }}>代表：事情的最终走向（动爻：第{result.dongYao}爻）</Text>
                 </Card>
               </Col>
             </Row>
 
             <Divider>三卦串联解读</Divider>
-            <Paragraph style={{ fontSize: 14 }}>
+            <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
               这件事从「{result.benGuaName}」的状态开始，
               中间经历「{result.huGuaName}」的变化过程，
               最终走向「{result.bianGuaName}」的结果。
@@ -150,7 +175,10 @@ export default function Meihua() {
           </Card>
 
           {/* 体用分析 */}
-          <Card title="体用生克分析" style={{ marginBottom: 16, borderColor: '#8b4513' }}>
+          <Card
+            title={<span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>体用生克分析</span>}
+            style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+          >
             <Row gutter={[16, 16]}>
               <Col xs={24} md={10}>
                 <Descriptions column={1} bordered size="small">
@@ -165,12 +193,12 @@ export default function Meihua() {
                     </Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label="体用关系">
-                    <Text strong style={{ fontSize: 18, color: result.relation.includes('吉') ? '#52c41a' : '#f44336' }}>
+                    <Text strong style={{ fontSize: 18, color: result.relation.includes('吉') ? 'var(--wx-wood)' : 'var(--wx-fire)' }}>
                       {result.relation}
                     </Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="五行生克">
-                    <Text>
+                    <Text style={{ color: 'var(--text-body)' }}>
                       体({result.tiWuxing}) {' '}
                       {result.relation.includes('体生') ? '→生→' : result.relation.includes('用生') ? '←生←' : result.relation.includes('体克') ? '→克→' : result.relation.includes('用克') ? '←克←' : '⇄比和⇄'}
                       {' '} 用({result.yongWuxing})
@@ -180,15 +208,15 @@ export default function Meihua() {
               </Col>
               <Col xs={24} md={14}>
                 {TIYONG_DETAIL[result.relation] ? (
-                  <div style={{ padding: 12, background: result.relation.includes('用克') ? '#fff2f0' : '#f6ffed', borderRadius: 8 }}>
-                    <Title level={5}>{TIYONG_DETAIL[result.relation].title}</Title>
-                    <Paragraph style={{ fontSize: 14 }}>{TIYONG_DETAIL[result.relation].desc}</Paragraph>
-                    <Paragraph style={{ fontSize: 13, color: '#1890ff' }}>
+                  <div style={{ padding: 12, borderRadius: 8 }}>
+                    <Title level={5} style={{ color: 'var(--text-primary)' }}>{TIYONG_DETAIL[result.relation].title}</Title>
+                    <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>{TIYONG_DETAIL[result.relation].desc}</Paragraph>
+                    <Paragraph style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       {TIYONG_DETAIL[result.relation].advice}
                     </Paragraph>
                   </div>
                 ) : (
-                  <Paragraph>{result.judgement}</Paragraph>
+                  <Paragraph style={{ color: 'var(--text-body)' }}>{result.judgement}</Paragraph>
                 )}
               </Col>
             </Row>

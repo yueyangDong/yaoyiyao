@@ -4,8 +4,9 @@ import {
   Row, Col, Divider, Input, Progress,
 } from 'antd';
 import {
-  ExperimentOutlined, FireOutlined, RedoOutlined, GiftOutlined, EditOutlined,
+  RedoOutlined, FireOutlined,
 } from '@ant-design/icons';
+import { ScrollText, Shuffle } from 'lucide-react';
 import { GUANYIN_LOTS, LotEntry } from '../data/guanyinLots';
 import { GUANDI_LOTS } from '../data/guandiLots';
 import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
@@ -15,12 +16,9 @@ import confetti from 'canvas-confetti';
 
 const { Title, Text, Paragraph } = Typography;
 
-// 等级颜色
+// 等级颜色 (使用设计系统)
 const LEVEL_COLORS: Record<string, string> = {
-  '上上': '#e74c3c', '上': '#e67e22', '中': '#2ecc71', '下': '#3498db', '下下': '#9b59b6',
-};
-const LEVEL_EMOJI: Record<string, string> = {
-  '上上': '🌟', '上': '✨', '中': '☯', '下': '🌙', '下下': '💫',
+  '上上': 'var(--wx-earth)', '上': 'var(--color-warn)', '中': 'var(--wx-wood)', '下': 'var(--wx-water)', '下下': 'var(--wx-metal)',
 };
 
 type DrawPhase = 'idle' | 'praying' | 'shaking' | 'confirming' | 'revealing' | 'done';
@@ -33,7 +31,6 @@ export default function Lingqian() {
   const [result, setResult] = useState<LotEntry | null>(null);
   const [zhugeWords, setZhugeWords] = useState({ w1: '', w2: '', w3: '' });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shakeRef = useRef<HTMLDivElement | null>(null);
 
   const currentLots = lotType === 'guanyin' ? GUANYIN_LOTS : lotType === 'guandi' ? GUANDI_LOTS : ZHUGES_LOTS;
 
@@ -141,15 +138,22 @@ export default function Lingqian() {
   const containerStyle: React.CSSProperties = {
     padding: '16px 0',
     minHeight: '80vh',
-    background: 'linear-gradient(135deg, #0a0a0f 0%, #1a0a00 30%, #0d0d1a 60%, #0a0a0f 100%)',
+    background: 'var(--bg-warm)',
   };
 
   return (
     <div style={containerStyle}>
-      <Title level={3} style={{ textAlign: 'center', color: '#c9a96e', letterSpacing: 6, marginBottom: 8 }}>
-        🏮 灵签抽签
+      <Title level={3} style={{
+        textAlign: 'center',
+        color: 'var(--text-primary)',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 600,
+        letterSpacing: 2,
+        marginBottom: 8,
+      }}>
+        灵签抽签
       </Title>
-      <Paragraph style={{ textAlign: 'center', color: '#8b7355', marginBottom: 16 }}>
+      <Paragraph style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: 16 }}>
         诚心默念所求之事，心诚则灵
       </Paragraph>
 
@@ -157,23 +161,23 @@ export default function Lingqian() {
       {phase === 'idle' && (
         <Card style={{
           maxWidth: 600, margin: '0 auto 16px',
-          background: 'rgba(20,15,10,0.85)', borderColor: '#3d2b1a',
-          backdropFilter: 'blur(20px)',
+          background: 'var(--bg-card-solid)',
+          borderColor: 'var(--border-light)',
         }}>
           <Tabs
             activeKey={lotType}
             onChange={setLotType}
             centered
             items={[
-              { key: 'guanyin', label: <span style={{ color: '#c9a96e' }}>🔮 观音灵签</span>, children: null },
-              { key: 'guandi', label: <span style={{ color: '#c9a96e' }}>⚔️ 关帝灵签</span>, children: null },
-              { key: 'zhuge', label: <span style={{ color: '#c9a96e' }}>🪶 诸葛神数</span>, children: null },
+              { key: 'guanyin', label: <span style={{ color: 'var(--text-primary)' }}>观音灵签</span>, children: null },
+              { key: 'guandi', label: <span style={{ color: 'var(--text-primary)' }}>关帝灵签</span>, children: null },
+              { key: 'zhuge', label: <span style={{ color: 'var(--text-primary)' }}>诸葛神数</span>, children: null },
             ]}
           />
 
           {lotType === 'zhuge' ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <Text style={{ color: '#8b7355', display: 'block', marginBottom: 12 }}>
+              <Text style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: 12 }}>
                 请输入三个汉字，根据笔画数推算签号
               </Text>
               <Space size="middle">
@@ -199,7 +203,7 @@ export default function Lingqian() {
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <Text style={{ color: '#8b7355', display: 'block', marginBottom: 8 }}>
+              <Text style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
                 心中默念你想问的事情（事业/感情/财运/健康...）
               </Text>
             </div>
@@ -210,10 +214,11 @@ export default function Lingqian() {
               type="primary"
               size="large"
               onClick={startDraw}
-              icon={<GiftOutlined />}
+              icon={<ScrollText size={18} />}
               style={{
                 height: 56, fontSize: 18, padding: '0 48px',
-                background: 'linear-gradient(135deg, #c9a96e, #8b6914)',
+                background: 'var(--text-primary)',
+                color: '#ffffff',
                 border: 'none', borderRadius: 30,
               }}
             >
@@ -226,55 +231,98 @@ export default function Lingqian() {
       {/* 抽签动画 */}
       {(phase !== 'idle' && phase !== 'done') && (
         <div style={{
-          maxWidth: 500, margin: '0 auto', padding: 40,
+          maxWidth: 500, margin: '0 auto', padding: '24px 0',
           textAlign: 'center',
         }}>
-          {/* 签筒动画区 */}
-          <div
-            ref={shakeRef}
-            style={{
-              width: 120, height: 200, margin: '0 auto 30px',
-              background: 'linear-gradient(180deg, #8b4513, #5c2d0a)',
-              borderRadius: '15px 15px 40px 40px',
-              border: '3px solid #c9a96e',
-              position: 'relative',
-              boxShadow: '0 10px 40px rgba(201,169,110,0.3)',
-              animation: phase === 'shaking' ? 'shake 0.15s infinite' : 'pulse 2s infinite',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <div style={{
-              width: 40, height: 100,
-              background: 'linear-gradient(180deg, #f5deb3, #d2b48c)',
-              borderRadius: 4,
-              border: '2px solid #8b4513',
-              position: 'absolute',
-              top: phase === 'revealing' ? -30 : 20,
-              transition: 'top 0.8s ease-out',
-              opacity: phase === 'revealing' ? 0.4 : 1,
-            }}>
-              <Text style={{ fontSize: 20, display: 'block', textAlign: 'center', lineHeight: '100px' }}>签</Text>
-            </div>
+          {/* SVG签筒动画 */}
+          <div style={{
+            animation: phase === 'shaking' ? 'shake 0.12s infinite' : 'pulse 2s infinite',
+            display: 'inline-block',
+          }}>
+            <svg viewBox="0 0 260 300" width="200" height="240">
+              {/* 签筒 body */}
+              <defs>
+                <linearGradient id="tubeGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="rgba(0,0,0,0.04)" />
+                  <stop offset="50%" stopColor="rgba(0,0,0,0.01)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.06)" />
+                </linearGradient>
+              </defs>
+
+              {/* 签筒底部圆角矩形 */}
+              <rect x="85" y="70" width="90" height="160" rx="16"
+                fill="url(#tubeGrad)" stroke="var(--border-light)" strokeWidth={1.5} />
+
+              {/* 签筒顶部椭圆(开口) */}
+              <ellipse cx="130" cy="70" rx="45" ry="10"
+                fill="rgba(0,0,0,0.03)" stroke="var(--border-light)" strokeWidth={1} />
+
+              {/* 签筒底部椭圆 */}
+              <ellipse cx="130" cy="230" rx="45" ry="8"
+                fill="none" stroke="var(--border-light)" strokeWidth={0.5} />
+
+              {/* 签筒装饰环 */}
+              <rect x="83" y="80" width="94" height={4} rx={2} fill="var(--border-light)" opacity={0.5} />
+              <rect x="83" y="216" width="94" height={4} rx={2} fill="var(--border-light)" opacity={0.5} />
+
+              {/* 签条 */}
+              {[0, 1, 2, 3, 4].map((i) => {
+                const stickX = 100 + i * 13;
+                const visibleTop = 70 + (phase === 'revealing' ? 8 : 4);
+                const flyOut = phase === 'revealing' && i === 2;
+                return (
+                  <g key={i} opacity={flyOut ? 0.3 : 1}>
+                    {!flyOut && (
+                      <>
+                        {/* 签身 */}
+                        <rect x={stickX} y={visibleTop} width={6} height={135}
+                          fill="rgba(0,0,0,0.06)" rx={1} />
+                        {/* 签头红色标记 */}
+                        <rect x={stickX} y={visibleTop} width={6} height={12}
+                          fill="var(--wx-fire)" rx={1} opacity={0.6} />
+                      </>
+                    )}
+                    {/* 飞出的签 */}
+                    {flyOut && (
+                      <g style={{
+                        animation: 'flyOut 1s ease-out forwards',
+                        transformOrigin: 'center center',
+                      }}>
+                        <rect x={stickX - 2} y={visibleTop - 30} width={6} height={135}
+                          fill="rgba(0,0,0,0.08)" rx={1} transform={`rotate(-15, ${stickX + 1}, ${visibleTop - 30 + 67})`} />
+                        <rect x={stickX - 2} y={visibleTop - 30} width={6} height={12}
+                          fill="var(--wx-fire)" rx={1} opacity={0.8} transform={`rotate(-15, ${stickX + 1}, ${visibleTop - 30 + 6})`} />
+                        <text x={stickX + 1} y={visibleTop + 30} fontSize={8} fill="var(--text-primary)"
+                          transform={`rotate(-15, ${stickX + 1}, ${visibleTop + 30})`} textAnchor="middle">签</text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* 圣杯(confirming阶段) */}
+              {phase === 'confirming' && (
+                <g style={{ animation: 'flip 0.8s infinite', transformOrigin: '130px 260px' }}>
+                  {/* 左月牙 */}
+                  <path d="M110,255 A18,18 0 0,1 110,285" fill="var(--wx-earth)" stroke="var(--border-input)" strokeWidth={1} opacity={0.9} />
+                  {/* 右月牙 */}
+                  <path d="M150,255 A18,18 0 0,0 150,285" fill="var(--wx-earth)" stroke="var(--border-input)" strokeWidth={1} opacity={0.9} />
+                </g>
+              )}
+            </svg>
           </div>
 
           <Progress
             percent={progress}
             showInfo={false}
-            strokeColor={{ '0%': '#c9a96e', '100%': '#8b6914' }}
-            trailColor="rgba(201,169,110,0.15)"
-            style={{ marginBottom: 20 }}
+            strokeColor="var(--text-primary)"
+            trailColor="var(--border-light)"
+            style={{ marginBottom: 16 }}
           />
 
-          <Text style={{ color: '#c9a96e', fontSize: 16, display: 'block' }}>
+          <Text style={{ color: 'var(--text-body)', fontSize: 15, display: 'block' }}>
             {phaseText[phase]}
           </Text>
-
-          {/* 圣杯动画 */}
-          {phase === 'confirming' && (
-            <div style={{ fontSize: 40, marginTop: 16, animation: 'flip 1s infinite' }}>
-              🥢🥢
-            </div>
-          )}
         </div>
       )}
 
@@ -283,21 +331,20 @@ export default function Lingqian() {
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
           <Card style={{
             marginBottom: 16,
-            background: 'linear-gradient(135deg, rgba(253,248,240,0.95), rgba(245,235,210,0.95))',
-            borderColor: '#c9a96e',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            background: 'var(--bg-card-solid)',
+            borderColor: 'var(--border-light)',
+            boxShadow: 'var(--shadow-sm)',
           }}>
             {/* 签号 + 等级 */}
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{
                 display: 'inline-block',
-                background: 'linear-gradient(135deg, #1a1a2e, #2d1f0a)',
+                background: 'rgba(0,0,0,0.02)',
                 padding: '12px 32px',
                 borderRadius: 12,
                 marginBottom: 12,
               }}>
-                <Text style={{ color: '#c9a96e', fontSize: 14 }}>
+                <Text style={{ color: 'var(--text-body)', fontSize: 14 }}>
                   {lotType === 'guanyin' ? '观音灵签' : lotType === 'guandi' ? '关帝灵签' : '诸葛神数'}
                 </Text>
               </div>
@@ -309,59 +356,71 @@ export default function Lingqian() {
                   color={LEVEL_COLORS[result.level]}
                   style={{ fontSize: 20, padding: '8px 28px', borderRadius: 20 }}
                 >
-                  {LEVEL_EMOJI[result.level]} {result.level}
+                  {result.level}
                 </Tag>
               </div>
-              <Title level={3} style={{ color: '#5c2d0a', marginTop: 12 }}>
+              <Title level={3} style={{ color: 'var(--text-primary)', marginTop: 12 }}>
                 {result.name}
               </Title>
-              <Tag color="purple" style={{ fontSize: 13 }}>{result.gongWei}</Tag>
+              <Tag color="default" style={{ fontSize: 13 }}>{result.gongWei}</Tag>
             </div>
 
-            <Divider style={{ borderColor: '#c9a96e' }} />
+            <Divider style={{ borderColor: 'var(--border-light)' }} />
 
             {/* 签诗 */}
             <Card
               size="small"
-              title={<><EditOutlined /> 签诗</>}
+              title={<><ScrollText size={16} style={{ marginRight: 4 }} />签诗</>}
               style={{
                 marginBottom: 12,
-                background: 'rgba(255,248,240,0.9)',
-                borderColor: '#d4a574',
+                background: 'var(--bg-card-solid)',
+                borderColor: 'var(--border-light)',
               }}
             >
               <Paragraph style={{
                 fontSize: 16, lineHeight: 2.2, textAlign: 'center',
                 fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
                 whiteSpace: 'pre-line',
-                color: '#3d1f00',
+                color: 'var(--text-body)',
               }}>
                 {result.poem}
               </Paragraph>
             </Card>
 
             {/* 签语 + 解曰 */}
-            <Card size="small" title="📜 签文解读" style={{ marginBottom: 12 }}>
-              <Paragraph style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+            <Card size="small" title="签文解读" style={{
+              marginBottom: 12,
+              background: 'var(--bg-card-solid)',
+              borderColor: 'var(--border-light)',
+            }}>
+              <Paragraph style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-line', color: 'var(--text-body)' }}>
                 {result.explanation}
               </Paragraph>
             </Card>
 
-            <Card size="small" title="📖 白话详解" style={{ marginBottom: 12 }}>
-              <Paragraph style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+            <Card size="small" title="白话详解" style={{
+              marginBottom: 12,
+              background: 'var(--bg-card-solid)',
+              borderColor: 'var(--border-light)',
+            }}>
+              <Paragraph style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-line', color: 'var(--text-body)' }}>
                 {result.interpretation}
               </Paragraph>
             </Card>
 
             {/* 仙机指引 */}
-            <Card size="small" title="🏷 仙机指引" style={{ marginBottom: 12 }}>
+            <Card size="small" title="仙机指引" style={{
+              marginBottom: 12,
+              background: 'var(--bg-card-solid)',
+              borderColor: 'var(--border-light)',
+            }}>
               <Row gutter={[8, 8]}>
                 {Object.entries(result.guide).map(([key, val]) => (
                   <Col xs={12} sm={8} md={6} key={key}>
-                    <Card size="small" styles={{ body: { padding: '8px' } }}>
+                    <Card size="small" styles={{ body: { padding: '8px', background: 'rgba(0,0,0,0.02)' } }}>
                       <Text type="secondary" style={{ fontSize: 11 }}>{key}</Text>
                       <br />
-                      <Text strong style={{ fontSize: 13 }}>{val}</Text>
+                      <Text strong style={{ fontSize: 13, color: 'var(--text-body)' }}>{val}</Text>
                     </Card>
                   </Col>
                 ))}
@@ -372,9 +431,9 @@ export default function Lingqian() {
             <Card
               size="small"
               title={<><FireOutlined /> 签文典故</>}
-              style={{ background: 'rgba(253,245,230,0.9)' }}
+              style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'var(--border-light)' }}
             >
-              <Paragraph style={{ fontSize: 13, lineHeight: 1.8, fontStyle: 'italic' }}>
+              <Paragraph style={{ fontSize: 13, lineHeight: 1.8, fontStyle: 'italic', color: 'var(--text-body)' }}>
                 {result.story}
               </Paragraph>
             </Card>
@@ -387,19 +446,27 @@ export default function Lingqian() {
                 size="large"
                 icon={<RedoOutlined />}
                 onClick={resetDraw}
-                style={{ background: '#2d1f0a', color: '#c9a96e', borderColor: '#5c3d1a' }}
+                style={{
+                  background: 'var(--text-primary)',
+                  color: '#ffffff',
+                  border: 'none',
+                }}
               >
                 重新抽签
               </Button>
               <Button
                 size="large"
-                icon={<ExperimentOutlined />}
+                icon={<Shuffle size={16} />}
                 onClick={() => {
                   setPhase('idle');
                   setProgress(0);
                   setResult(null);
                 }}
-                style={{ background: '#2d1f0a', color: '#c9a96e', borderColor: '#5c3d1a' }}
+                style={{
+                  background: 'var(--text-primary)',
+                  color: '#ffffff',
+                  border: 'none',
+                }}
               >
                 再抽一签
               </Button>
@@ -416,8 +483,13 @@ export default function Lingqian() {
           75% { transform: translateX(8px) rotate(3deg); }
         }
         @keyframes pulse {
-          0%, 100% { box-shadow: 0 10px 40px rgba(201,169,110,0.3); }
-          50% { box-shadow: 0 10px 60px rgba(201,169,110,0.6); }
+          0%, 100% { box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+          50% { box-shadow: 0 10px 60px rgba(0,0,0,0.12); }
+        }
+        @keyframes flyOut {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          60% { transform: translateY(-10px) rotate(-15deg); opacity: 0.8; }
+          100% { transform: translateY(-40px) rotate(-25deg); opacity: 0; }
         }
         @keyframes flip {
           0%, 100% { transform: rotateY(0deg); }

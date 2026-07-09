@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
 import { Typography } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
-// 六十甲子
 const GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 const ALL_GZ: string[] = [];
@@ -23,53 +21,56 @@ export default function MysticLoading({ text = '推演中...', done = false }: M
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: '60px 20px', minHeight: 200,
     }}>
-      {/* 金色旋转光环 */}
       {!done ? (
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
           style={{
-            width: 80, height: 80, borderRadius: '50%',
-            border: '3px solid transparent',
-            borderTopColor: '#c9a96e',
-            borderRightColor: '#f0d68a',
-            borderBottomColor: '#8b6914',
+            width: 64, height: 64, borderRadius: '50%',
+            border: '2px solid transparent',
+            borderTopColor: '#1A1A1A',
+            borderRightColor: 'rgba(0,0,0,0.15)',
+            borderBottomColor: 'rgba(0,0,0,0.06)',
             marginBottom: 24,
           }}
         />
       ) : (
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #2ecc71, #27ae60)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, marginBottom: 24,
-        }}>
-          ✅
-        </div>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200 }}
+          style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: '#1A1A1A',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: 28, marginBottom: 24,
+          }}
+        >
+          ✓
+        </motion.div>
       )}
 
-      {/* 提示文字 */}
       <motion.div
-        animate={{ opacity: done ? 1 : [0.5, 1, 0.5] }}
+        animate={{ opacity: done ? 1 : [0.4, 1, 0.4] }}
         transition={{ duration: 1.5, repeat: done ? 0 : Infinity, ease: 'easeInOut' }}
       >
         <Text style={{
-          color: done ? '#2ecc71' : '#c9a96e',
-          fontSize: 18,
+          color: done ? '#5B8C5A' : 'var(--text-secondary)',
+          fontSize: 16,
           fontFamily: 'var(--font-title)',
-          letterSpacing: 4,
+          fontWeight: 500,
+          letterSpacing: '0.04em',
         }}>
           {done ? '排盘完成' : text}
         </Text>
       </motion.div>
 
-      {/* 六十甲子快速轮播 */}
       {!done && (
         <motion.div
           style={{
             marginTop: 16,
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '8px 16px', maxWidth: 300,
+            gap: '8px 12px', maxWidth: 280,
           }}
         >
           {[0, 1, 2, 3].map((col) => (
@@ -79,12 +80,13 @@ export default function MysticLoading({ text = '推演中...', done = false }: M
               transition={{ duration: 0.6, repeat: Infinity, delay: col * 0.1, ease: 'easeInOut' }}
               style={{
                 padding: '4px 8px',
-                background: 'rgba(201,169,110,0.1)',
-                border: '1px solid rgba(201,169,110,0.2)',
-                borderRadius: 4,
+                background: 'rgba(0,0,0,0.03)',
+                border: '1px solid rgba(0,0,0,0.06)',
+                borderRadius: 6,
                 textAlign: 'center',
-                color: '#c9a96e',
-                fontSize: 13,
+                color: 'var(--text-secondary)',
+                fontSize: 12,
+                fontFamily: 'var(--font-display)',
               }}
             >
               {ALL_GZ[(col * 15 + Math.floor(Date.now() / 100) % 15)]}

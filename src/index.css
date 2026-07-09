@@ -1,248 +1,501 @@
-/* ========== 暗金庙宇 —— 全局设计系统 ========== */
-@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@400;700&display=swap');
+/* ========== 爻一爻 —— 新玄学 UI 设计系统 ========== */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  /* 背景 */
-  --bg-deepest: #08080f;
-  --bg-card: #0f0f1a;
-  --bg-input: #1a1520;
-  /* 金色系 */
-  --gold-primary: #c9a96e;
-  --gold-bright: #f0d68a;
-  --gold-dark: #8b6914;
-  /* 辅色 */
-  --temple-red: #8b0000;
-  --cinnabar: #c0392b;
-  --text-body: #f5e6d3;
-  --text-dim: #8b7355;
-  /* 五行/吉凶 */
-  --color-ji: #4caf50;
-  --color-xiong: #f44336;
-  --color-zhong: #ff9800;
-  --color-info: #2196f3;
-  /* 字体 */
-  --font-title: 'ZCOOL XiaoWei', 'Ma Shan Zheng', 'STKaiti', '楷体', serif;
-  --font-body: 'Noto Serif SC', 'STSong', '宋体', serif;
-  /* 圆角 */
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 4px;
-  /* 阴影 */
-  --shadow-card: 0 4px 20px rgba(0,0,0,0.4);
-  --shadow-gold: 0 8px 40px rgba(201,169,110,0.25);
-  /* 间距 */
-  --space-lg: 24px;
-  --space-md: 16px;
-  --space-sm: 12px;
+  /* === 背景层 === */
+  --bg-warm: #F7F5F0;
+  --bg-card: rgba(255,255,255,0.85);
+  --bg-card-solid: #FFFFFF;
+  --bg-overlay: rgba(255,255,255,0.92);
+  --bg-input: rgba(0,0,0,0.02);
+
+  /* === 文字层 === */
+  --text-primary: #1A1A1A;
+  --text-body: #4A4A4A;
+  --text-secondary: #8C8C8C;
+  --text-disabled: #BFBFBF;
+  --text-inverse: #FFFFFF;
+
+  /* === 点缀色（五行 · 极其克制） === */
+  --wx-wood: #5B8C5A;
+  --wx-fire: #C75B5B;
+  --wx-earth: #C4A45A;
+  --wx-metal: #9B9B9B;
+  --wx-water: #4A5B6B;
+
+  --color-ji: #5B8C5A;
+  --color-xiong: #C75B5B;
+  --color-warn: #D4943A;
+  --color-info: #4A5B6B;
+
+  /* === 边框 === */
+  --border-light: rgba(0,0,0,0.06);
+  --border-medium: rgba(0,0,0,0.10);
+  --border-input: rgba(0,0,0,0.08);
+
+  /* === 阴影 === */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.05);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.06);
+
+  /* === 字体 === */
+  --font-display: 'Noto Serif SC', 'Source Han Serif SC', '思源宋体', serif;
+  --font-title: 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  --font-body: 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  --font-mono: 'Inter', -apple-system, sans-serif;
+
+  /* === 字号 === */
+  --text-3xl: 32px;
+  --text-2xl: 24px;
+  --text-xl: 20px;
+  --text-lg: 18px;
+  --text-base: 15px;
+  --text-sm: 13px;
+  --text-xs: 12px;
+  --text-ganzhi: 28px;
+  --text-ganzhi-lg: 48px;
+
+  /* === 间距 (8px grid) === */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 16px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-2xl: 48px;
+  --sp-3xl: 64px;
+
+  /* === 圆角 === */
+  --radius-card: 16px;
+  --radius-btn: 16px;
+  --radius-btn-sm: 12px;
+  --radius-input: 12px;
+  --radius-tag: 8px;
+  --radius-modal: 20px;
+
+  /* === 过渡 === */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s var(--ease-out);
+  --transition-base: 0.25s var(--ease-out);
+  --transition-slow: 0.35s var(--ease-out);
 }
 
 /* ========== 全局重置 ========== */
 * { box-sizing: border-box; }
 
+html { font-size: var(--text-base); }
+
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg-deepest) !important;
+  background: var(--bg-warm) !important;
   color: var(--text-body) !important;
   font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 400;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
 }
 
-/* ========== Ant Design 全局覆盖 ========== */
-.ant-layout { background: transparent !important; }
-
-.ant-card {
-  border-radius: var(--radius-lg) !important;
-  border-color: rgba(201,169,110,0.15) !important;
+/* ========== 排版 ========== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  color: var(--text-primary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
-.ant-card-head {
-  border-bottom-color: rgba(201,169,110,0.1) !important;
+p {
+  font-size: var(--text-base);
+  line-height: 1.8;
+  color: var(--text-body);
 }
 
-.ant-card-head-title { color: var(--gold-primary) !important; }
-
-.ant-input, .ant-input-number, .ant-select-selector, .ant-picker {
-  background: var(--bg-input) !important;
-  border-color: rgba(201,169,110,0.2) !important;
-  color: var(--text-body) !important;
+/* ========== 选择文本 ========== */
+::selection {
+  background: rgba(0,0,0,0.08);
+  color: var(--text-primary);
 }
 
-.ant-input:hover, .ant-input-number:hover, .ant-select-selector:hover {
-  border-color: var(--gold-primary) !important;
-}
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 
-.ant-input::placeholder { color: #555 !important; }
-
-.ant-btn-primary {
-  background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark)) !important;
-  border: none !important;
-  color: #fff !important;
-}
-
-.ant-btn-primary:hover {
-  background: linear-gradient(135deg, var(--gold-bright), var(--gold-primary)) !important;
-}
-
-.ant-tabs-tab { color: var(--text-dim) !important; }
-.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--gold-primary) !important; }
-.ant-tabs-ink-bar { background: var(--gold-primary) !important; }
-
-.ant-divider { border-color: rgba(201,169,110,0.1) !important; }
-
-.ant-tag {
-  border-radius: var(--radius-xs) !important;
-}
-
-.ant-modal-content {
-  background: var(--bg-card) !important;
-  border: 1px solid rgba(201,169,110,0.15) !important;
-}
-
-.ant-modal-header {
-  background: transparent !important;
-  border-bottom-color: rgba(201,169,110,0.1) !important;
-}
-
-.ant-modal-title { color: var(--gold-primary) !important; }
-
-.ant-drawer-content {
-  background: var(--bg-card) !important;
-}
-
-.ant-drawer-header {
-  border-bottom-color: rgba(201,169,110,0.1) !important;
-  background: transparent !important;
-}
-
-.ant-drawer-title { color: var(--gold-primary) !important; }
-
-.ant-select-dropdown, .ant-picker-dropdown {
-  background: var(--bg-card) !important;
-  border-color: rgba(201,169,110,0.15) !important;
-}
-
-.ant-message-notice-content {
-  background: var(--bg-card) !important;
-  color: var(--text-body) !important;
-  border: 1px solid rgba(201,169,110,0.15) !important;
-}
-
-/* ========== 暗金庙宇卡片通用样式 ========== */
-.mystic-card {
-  background: rgba(15,15,26,0.85) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(201,169,110,0.2) !important;
-  border-radius: var(--radius-lg) !important;
+/* ========== 背景纹理 ========== */
+.bg-texture {
   position: relative;
-  overflow: hidden;
 }
-
-.mystic-card::before {
+.bg-texture::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(201,169,110,0.3), transparent, rgba(201,169,110,0.3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  opacity: 0.03;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 80% 20%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 40% 80%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px);
+  background-size: 80px 80px, 100px 100px, 60px 60px;
   pointer-events: none;
 }
 
-.mystic-card:hover {
-  box-shadow: var(--shadow-gold) !important;
+/* ========== 毛玻璃卡片 ========== */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
 }
 
-/* ========== 金色脉动光晕 ========== */
-@keyframes goldPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(201,169,110,0.2); }
-  50% { box-shadow: 0 0 40px rgba(201,169,110,0.4); }
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
 }
 
-.gold-pulse {
-  animation: goldPulse 2s ease-in-out infinite;
+/* ========== Ant Design 全局覆盖 ========== */
+.ant-layout,
+.ant-layout-header,
+.ant-layout-content,
+.ant-layout-footer,
+.ant-layout-sider {
+  background: transparent !important;
 }
 
-/* ========== 呼吸闪烁 ========== */
-@keyframes breathe {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+/* Card */
+.ant-card {
+  border-radius: var(--radius-card) !important;
+  border-color: var(--border-light) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all var(--transition-base) !important;
+  background: var(--bg-card-solid) !important;
+}
+.ant-card:hover {
+  box-shadow: var(--shadow-md) !important;
+}
+.ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 500 !important;
+  padding: var(--sp-md) var(--sp-lg) !important;
+}
+.ant-card-head-title {
+  font-family: var(--font-title) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+.ant-card-body {
+  padding: var(--sp-lg) !important;
+  font-size: var(--text-base) !important;
+  line-height: 1.8 !important;
 }
 
-.breathe {
-  animation: breathe 1.5s ease-in-out infinite;
+/* Button Primary */
+.ant-btn-primary {
+  background: var(--text-primary) !important;
+  border: none !important;
+  color: var(--text-inverse) !important;
+  border-radius: var(--radius-btn) !important;
+  padding: 10px 24px !important;
+  font-size: var(--text-base) !important;
+  font-weight: 500 !important;
+  font-family: var(--font-title) !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+  transition: all 0.2s var(--ease-out) !important;
+  height: auto !important;
+}
+.ant-btn-primary:hover {
+  background: #333 !important;
+  color: var(--text-inverse) !important;
+  transform: scale(1.02);
+}
+.ant-btn-primary:active {
+  transform: scale(0.98);
 }
 
-/* ========== 金色旋转加载 ========== */
-@keyframes goldSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.ant-btn-primary.ant-btn-lg {
+  padding: 14px 32px !important;
+  font-size: var(--text-base) !important;
+  border-radius: var(--radius-btn) !important;
 }
 
-.gold-spin {
-  animation: goldSpin 2s linear infinite;
+/* Button Default */
+.ant-btn-default {
+  background: transparent !important;
+  border: 1px solid var(--border-medium) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-btn) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-base) !important;
+}
+.ant-btn-default:hover {
+  background: rgba(0,0,0,0.03) !important;
+  border-color: rgba(0,0,0,0.2) !important;
+  color: var(--text-primary) !important;
 }
 
-/* ========== 淡入滑入 ========== */
+/* Button Text */
+.ant-btn-text {
+  color: var(--text-body) !important;
+  font-weight: 400 !important;
+  transition: all var(--transition-base) !important;
+}
+.ant-btn-text:hover {
+  color: var(--text-primary) !important;
+  background: rgba(0,0,0,0.03) !important;
+}
+
+/* Input */
+.ant-input, .ant-input-number, .ant-picker {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-input) !important;
+  border-radius: var(--radius-input) !important;
+  padding: 10px 14px !important;
+  font-size: var(--text-base) !important;
+  color: var(--text-primary) !important;
+  transition: all 0.2s var(--ease-out) !important;
+}
+.ant-input:hover, .ant-input-number:hover {
+  border-color: rgba(0,0,0,0.15) !important;
+}
+.ant-input:focus, .ant-input-number-focused {
+  background: #fff !important;
+  border-color: var(--text-primary) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04) !important;
+}
+.ant-input::placeholder { color: var(--text-disabled) !important; }
+
+/* Select */
+.ant-select-selector {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-input) !important;
+  border-radius: var(--radius-input) !important;
+  font-size: var(--text-base) !important;
+  transition: all 0.2s var(--ease-out) !important;
+}
+.ant-select:hover .ant-select-selector {
+  border-color: rgba(0,0,0,0.15) !important;
+}
+.ant-select-focused .ant-select-selector {
+  border-color: var(--text-primary) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04) !important;
+}
+
+/* Tabs */
+.ant-tabs-tab {
+  color: var(--text-secondary) !important;
+  font-size: var(--text-base) !important;
+  transition: all var(--transition-fast) !important;
+}
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+.ant-tabs-ink-bar { background: var(--text-primary) !important; height: 2px !important; }
+.ant-tabs-nav { margin-bottom: var(--sp-lg) !important; }
+
+/* Divider */
+.ant-divider {
+  border-color: var(--border-light) !important;
+  margin: var(--sp-lg) 0 !important;
+}
+
+/* Tag */
+.ant-tag {
+  border-radius: var(--radius-tag) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+  border: none !important;
+  padding: 3px 10px !important;
+  background: rgba(0,0,0,0.04) !important;
+  color: var(--text-body) !important;
+}
+
+/* Modal */
+.ant-modal-content {
+  border-radius: var(--radius-modal) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--border-light) !important;
+}
+.ant-modal-header {
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: var(--sp-lg) var(--sp-lg) var(--sp-md) !important;
+}
+.ant-modal-title {
+  font-family: var(--font-title) !important;
+  font-size: var(--text-xl) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+.ant-modal-body { padding: var(--sp-lg) !important; }
+
+/* Drawer */
+.ant-drawer-content { background: var(--bg-card-solid) !important; }
+.ant-drawer-header {
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: var(--sp-lg) !important;
+}
+.ant-drawer-title {
+  font-family: var(--font-title) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Message */
+.ant-message-notice-content {
+  background: var(--bg-overlay) !important;
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-md) !important;
+  border: 1px solid var(--border-light) !important;
+  color: var(--text-body) !important;
+}
+
+/* Alert */
+.ant-alert {
+  border-radius: var(--radius-card) !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card-solid) !important;
+}
+.ant-alert-message { font-size: var(--text-base) !important; font-weight: 500 !important; }
+.ant-alert-description { font-size: var(--text-sm) !important; color: var(--text-secondary) !important; }
+
+/* Collapse */
+.ant-collapse {
+  border: none !important;
+  background: transparent !important;
+}
+.ant-collapse-item {
+  border-bottom: 1px solid var(--border-light) !important;
+}
+.ant-collapse-header {
+  font-size: var(--text-base) !important;
+  font-weight: 500 !important;
+  padding: var(--sp-md) 0 !important;
+}
+.ant-collapse-content-box {
+  padding: var(--sp-md) 0 !important;
+}
+
+/* Steps */
+.ant-steps-item-title {
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
+}
+.ant-steps-item-active .ant-steps-item-title {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Table */
+.ant-table {
+  font-size: var(--text-sm) !important;
+  border-radius: var(--radius-card) !important;
+  overflow: hidden;
+}
+.ant-table-thead > tr > th {
+  background: rgba(0,0,0,0.02) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--border-light) !important;
+}
+
+/* Descriptions */
+.ant-descriptions-item-label {
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+}
+.ant-descriptions-item-content {
+  font-size: var(--text-base) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Form */
+.ant-form-item-label > label {
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+/* Radio Button */
+.ant-radio-button-wrapper {
+  border-color: var(--border-medium) !important;
+  color: var(--text-body) !important;
+  font-size: var(--text-sm) !important;
+}
+.ant-radio-button-wrapper-checked {
+  background: var(--text-primary) !important;
+  border-color: var(--text-primary) !important;
+  color: #fff !important;
+}
+.ant-radio-button-wrapper:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Progress */
+.ant-progress-bg { background: var(--text-primary) !important; }
+
+/* ========== 五行色标签 ========== */
+.tag-wood { background: rgba(91,140,90,0.08) !important; color: var(--wx-wood) !important; }
+.tag-fire { background: rgba(199,91,91,0.08) !important; color: var(--wx-fire) !important; }
+.tag-earth { background: rgba(196,164,90,0.08) !important; color: var(--wx-earth) !important; }
+.tag-metal { background: rgba(155,155,155,0.08) !important; color: var(--wx-metal) !important; }
+.tag-water { background: rgba(74,91,107,0.08) !important; color: var(--wx-water) !important; }
+
+/* ========== 淡入动画 ========== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-}
+.fade-in { animation: fadeIn 0.3s var(--ease-out) forwards; }
+.fade-in-up { animation: fadeInUp 0.3s var(--ease-out) forwards; }
 
-/* ========== 光晕跟随 (JS控制) ========== */
-#app-mouse-glow {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9999;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,169,110,0.03) 0%, transparent 70%);
-  transform: translate(-50%, -50%);
+/* ========== 微交互 ========== */
+.press-effect:active {
+  transform: scale(0.97);
+  transition: transform 0.15s var(--ease-out);
 }
 
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
   :root {
-    --space-lg: 16px;
-    --space-md: 12px;
-    --space-sm: 8px;
+    --text-3xl: 24px;
+    --text-2xl: 20px;
+    --text-xl: 18px;
+    --text-lg: 16px;
+    --text-base: 14px;
+    --text-ganzhi: 22px;
+    --text-ganzhi-lg: 36px;
+    --sp-2xl: 32px;
+    --sp-3xl: 40px;
   }
 
-  body { font-size: 14px; }
+  .ant-card-body {
+    padding: var(--sp-md) !important;
+  }
 
-  #app-mouse-glow { display: none; }
-}
-
-/* ========== 页面过渡 ========== */
-.page-enter {
-  opacity: 0;
-  transform: scale(0.97);
-}
-
-.page-enter-active {
-  opacity: 1;
-  transform: scale(1);
-  transition: opacity 300ms ease-out, transform 300ms ease-out;
-}
-
-.page-exit {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.page-exit-active {
-  opacity: 0;
-  transform: scale(1.03);
-  transition: opacity 300ms ease-in, transform 300ms ease-in;
+  .glass-card:hover {
+    transform: translateY(-1px);
+  }
 }
 
 /* ========== 移动端降级 ========== */

@@ -8,6 +8,7 @@ import {
   UserAddOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
+import { UserCircle, Plus } from 'lucide-react';
 import { useUser, getCityLng } from '../context/UserContext';
 import type { StoredUser } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
@@ -16,18 +17,12 @@ import { LunarYear } from 'lunar-typescript';
 const { Title, Text } = Typography;
 
 const SHI_CHEN_OPTIONS = [
-  { label: '子时(23-1)', value: 0 },
-  { label: '丑时(1-3)', value: 2 },
-  { label: '寅时(3-5)', value: 4 },
-  { label: '卯时(5-7)', value: 6 },
-  { label: '辰时(7-9)', value: 8 },
-  { label: '巳时(9-11)', value: 10 },
-  { label: '午时(11-13)', value: 12 },
-  { label: '未时(13-15)', value: 14 },
-  { label: '申时(15-17)', value: 16 },
-  { label: '酉时(17-19)', value: 18 },
-  { label: '戌时(19-21)', value: 20 },
-  { label: '亥时(21-23)', value: 22 },
+  { label: '子时(23-1)', value: 0 }, { label: '丑时(1-3)', value: 2 },
+  { label: '寅时(3-5)', value: 4 }, { label: '卯时(5-7)', value: 6 },
+  { label: '辰时(7-9)', value: 8 }, { label: '巳时(9-11)', value: 10 },
+  { label: '午时(11-13)', value: 12 }, { label: '未时(13-15)', value: 14 },
+  { label: '申时(15-17)', value: 16 }, { label: '酉时(17-19)', value: 18 },
+  { label: '戌时(19-21)', value: 20 }, { label: '亥时(21-23)', value: 22 },
 ];
 
 const LUNAR_MONTH_OPTIONS = [
@@ -42,22 +37,13 @@ const LUNAR_MONTH_OPTIONS = [
 const LUNAR_DAY_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }));
 
 export default function Profile() {
-  const {
-    users, currentUser, addUser, updateUser, deleteUser, switchUser,
-    history,
-  } = useUser();
+  const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history } = useUser();
   const [editing, setEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
   const [lunarYear, setLunarYear] = useState<number>(2000);
   const [hasLeap, setHasLeap] = useState(false);
-
-  // 紫微/八字模块查询过的时间
-  const moduleLastQuery = (name: string) => {
-    const m = history.filter(h => h.module === name && h.userId === currentUser?.id);
-    return m.length > 0 ? m[0].timestamp : null;
-  };
 
   const formatTimeAgo = (isoStr: string) => {
     const diff = Date.now() - new Date(isoStr).getTime();
@@ -73,15 +59,11 @@ export default function Profile() {
   const formatBirth = (u: StoredUser) =>
     `${u.birthYear}/${String(u.birthMonth).padStart(2, '0')}/${String(u.birthDay).padStart(2, '0')}`;
 
-  // 生成农历年份选项
   const getLunarYearOptions = () => {
     const opts: { label: string; value: number }[] = [];
     for (let y = 1900; y <= 2100; y++) {
       const lunar = LunarYear.fromYear(y);
-      opts.push({
-        label: `${lunar.getGanZhi()}年（${y}）`,
-        value: y,
-      });
+      opts.push({ label: `${lunar.getGanZhi()}年（${y}）`, value: y });
     }
     return opts;
   };
@@ -100,7 +82,6 @@ export default function Profile() {
     setLunarYear(y);
     const leap = LunarYear.fromYear(y).getLeapMonth();
     setHasLeap(leap > 0);
-    // 如果切换到没有闰月的年份，取消闰月勾选
     if (leap <= 0) {
       form.setFieldValue('isLeapMonth', false);
     }
@@ -126,14 +107,9 @@ export default function Profile() {
       setHasLeap(leap > 0);
     }
     form.setFieldsValue({
-      name: u.name,
-      gender: u.gender,
-      birthCalendar: cal,
-      birthYear: u.birthYear,
-      birthMonth: u.birthMonth,
-      birthDay: u.birthDay,
-      birthHour: u.birthHour,
-      birthMinute: u.birthMinute || 0,
+      name: u.name, gender: u.gender, birthCalendar: cal,
+      birthYear: u.birthYear, birthMonth: u.birthMonth, birthDay: u.birthDay,
+      birthHour: u.birthHour, birthMinute: u.birthMinute || 0,
       isLeapMonth: u.isLeapMonth || false,
       birthplace: [u.birthplace.province, u.birthplace.city, u.birthplace.district].filter(Boolean),
     });
@@ -158,8 +134,7 @@ export default function Profile() {
     }
 
     const data = {
-      name, gender,
-      birthYear, birthMonth, birthDay,
+      name, gender, birthYear, birthMonth, birthDay,
       birthHour, birthMinute: birthMinute || 0,
       birthCalendar: birthCalendar || 'solar',
       isLeapMonth: isLeapMonth || false,
@@ -171,7 +146,7 @@ export default function Profile() {
       message.success('档案已更新');
     } else {
       addUser(data);
-      message.success('档案已创建并设为当前');
+      message.success('档案已创建');
     }
     setEditing(false);
     setEditingId(null);
@@ -184,51 +159,52 @@ export default function Profile() {
 
   return (
     <div style={{ padding: '16px 0', maxWidth: 800, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          <span role="img" aria-label="profile">👤</span> 个人档案
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <Title level={3} style={{
+          margin: 0, fontSize: 'var(--text-2xl)', fontFamily: 'var(--font-title)',
+          fontWeight: 500, color: 'var(--text-primary)',
+        }}>
+          个人档案
         </Title>
-        <Button type="primary" icon={<UserAddOutlined />} onClick={openNew}>新增档案</Button>
+        <Button type="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={openNew}>新增档案</Button>
       </div>
 
       {users.length === 0 && !editing && (
         <Alert
           message="还没有创建个人档案"
-          description="创建档案后，八字排盘、紫微斗数等模块将自动读取你的出生信息，无需重复填写。你也可以为家人朋友创建多个档案。"
-          type="info"
-          showIcon
-          style={{ marginBottom: 24 }}
+          description="创建档案后，八字排盘、紫微斗数等模块将自动读取你的出生信息。"
+          type="info" showIcon
+          style={{ marginBottom: 24, borderRadius: 16 }}
           action={<Button type="primary" onClick={openNew}>立即创建</Button>}
         />
       )}
 
-      {/* 档案卡片列表 */}
       {users.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           {users.map(u => (
             <Col xs={24} sm={12} key={u.id}>
               <Card
                 size="small"
+                className="glass-card"
                 style={{
-                  borderTop: '4px solid #e0c27b',
-                  border: u.id === currentUser?.id ? '2px solid #e0c27b' : undefined,
-                  background: u.id === currentUser?.id ? '#fffdf0' : '#fff',
+                  border: u.id === currentUser?.id ? '1px solid rgba(0,0,0,0.2)' : '1px solid var(--border-light)',
                 }}
                 title={
                   <Space>
                     <span style={{
-                      display: 'inline-block', width: 32, height: 32, borderRadius: '50%',
-                      background: '#e0c27b', color: '#1a1a2e', textAlign: 'center', lineHeight: '32px',
-                      fontWeight: 'bold',
-                    }}>{u.name.charAt(0)}</span>
-                    <Text strong>{u.name}</Text>
-                    <Tag color={u.gender === '男' ? 'blue' : 'pink'}>{u.gender}</Tag>
-                    <Tag>{u.birthCalendar === 'solar' ? '公历' : '农历'}</Tag>
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 32, height: 32, borderRadius: '50%', background: '#1A1A1A',
+                      color: '#fff', fontWeight: 600, fontSize: 14,
+                    }}>
+                      {u.name.charAt(0)}
+                    </span>
+                    <Text strong style={{ fontSize: 'var(--text-base)' }}>{u.name}</Text>
+                    <Tag>{u.gender}</Tag>
                   </Space>
                 }
                 extra={
                   u.id === currentUser?.id && (
-                    <Tag color="gold" icon={<CheckCircleOutlined />}>当前使用</Tag>
+                    <Tag icon={<CheckCircleOutlined />} style={{ background: 'rgba(91,140,90,0.08)', color: '#5B8C5A', border: 'none' }}>当前使用</Tag>
                   )
                 }
                 actions={[
@@ -238,16 +214,16 @@ export default function Profile() {
                     {u.id === currentUser?.id ? '当前' : '切换'}
                   </Button>,
                   <Button key="edit" type="link" icon={<EditOutlined />} onClick={() => openEdit(u)}>编辑</Button>,
-                  <Popconfirm key="del" title="确定删除此档案？" onConfirm={() => handleDelete(u.id)} okText="删除" cancelText="取消">
+                  <Popconfirm key="del" title="确定删除？" onConfirm={() => handleDelete(u.id)} okText="删除" cancelText="取消">
                     <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
                   </Popconfirm>,
                 ]}
               >
-                <Text type="secondary" style={{ fontSize: 13 }}>
+                <Text style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                   出生：{formatBirth(u)} · {u.birthHour}:{String(u.birthMinute || 0).padStart(2, '0')}
                 </Text>
                 <br />
-                <Text type="secondary" style={{ fontSize: 13 }}>
+                <Text style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                   出生地：{u.birthplace.province}{u.birthplace.city}{u.birthplace.district || ''}
                   {u.birthplace.longitude !== 120 && ` (${u.birthplace.longitude}°E)`}
                 </Text>
@@ -257,9 +233,8 @@ export default function Profile() {
         </Row>
       )}
 
-      {/* 编辑/新增表单 */}
       {editing && (
-        <Card title={editingId ? '编辑档案' : '新增档案'} style={{ marginBottom: 24 }}>
+        <Card className="glass-card" style={{ marginBottom: 24 }}>
           <Form form={form} layout="vertical" size="middle"
             initialValues={{ birthCalendar: 'solar', birthHour: 12, birthMinute: 0, gender: '男' }}>
             <Form.Item name="name" label="档案名称" rules={[{ required: true, message: '请输入档案名称' }]}>
@@ -275,8 +250,8 @@ export default function Profile() {
 
             <Form.Item name="birthCalendar" label="历法">
               <Radio.Group onChange={(e) => onCalendarChange(e.target.value)}>
-                <Radio.Button value="solar">🌞 公历</Radio.Button>
-                <Radio.Button value="lunar">🌙 农历</Radio.Button>
+                <Radio.Button value="solar">公历</Radio.Button>
+                <Radio.Button value="lunar">农历</Radio.Button>
               </Radio.Group>
             </Form.Item>
 
@@ -315,27 +290,20 @@ export default function Profile() {
             ) : (
               <>
                 <Form.Item name="birthYear" label="出生年份" rules={[{ required: true }]}>
-                  <Select
-                    showSearch
-                    style={{ width: '100%' }}
-                    placeholder="选择农历年份"
-                    options={getLunarYearOptions()}
-                    onChange={(v) => onLunarYearChange(v)}
-                  />
+                  <Select showSearch style={{ width: '100%' }} placeholder="选择农历年份"
+                    options={getLunarYearOptions()} onChange={(v) => onLunarYearChange(v)} />
                 </Form.Item>
 
                 <Space wrap size="middle">
                   <Form.Item name="birthMonth" label="月份" rules={[{ required: true }]}>
-                    <Select style={{ width: 100 }} placeholder="月"
-                      options={(() => {
-                        const opts = [...LUNAR_MONTH_OPTIONS];
-                        if (hasLeap) {
-                          const leapMonth = LunarYear.fromYear(lunarYear).getLeapMonth();
-                          opts.splice(leapMonth, 0, { label: `闰${leapMonth}月`, value: leapMonth + 0.5 });
-                        }
-                        return opts;
-                      })()}
-                    />
+                    <Select style={{ width: 100 }} placeholder="月" options={(() => {
+                      const opts = [...LUNAR_MONTH_OPTIONS];
+                      if (hasLeap) {
+                        const leapMonth = LunarYear.fromYear(lunarYear).getLeapMonth();
+                        opts.splice(leapMonth, 0, { label: `闰${leapMonth}月`, value: leapMonth + 0.5 });
+                      }
+                      return opts;
+                    })()} />
                   </Form.Item>
                   <Form.Item name="birthDay" label="日期" rules={[{ required: true }]}>
                     <Select style={{ width: 80 }} placeholder="日" options={LUNAR_DAY_OPTIONS} />
@@ -359,13 +327,13 @@ export default function Profile() {
               <Cascader options={pcaCode} fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
                 placeholder="请选择省市区" changeOnSelect style={{ width: '100%' }} />
             </Form.Item>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               默认经度：120°E（北京时间）。真太阳时 = 北京时间 + (当地经度 - 120) × 4分钟。
             </Text>
 
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 20 }}>
               <Button type="primary" onClick={handleSave} size="large">
-                💾 {editingId ? '保存修改' : '创建档案'}
+                {editingId ? '保存修改' : '创建档案'}
               </Button>
               <Button style={{ marginLeft: 8 }} onClick={() => { setEditing(false); setEditingId(null); }}>
                 取消
@@ -375,9 +343,11 @@ export default function Profile() {
         </Card>
       )}
 
-      {/* 已关联查询 */}
       {currentUser && (
-        <Card title="📊 已关联查询" size="small">
+        <Card className="glass-card" size="small" styles={{ body: { padding: '20px' } }}>
+          <Text strong style={{ fontSize: 'var(--text-base)', display: 'block', marginBottom: 12 }}>
+            已关联查询
+          </Text>
           {(() => {
             const modules = [
               { name: 'bazi', label: '八字排盘' },
@@ -386,18 +356,20 @@ export default function Profile() {
               { name: 'meihua', label: '梅花易数' },
               { name: 'fengshui', label: '风水相宅' },
             ];
-            const items = modules.filter(m => {
-              return history.some(h => h.module === m.name && h.userId === currentUser.id);
-            });
-            if (items.length === 0) return <Text type="secondary">暂无查询记录</Text>;
+            const items = modules.filter(m =>
+              history.some(h => h.module === m.name && h.userId === currentUser.id)
+            );
+            if (items.length === 0) return <Text style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>暂无查询记录</Text>;
             return (
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
                 {items.map(m => {
                   const t = history.find(h => h.module === m.name && h.userId === currentUser.id)!;
                   return (
                     <div key={m.name} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Text>· {m.label}</Text>
-                      <Text type="secondary">上次查询 {formatTimeAgo(t.timestamp)}</Text>
+                      <Text style={{ fontSize: 'var(--text-sm)' }}>{m.label}</Text>
+                      <Text style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                        上次查询 {formatTimeAgo(t.timestamp)}
+                      </Text>
                     </div>
                   );
                 })}

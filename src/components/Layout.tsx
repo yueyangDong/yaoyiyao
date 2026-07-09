@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout, Button, Typography, Space, Drawer, Form,
@@ -6,33 +6,36 @@ import {
   Select, List, Popconfirm, Input, Modal,
 } from 'antd';
 import {
-  ArrowLeftOutlined, HomeOutlined, UserOutlined, SettingOutlined,
-  PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, IdcardOutlined,
-  SoundOutlined, SoundFilled,
+  ArrowLeftOutlined, UserOutlined, SettingOutlined,
+  PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useUser, getCityLng } from '../context/UserContext';
 import type { StoredUser } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  UserCircle, History, ChevronLeft, Home, Settings,
+  Compass, Star, Moon, Sparkles, Waves, Flower2,
+  ScrollText, Binary, House, BookOpen,
+} from 'lucide-react';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 
-// 模块路由→名称映射 (用于导航栏中显示)
-const MODULE_NAMES: Record<string, { title: string; icon: string }> = {
-  '/': { title: '首页', icon: '☯' },
-  '/bazi': { title: '八字排盘', icon: '🔮' },
-  '/ziwei': { title: '紫微斗数', icon: '⭐' },
-  '/nayin': { title: '纳音查询', icon: '🌊' },
-  '/liuyao': { title: '六爻占卜', icon: '⚡' },
-  '/meihua': { title: '梅花易数', icon: '🌸' },
-  '/fengshui': { title: '风水相宅', icon: '🏠' },
-  '/mianxiang': { title: '看面相', icon: '😊' },
-  '/dream': { title: '周公解梦', icon: '🌙' },
-  '/lingqian': { title: '灵签抽签', icon: '🏮' },
-  '/history': { title: '查询历史', icon: '📋' },
-  '/profile': { title: '个人档案', icon: '🪪' },
+const MODULE_NAMES: Record<string, { title: string; icon: React.ReactNode }> = {
+  '/': { title: '爻一爻', icon: null },
+  '/bazi': { title: '八字排盘', icon: <Binary size={18} strokeWidth={1.5} /> },
+  '/ziwei': { title: '紫微斗数', icon: <Star size={18} strokeWidth={1.5} /> },
+  '/nayin': { title: '纳音查询', icon: <Waves size={18} strokeWidth={1.5} /> },
+  '/liuyao': { title: '六爻占卜', icon: <Sparkles size={18} strokeWidth={1.5} /> },
+  '/meihua': { title: '梅花易数', icon: <Flower2 size={18} strokeWidth={1.5} /> },
+  '/fengshui': { title: '风水相宅', icon: <Compass size={18} strokeWidth={1.5} /> },
+  '/ancient': { title: '古籍经典', icon: <BookOpen size={18} strokeWidth={1.5} /> },
+  '/dream': { title: '周公解梦', icon: <Moon size={18} strokeWidth={1.5} /> },
+  '/lingqian': { title: '灵签抽签', icon: <ScrollText size={18} strokeWidth={1.5} /> },
+  '/history': { title: '查询历史', icon: <History size={18} strokeWidth={1.5} /> },
+  '/profile': { title: '个人档案', icon: <UserCircle size={18} strokeWidth={1.5} /> },
 };
 
 export default function AppLayout() {
@@ -49,29 +52,14 @@ export default function AppLayout() {
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<StoredUser | null>(null);
   const [userForm] = Form.useForm();
-  const [soundOn, setSoundOn] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   const currentModule = MODULE_NAMES[location.pathname];
 
-  // 滚动监听：下滚→背景加深
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 30);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // 鼠标光晕跟随
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const el = document.getElementById('app-mouse-glow');
-      if (el) {
-        el.style.left = `${e.clientX}px`;
-        el.style.top = `${e.clientY}px`;
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
   const handleSaveProfile = () => {
@@ -104,11 +92,10 @@ export default function AppLayout() {
       birthplaceLng: lng,
     });
 
-    message.success('用户档案已保存，各模块将自动读取');
+    message.success('用户档案已保存');
     setDrawerOpen(false);
   };
 
-  // 打开添加/编辑用户弹窗
   const openUserModal = (user?: StoredUser) => {
     if (user) {
       setEditingUser(user);
@@ -130,7 +117,6 @@ export default function AppLayout() {
     setUserModalOpen(true);
   };
 
-  // 保存用户
   const handleSaveUser = () => {
     const values = userForm.getFieldsValue();
     const { name, gender, birthYear, birthMonth, birthDay, birthHour, birthMinute, birthCalendar, birthplace } = values;
@@ -166,156 +152,154 @@ export default function AppLayout() {
         isLeapMonth: false,
         birthplace: { province, city, district, longitude: lng },
       });
-      message.success('用户已创建并切换为当前用户');
+      message.success('用户已创建');
     }
     setUserModalOpen(false);
     setEditingUser(null);
   };
 
-  // 删除用户
   const handleDeleteUser = (id: string) => {
     deleteUser(id);
     message.success('用户已删除');
   };
 
-  // 格式化出生日期
   const formatBirth = (u: StoredUser) => {
     return `${u.birthYear}/${String(u.birthMonth).padStart(2, '0')}/${String(u.birthDay).padStart(2, '0')}`;
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#08080f' }}>
-      {/* 鼠标光晕 */}
-      <div id="app-mouse-glow" />
-
+    <Layout style={{ minHeight: '100vh', background: 'var(--bg-warm)' }}>
       <Header
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 16px',
+          padding: '0 20px',
           height: 56,
           background: scrolled
-            ? 'rgba(8,8,15,0.95)'
-            : 'rgba(8,8,15,0.75)',
-          borderBottom: '1px solid rgba(201,169,110,0.15)',
-          backdropFilter: 'blur(12px)',
+            ? 'rgba(247,245,240,0.92)'
+            : 'rgba(247,245,240,0.75)',
+          backdropFilter: 'blur(12px) saturate(180%)',
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          transition: 'background 200ms ease',
+          transition: 'background 0.25s var(--ease-out)',
         }}
       >
-        {/* 左侧：太极 + 回首页 */}
-        <Space style={{ minWidth: 120 }}>
-          <span
-            onClick={() => navigate('/')}
-            style={{
-              fontSize: 22, cursor: 'pointer', color: '#c9a96e',
-              fontFamily: 'serif',
-            }}
-            title="回首页"
-          >
-            ☯
-          </span>
-          {!isHome && (
-            <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(-1)}
-              style={{ color: '#c9a96e', fontSize: 13 }}
-            >
-              返回
-            </Button>
+        {/* 左侧 */}
+        <Space style={{ minWidth: 100 }}>
+          {isHome ? (
+            <Text strong style={{
+              fontSize: 20,
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              letterSpacing: '0.04em',
+            }}>
+              爻一爻
+            </Text>
+          ) : (
+            <>
+              <Button
+                type="text"
+                icon={<ChevronLeft size={20} strokeWidth={1.5} />}
+                onClick={() => navigate(-1)}
+                style={{ color: 'var(--text-body)', padding: 0, width: 36, height: 36 }}
+              />
+              {currentModule && (
+                <Space size={6}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{currentModule.icon}</span>
+                  <Text style={{
+                    color: 'var(--text-primary)',
+                    fontSize: 16,
+                    fontFamily: 'var(--font-title)',
+                    fontWeight: 500,
+                    letterSpacing: '0.03em',
+                  }}>
+                    {currentModule.title}
+                  </Text>
+                </Space>
+              )}
+            </>
           )}
         </Space>
 
-        {/* 中间：当前模块名 */}
-        <div style={{ textAlign: 'center' }}>
-          <Text strong style={{
-            color: '#c9a96e', fontSize: 18, letterSpacing: 4,
-            fontFamily: 'var(--font-title)',
-          }}>
-            {currentModule ? `${currentModule.icon} ${currentModule.title}` : '☯ 玄学命理'}
-          </Text>
-        </div>
-
-        {/* 右侧：用户 + 音效 + 功能 */}
-        <Space style={{ minWidth: 120, justifyContent: 'flex-end' }}>
-          {/* 音效开关 */}
-          <Button
-            type="text"
-            icon={soundOn ? <SoundFilled style={{ color: '#c9a96e' }} /> : <SoundOutlined style={{ color: '#555' }} />}
-            onClick={() => setSoundOn(!soundOn)}
-            title={soundOn ? '关闭音效' : '开启音效'}
-          />
-
-          {/* 用户头像 */}
+        {/* 右侧 */}
+        <Space style={{ minWidth: 100, justifyContent: 'flex-end' }}>
           {currentUser ? (
             <span
               onClick={() => navigate('/profile')}
               style={{
-                display: 'inline-block', width: 32, height: 32, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #c9a96e, #8b6914)',
-                color: '#08080f', textAlign: 'center', lineHeight: '32px',
-                fontWeight: 'bold', fontSize: 14, cursor: 'pointer',
-                border: '2px solid rgba(201,169,110,0.5)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: '#1A1A1A',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: 'pointer',
               }}
-              title={`${currentUser.name} - 点击管理档案`}
+              title={`${currentUser.name}`}
             >
               {currentUser.name.charAt(0)}
             </span>
           ) : (
             <Button
               type="text"
-              icon={<UserOutlined />}
+              icon={<UserCircle size={20} strokeWidth={1.5} />}
               onClick={() => navigate('/profile')}
-              style={{ color: '#c9a96e' }}
-              title="创建个人档案"
+              style={{ color: 'var(--text-secondary)' }}
             />
           )}
 
-          {/* 主页按钮 */}
           {!isHome && (
-            <Button type="text" icon={<HomeOutlined />} onClick={() => navigate('/')} style={{ color: '#c9a96e' }} />
+            <Button
+              type="text"
+              icon={<Home size={20} strokeWidth={1.5} />}
+              onClick={() => navigate('/')}
+              style={{ color: 'var(--text-secondary)' }}
+            />
           )}
         </Space>
       </Header>
 
       {/* 当前用户信息条 */}
-      {currentUser && (
+      {currentUser && !isHome && (
         <div style={{
-          textAlign: 'center', padding: '6px 16px',
-          background: 'linear-gradient(90deg, rgba(20,15,8,0.9), rgba(30,20,10,0.9), rgba(20,15,8,0.9))',
-          borderBottom: '1px solid rgba(201,169,110,0.15)',
+          textAlign: 'center',
+          padding: '8px 16px',
+          background: 'rgba(0,0,0,0.02)',
+          borderBottom: '1px solid rgba(0,0,0,0.04)',
           cursor: 'pointer',
-        }}
-        onClick={() => navigate('/profile')}
-        title="点击管理档案">
-          <Space size="middle" wrap>
+        }} onClick={() => navigate('/profile')}>
+          <Space size="small" wrap>
             <span style={{
-              display: 'inline-block', width: 28, height: 28, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #c9a96e, #8b6914)',
-              color: '#08080f', textAlign: 'center', lineHeight: '28px',
-              fontWeight: 'bold', fontSize: 13,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 24, height: 24, borderRadius: '50%', background: '#1A1A1A',
+              color: '#fff', fontWeight: 600, fontSize: 12,
             }}>
               {currentUser.name.charAt(0)}
             </span>
-            <Text strong style={{ color: '#c9a96e' }}>{currentUser.name}</Text>
-            <Tag color={currentUser.gender === '男' ? 'blue' : 'pink'}>{currentUser.gender}</Tag>
-            <Text style={{ color: '#8b7355', fontSize: 12 }}>
-              {formatBirth(currentUser)} {currentUser.birthCalendar === 'solar' ? '公历' : '农历'}
+            <Text style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}>
+              {currentUser.name}
             </Text>
-            {age !== null && <Tag>{age}岁</Tag>}
-            {zodiacAnimal && <Tag color="orange">{zodiacAnimal}</Tag>}
-            {zodiacSign && <Tag color="purple">{zodiacSign}</Tag>}
+            <Tag>{currentUser.gender}</Tag>
+            <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+              {formatBirth(currentUser)}
+            </Text>
+            {age !== null && <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{age}岁</Text>}
+            {zodiacAnimal && <Tag>{zodiacAnimal}</Tag>}
           </Space>
         </div>
       )}
 
       <Content style={{
-        padding: isHome ? 0 : '16px',
-        maxWidth: 1200,
+        padding: isHome ? 0 : '20px',
+        maxWidth: 800,
         margin: '0 auto',
         width: '100%',
         background: 'transparent',
@@ -323,10 +307,10 @@ export default function AppLayout() {
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           >
             <ErrorBoundary moduleName={location.pathname}>
               <Outlet />
@@ -337,19 +321,17 @@ export default function AppLayout() {
 
       <Footer style={{
         textAlign: 'center',
-        background: '#08080f',
-        color: '#555',
-        padding: '12px 16px',
-        borderTop: '1px solid rgba(201,169,110,0.08)',
+        background: 'transparent',
+        color: 'var(--text-disabled)',
+        padding: '16px',
+        fontSize: 12,
       }}>
-        <Text style={{ color: '#555', fontSize: 12 }}>
-          ⚠ 免责声明：本应用仅供娱乐，不构成任何决策依据，所有结果不具科学依据。
-        </Text>
+        仅供娱乐 · 不具科学依据
       </Footer>
 
       {/* 档案设置 Drawer */}
       <Drawer
-        title={<><SettingOutlined /> 用户档案设置</>}
+        title={<><Settings size={18} strokeWidth={1.5} style={{ marginRight: 8 }} />用户档案设置</>}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={380}
@@ -397,7 +379,7 @@ export default function AppLayout() {
           <Text type="secondary" style={{ fontSize: 12 }}>
             默认经度：120°E（北京时间）。真太阳时 = 北京时间 + (当地经度 - 120) × 4分钟。
             {profile.birthplaceLng && profile.birthplaceLng !== 120 && (
-              <Tag color="blue" style={{ marginLeft: 8 }}>当前经度：{profile.birthplaceLng}°E</Tag>
+              <Tag style={{ marginLeft: 8 }}>当前经度：{profile.birthplaceLng}°E</Tag>
             )}
           </Text>
         </Form>
@@ -464,7 +446,6 @@ export default function AppLayout() {
           </Form.Item>
         </Form>
 
-        {/* 已有用户列表 */}
         {users.length > 0 && (
           <>
             <Divider>已有用户</Divider>
@@ -475,9 +456,7 @@ export default function AppLayout() {
                 <List.Item
                   actions={[
                     <Button
-                      key="switch"
-                      type="link"
-                      size="small"
+                      key="switch" type="link" size="small"
                       icon={<SwapOutlined />}
                       onClick={() => {
                         switchUser(u.id);
@@ -492,11 +471,9 @@ export default function AppLayout() {
                     <Button key="edit" type="link" size="small" icon={<EditOutlined />}
                       onClick={() => openUserModal(u)} />,
                     <Popconfirm
-                      key="del"
-                      title="确定删除此用户？"
+                      key="del" title="确定删除此用户？"
                       onConfirm={() => handleDeleteUser(u.id)}
-                      okText="删除"
-                      cancelText="取消"
+                      okText="删除" cancelText="取消"
                     >
                       <Button type="link" size="small" danger icon={<DeleteOutlined />} />
                     </Popconfirm>,
@@ -505,17 +482,15 @@ export default function AppLayout() {
                   <List.Item.Meta
                     avatar={
                       <span style={{
-                        display: 'inline-block', width: 32, height: 32, borderRadius: '50%',
-                        background: '#e0c27b', color: '#1a1a2e', textAlign: 'center', lineHeight: '32px',
-                        fontWeight: 'bold',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: '#1A1A1A', color: '#fff',
+                        fontWeight: 600, fontSize: 14,
                       }}>
                         {u.name.charAt(0)}
                       </span>
                     }
-                    title={<Space>
-                      <Text strong>{u.name}</Text>
-                      <Tag>{u.gender}</Tag>
-                    </Space>}
+                    title={<Space><Text strong>{u.name}</Text><Tag>{u.gender}</Tag></Space>}
                     description={`${formatBirth(u)} ${u.birthCalendar === 'solar' ? '公历' : '农历'}`}
                   />
                 </List.Item>
