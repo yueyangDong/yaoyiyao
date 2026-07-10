@@ -7,8 +7,8 @@ import {
   RedoOutlined, FireOutlined,
 } from '@ant-design/icons';
 import { ScrollText, Shuffle } from 'lucide-react';
-import { GUANYIN_LOTS, LotEntry } from '../data/guanyinLots';
-import { GUANDI_LOTS } from '../data/guandiLots';
+import { guanyinLots } from '../data/guanyinLots';
+import { guandiLots } from '../data/guandiLots';
 import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
 import { useUser } from '../context/UserContext';
 // @ts-ignore - canvas-confetti types not available
@@ -28,11 +28,11 @@ export default function Lingqian() {
   const [lotType, setLotType] = useState<string>('guanyin');
   const [phase, setPhase] = useState<DrawPhase>('idle');
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<LotEntry | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [zhugeWords, setZhugeWords] = useState({ w1: '', w2: '', w3: '' });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentLots = lotType === 'guanyin' ? GUANYIN_LOTS : lotType === 'guandi' ? GUANDI_LOTS : ZHUGES_LOTS;
+  const currentLots = lotType === 'guanyin' ? guanyinLots : lotType === 'guandi' ? guandiLots : ZHUGES_LOTS;
 
   // 清理定时器
   useEffect(() => {
@@ -106,7 +106,7 @@ export default function Lingqian() {
                       userId: currentUser?.id || '',
                       module: 'lingqian',
                       queryParams: { type: lotType },
-                      resultSummary: `${lotType === 'guanyin' ? '观音' : '关帝'}灵签第${lot.index}签 ${lot.name} ${lot.level}`,
+                      resultSummary: `${lotType === 'guanyin' ? '观音' : '关帝'}灵签第${(lot as any).id || (lot as any).index}签 ${lot.name} ${lot.level}`,
                     });
                   }
                 }, 100);
@@ -420,12 +420,81 @@ export default function Lingqian() {
                     <Card size="small" styles={{ body: { padding: '8px', background: 'rgba(0,0,0,0.02)' } }}>
                       <Text type="secondary" style={{ fontSize: 11 }}>{key}</Text>
                       <br />
-                      <Text strong style={{ fontSize: 13, color: 'var(--text-body)' }}>{val}</Text>
+                      <Text strong style={{ fontSize: 13, color: 'var(--text-body)' }}>{String(val)}</Text>
                     </Card>
                   </Col>
                 ))}
               </Row>
             </Card>
+
+            {/* 分维度解读 */}
+            {result.level && (
+              <Card
+                size="small"
+                title={<span style={{ color: 'var(--text-primary)' }}>📋 分维度解读</span>}
+                style={{
+                  marginBottom: 12,
+                  background: 'var(--bg-card-solid)',
+                  borderColor: 'var(--border-light)',
+                }}
+              >
+                <Row gutter={[8, 12]}>
+                  {[
+                    { label: '事业', icon: '💼' },
+                    { label: '感情', icon: '💕' },
+                    { label: '财运', icon: '💰' },
+                    { label: '健康', icon: '💚' },
+                  ].map(({ label, icon }) => {
+                    const isGood = result.level === '上上' || result.level === '上';
+                    const isBad = result.level === '下下' || result.level === '下';
+                    const adviceMap: Record<string, string> = {
+                      '事业': isGood ? '事业运旺，适合跳槽、创业、争取晋升。主动出击会有好结果。'
+                        : isBad ? '事业上暂遇阻碍，不宜做重大决定。守住现有岗位，等待时机。'
+                        : '事业运势平稳，按部就班即可，不宜冒进也不需担忧。',
+                      '感情': isGood ? '桃花运好，单身者可大胆追求，有伴侣者感情升温。'
+                        : isBad ? '感情上需多些耐心和理解，避免因小事争吵。单身者暂不适合表白。'
+                        : '感情中规中矩，顺其自然就好，强扭的瓜不甜。',
+                      '财运': isGood ? '财运不错，投资需审慎但可以适度尝试。有意外的进账机会。'
+                        : isBad ? '财运走低，注意控制开支，避免高风险投资。守财为主。'
+                        : '财运一般，维持现状即可。不贪心就不会有损失。',
+                      '健康': isGood ? '身体状态良好，精神充沛。适合开始新的运动计划。'
+                        : isBad ? '注意休息和调养，可能有小病痛。避免过度劳累。'
+                        : '健康运平稳，保持良好作息即可，不必过度担心。',
+                    };
+                    return (
+                      <Col xs={12} key={label}>
+                        <Card size="small" styles={{ body: { padding: '10px 12px', background: 'rgba(0,0,0,0.02)' } }}>
+                          <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                            {icon} {label}
+                          </Text>
+                          <Paragraph style={{ fontSize: 12, color: 'var(--text-body)', marginTop: 4, marginBottom: 0, lineHeight: 1.7 }}>
+                            {adviceMap[label]}
+                          </Paragraph>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </Card>
+            )}
+
+            {/* 凶签化解建议 */}
+            {(result.level === '下' || result.level === '下下') && (
+              <Card
+                size="small"
+                title={<span style={{ color: 'var(--wx-fire)' }}>🪷 化解建议</span>}
+                style={{
+                  marginBottom: 12,
+                  background: 'rgba(199,91,91,0.03)',
+                  borderColor: 'var(--border-light)',
+                  borderLeft: '3px solid var(--wx-fire)',
+                }}
+              >
+                <Paragraph style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
+                  抽到凶签不必过度担心。灵签的本意是提醒，而非预言。凶签如良医——指出病灶是为了让你及时调整。建议：1. 近期少做重大决定，多观察多思考；2. 多行善事积累福报；3. 可以在心里默念"命由心造，福自我求"三遍；4. 过一段时间可以重新抽一次，心境变了签也会变。
+                </Paragraph>
+              </Card>
+            )}
 
             {/* 典故 */}
             <Card
@@ -436,6 +505,11 @@ export default function Lingqian() {
               <Paragraph style={{ fontSize: 13, lineHeight: 1.8, fontStyle: 'italic', color: 'var(--text-body)' }}>
                 {result.story}
               </Paragraph>
+              {result.story && result.story.length < 100 && (
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+                  注：此签典故较短，建议结合签诗和解读综合理解。
+                </Paragraph>
+              )}
             </Card>
           </Card>
 

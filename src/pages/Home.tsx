@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Typography, Space, Button, Alert } from 'antd';
+import { Card, Row, Col, Typography, Space, Button } from 'antd';
 import { motion } from 'framer-motion';
 import { useUser } from '../context/UserContext';
 import { Lunar } from 'lunar-typescript';
 import {
   Binary, Star, Sparkles, Flower2, Waves, Compass,
   Moon, ScrollText, UserCircle, History, ArrowRight, BookOpen,
+  Sun,
 } from 'lucide-react';
 
 const { Title, Text, Paragraph } = Typography;
 
 const MODULES = [
+  {
+    key: 'daily', path: '/daily', title: '每日一爻',
+    slogan: '黄历 · 天气 · 每日一签',
+    desc: '今日运气怎么样？黄历宜忌、天气出行、每日灵签、幸运指南。',
+    color: '#C4A45A',
+    icon: <Sun size={28} strokeWidth={1.5} />,
+  },
   {
     key: 'bazi', path: '/bazi', title: '八字排盘',
     slogan: '解读你的天赋密码',
@@ -34,18 +42,18 @@ const MODULES = [
     icon: <Sparkles size={28} strokeWidth={1.5} />,
   },
   {
-    key: 'meihua', path: '/meihua', title: '梅花易数',
-    slogan: '三个数字 · 万物可占',
-    desc: '输入三个数字即时演算，体用生克分析吉凶。',
-    color: '#C75B5B',
-    icon: <Flower2 size={28} strokeWidth={1.5} />,
-  },
-  {
     key: 'lingqian', path: '/lingqian', title: '灵签抽签',
     slogan: '庙宇求签 · 观音灵签',
     desc: '诚心默念，经历签筒摇晃仪式，古风签诗解签。',
     color: '#9B9B9B',
     icon: <ScrollText size={28} strokeWidth={1.5} />,
+  },
+  {
+    key: 'meihua', path: '/meihua', title: '梅花易数',
+    slogan: '三个数字 · 万物可占',
+    desc: '输入三个数字即时演算，体用生克分析吉凶。',
+    color: '#C75B5B',
+    icon: <Flower2 size={28} strokeWidth={1.5} />,
   },
   {
     key: 'nayin', path: '/nayin', title: '纳音查询',
@@ -95,7 +103,7 @@ function getTodayLunar(): string {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { users, history } = useUser();
+  const { users, history, currentUser } = useUser();
   const [lunarDate, setLunarDate] = useState('');
 
   useEffect(() => {
@@ -170,31 +178,80 @@ export default function Home() {
         )}
       </motion.div>
 
-      {/* 无用户引导 */}
-      {users.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          style={{ maxWidth: 500, margin: '0 auto 32px', position: 'relative' }}
-        >
-          <Alert
-            message="创建你的个人档案"
-            description="填写一次出生信息，所有模块自动读取。"
-            type="info"
-            showIcon
-            style={{ borderRadius: 16, border: '1px solid var(--border-light)' }}
-            action={
-              <Button type="primary" onClick={() => {
-                const btn = document.querySelector('[title="添加/切换用户"]') as HTMLElement;
-                btn?.click();
-              }}>
-                创建档案
+      {/* 用户引导横幅 */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        style={{ maxWidth: 800, margin: '0 auto 24px', position: 'relative' }}
+      >
+        {users.length === 0 ? (
+          <Card
+            hoverable
+            onClick={() => navigate('/profile')}
+            style={{
+              borderRadius: 16,
+              border: '1px solid var(--border-light)',
+              background: 'linear-gradient(135deg, rgba(74,91,107,0.04) 0%, rgba(255,255,255,0.9) 100%)',
+            }}
+            styles={{ body: { padding: '16px 20px' } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Space>
+                <span style={{ fontSize: 24 }}>👤</span>
+                <div>
+                  <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
+                    你还没创建个人档案
+                  </Text>
+                  <br />
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                    填写出生信息后，所有模块自动带入数据
+                  </Text>
+                </div>
+              </Space>
+              <Button type="primary" size="small">
+                立即创建 <ArrowRight size={14} />
               </Button>
-            }
-          />
-        </motion.div>
-      )}
+            </div>
+          </Card>
+        ) : currentUser ? (
+          <Card
+            hoverable
+            onClick={() => navigate('/profile')}
+            style={{
+              borderRadius: 16,
+              border: '1px solid var(--border-light)',
+              background: 'linear-gradient(135deg, rgba(91,140,90,0.04) 0%, rgba(255,255,255,0.9) 100%)',
+            }}
+            styles={{ body: { padding: '14px 20px' } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Space>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: '50%', background: '#1A1A1A',
+                  color: '#fff', fontWeight: 600, fontSize: 14,
+                }}>
+                  {currentUser.name.charAt(0)}
+                </span>
+                <div>
+                  <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
+                    {currentUser.name}
+                  </Text>
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 12, marginLeft: 8 }}>
+                    {currentUser.gender} · 公历{currentUser.birthYear}-{String(currentUser.birthMonth).padStart(2,'0')}-{String(currentUser.birthDay).padStart(2,'0')}
+                  </Text>
+                </div>
+              </Space>
+              <Space>
+                <Button type="text" size="small" style={{ color: 'var(--text-secondary)' }}>
+                  编辑档案 <ArrowRight size={14} />
+                </Button>
+              </Space>
+            </div>
+          </Card>
+        ) : null}
+      </motion.div>
 
       {/* 快捷入口 */}
       <div style={{

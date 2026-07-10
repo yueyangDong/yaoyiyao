@@ -10,6 +10,59 @@ import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, Mei
 
 const { Title, Text, Paragraph } = Typography;
 
+// 三卦串联解读（本卦→互卦→变卦像讲故事）
+function getThreeGuaStory(benName: string, huName: string, bianName: string, dongYao: number): string {
+  const stories: Record<string, string> = {
+    '乾为天': '事情以一种强势、主动的姿态开始，你有着充足的行动力。',
+    '坤为地': '事情从接纳、顺从开始，外部环境是主导力量。',
+    '水雷屯': '开始阶段充满艰难，像春天种子破土，需要耐心。',
+    '山水蒙': '开始时信息不明朗，像雾里看花，需要先搞清楚状况。',
+    '水天需': '开始阶段处于等待状态，事情尚在酝酿中。',
+    '天水讼': '一开始就存在分歧或争议，需要妥善沟通。',
+    '地水师': '开始就意识到需要团队或外援，一个人搞不定。',
+    '水地比': '开始阶段有利好的人际关系或合作机会。',
+    '风天小畜': '开始阶段是小步积累，进展缓慢但持续。',
+    '天泽履': '开始阶段需要谨慎行事，环境中存在风险因素。',
+    '地天泰': '开始阶段顺风顺水，天地交泰大吉大利。',
+    '天地否': '开始阶段闭塞不通，需要先打破隔阂。',
+    '天火同人': '开始阶段需要找到志同道合的人。',
+    '火天大有': '开始阶段资源充足，大有可为。',
+    '地山谦': '开始阶段需要保持谦虚低调的态度。',
+    '雷地豫': '开始阶段心情愉悦，但要防止乐极生悲。',
+    '泽雷随': '开始阶段需要顺应时势，不宜逆行。',
+    '山风蛊': '开始阶段发现积弊，需要拨乱反正。',
+    '地泽临': '开始阶段机遇来临，要把握时机。',
+    '风地观': '开始阶段宜多观察，少行动。',
+    '火雷噬嗑': '开始阶段有阻碍需要咬碎，需要决断力。',
+    '山火贲': '开始阶段注重外表包装，内在尚需充实。',
+    '山地剥': '开始阶段有人事变动或消耗，宜守不宜攻。',
+    '地雷复': '开始阶段是复兴之始，阳气回暖。',
+    '天雷无妄': '开始阶段纯任天然，不妄为反而是最好的作为。',
+    '山天大畜': '开始阶段是大积累的前奏，准备越多越好。',
+    '山雷颐': '开始阶段需要养精蓄锐，管好自己的事。',
+    '泽风大过': '开始阶段存在过度或失衡，调平衡是关键。',
+    '坎为水': '开始阶段如同涉水过河，需要谨慎和毅力。',
+    '离为火': '开始阶段明亮清晰，但要注意依附对的人。',
+  };
+
+  let story = '';
+  story += '这件事开始的时候，' + (stories[benName] || `呈现出「${benName}」的状态，需要根据卦象判断方向。`) + '\n\n';
+  story += '过程中，' + (stories[huName] || `会遇到「${huName}」所示的波折和转折，需要灵活应对。`) + '\n\n';
+  story += '最终的结果偏向' + (stories[bianName] || `「${bianName}」所示的趋势。`);
+
+  if (dongYao <= 3) {
+    story += '变化出现在前期，开局的局面很快会改变，不用太纠结于当下的状态。';
+  } else {
+    story += '变化出现在中后期，前期可以按部就班，但到了关键时刻要果断调整。';
+  }
+
+  if (benName === bianName) {
+    story += '\n\n本卦与变卦相同，说明这件事的性质不会发生根本改变。看似走了很远，其实一直围绕着核心问题在转——把根本问题解决了，结果自然就好。';
+  }
+
+  return story;
+}
+
 // 详细体用生克白话
 const TIYONG_DETAIL: Record<string, { title: string; desc: string; advice: string }> = {
   '体用比和': {
@@ -164,13 +217,8 @@ export default function Meihua() {
             </Row>
 
             <Divider>三卦串联解读</Divider>
-            <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
-              这件事从「{result.benGuaName}」的状态开始，
-              中间经历「{result.huGuaName}」的变化过程，
-              最终走向「{result.bianGuaName}」的结果。
-              {result.benGuaName === result.bianGuaName
-                ? '本卦和变卦相同，说明事情的整体性质不会发生根本改变，但过程中的细节需要注意。'
-                : '本卦和变卦不同，说明这件事会有一个明显的转变，你需要关注变卦所代表的趋势来调整你的策略。'}
+            <Paragraph style={{ fontSize: 14, color: 'var(--text-body)', whiteSpace: 'pre-line', lineHeight: 2 }}>
+              {getThreeGuaStory(result.benGuaName, result.huGuaName, result.bianGuaName, result.dongYao)}
             </Paragraph>
           </Card>
 

@@ -17,14 +17,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserCircle, History, ChevronLeft, Home, Settings,
   Compass, Star, Moon, Sparkles, Waves, Flower2,
-  ScrollText, Binary, House, BookOpen,
+  ScrollText, Binary, House, BookOpen, Sun,
 } from 'lucide-react';
+import ScrollTop from './ScrollTop';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 
 const MODULE_NAMES: Record<string, { title: string; icon: React.ReactNode }> = {
   '/': { title: '爻一爻', icon: null },
+  '/daily': { title: '每日一爻', icon: <Sun size={18} strokeWidth={1.5} /> },
   '/bazi': { title: '八字排盘', icon: <Binary size={18} strokeWidth={1.5} /> },
   '/ziwei': { title: '紫微斗数', icon: <Star size={18} strokeWidth={1.5} /> },
   '/nayin': { title: '纳音查询', icon: <Waves size={18} strokeWidth={1.5} /> },
@@ -328,6 +330,7 @@ export default function AppLayout() {
       }}>
         仅供娱乐 · 不具科学依据
       </Footer>
+      <ScrollTop />
 
       {/* 档案设置 Drawer */}
       <Drawer

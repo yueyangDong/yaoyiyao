@@ -1,7 +1,7 @@
 // 诸葛神数 384签
-import type { LotEntry } from './guanyinLots';
+import type { LotData } from './guandiLots';
 
-export const ZHUGES_LOTS: LotEntry[] = Array.from({ length: 384 }, (_, i) => {
+export const ZHUGES_LOTS: LotData[] = Array.from({ length: 384 }, (_, i) => {
   const idx = i + 1;
   const levels: Array<'上上' | '上' | '中' | '下' | '下下'> = ['上上', '上', '中', '下', '下下'];
   const level = levels[idx % 5];
