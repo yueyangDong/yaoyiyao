@@ -10,6 +10,7 @@ import {
   PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { useUser, getCityLng } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -44,10 +45,11 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const { user: authUser } = useAuth();
   const {
     profile, setProfile, hasProfile, currentUser,
     users, addUser, updateUser, deleteUser, switchUser,
-    age, zodiacAnimal, zodiacSign,
+    age, zodiacAnimal, zodiacSign, syncing, synced,
   } = useUser();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
@@ -229,7 +231,21 @@ export default function AppLayout() {
 
         {/* 右侧 */}
         <Space style={{ minWidth: 100, justifyContent: 'flex-end' }}>
-          {currentUser ? (
+          {!authUser && (
+            <Button
+              type="text"
+              size="small"
+              onClick={() => navigate('/auth')}
+              style={{
+                color: 'var(--text-primary)', fontWeight: 500,
+                border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-btn-sm)',
+              }}
+            >
+              登录
+            </Button>
+          )}
+
+          {authUser && (
             <span
               onClick={() => navigate('/profile')}
               style={{
@@ -244,18 +260,27 @@ export default function AppLayout() {
                 fontWeight: 600,
                 fontSize: 14,
                 cursor: 'pointer',
+                opacity: syncing ? 0.5 : 1,
+                transition: 'opacity 0.3s',
               }}
-              title={`${currentUser.name}`}
+              title={syncing ? '同步中...' : synced ? '已同步' : currentUser?.name || ''}
+            >
+              {currentUser?.name?.charAt(0) || authUser.email?.charAt(0)?.toUpperCase()}
+            </span>
+          )}
+
+          {!authUser && currentUser && (
+            <span
+              onClick={() => navigate('/profile')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 34, height: 34, borderRadius: '50%',
+                background: 'var(--text-primary)', color: 'var(--text-inverse)',
+                fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              }}
             >
               {currentUser.name.charAt(0)}
             </span>
-          ) : (
-            <Button
-              type="text"
-              icon={<UserCircle size={20} strokeWidth={1.5} />}
-              onClick={() => navigate('/profile')}
-              style={{ color: 'var(--text-secondary)' }}
-            />
           )}
 
           {!isHome && (
@@ -295,6 +320,11 @@ export default function AppLayout() {
             </Text>
             {age !== null && <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{age}岁</Text>}
             {zodiacAnimal && <Tag>{zodiacAnimal}</Tag>}
+            {authUser && (
+              <Tag color={synced ? 'green' : 'processing'} style={{ fontSize: 11 }}>
+                {syncing ? '同步中' : synced ? '已同步' : '未同步'}
+              </Tag>
+            )}
           </Space>
         </div>
       )}

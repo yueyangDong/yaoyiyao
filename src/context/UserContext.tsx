@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 // ========== 类型定义 ==========
 
@@ -31,7 +33,6 @@ export interface QueryHistory {
   resultSummary: string;
 }
 
-// 兼容旧版 profile
 export interface UserProfile {
   gender: 'male' | 'female' | null;
   birthYear: number | null;
@@ -44,13 +45,11 @@ export interface UserProfile {
 }
 
 interface UserContextType {
-  // 兼容旧版 API
   profile: UserProfile;
   setProfile: (p: Partial<UserProfile>) => void;
   clearProfile: () => void;
   hasProfile: boolean;
 
-  // 新版多用户 API
   currentUser: StoredUser | null;
   users: StoredUser[];
   addUser: (user: Omit<StoredUser, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -58,15 +57,16 @@ interface UserContextType {
   deleteUser: (id: string) => void;
   switchUser: (id: string) => void;
 
-  // 查询历史
   history: QueryHistory[];
   addHistory: (entry: Omit<QueryHistory, 'timestamp'>) => void;
   clearHistory: (module?: string) => void;
 
-  // 派生数据
   age: number | null;
   zodiacAnimal: string | null;
   zodiacSign: string | null;
+
+  syncing: boolean;
+  synced: boolean;
 }
 
 // ========== 常量 ==========
@@ -108,12 +108,7 @@ function getZodiacSign(month: number, day: number): string | null {
   for (const sign of ZODIAC_SIGNS) {
     const [sM, sD] = sign.start;
     const [eM, eD] = sign.end;
-    if (
-      (month === sM && day >= sD) ||
-      (month === eM && day <= eD)
-    ) {
-      return sign.name;
-    }
+    if ((month === sM && day >= sD) || (month === eM && day <= eD)) return sign.name;
   }
   return null;
 }
@@ -127,13 +122,33 @@ function storedUserToProfile(u: StoredUser | null): UserProfile {
   };
   return {
     gender: u.gender === '男' ? 'male' : 'female',
-    birthYear: u.birthYear,
-    birthMonth: u.birthMonth,
-    birthDay: u.birthDay,
-    birthHour: u.birthHour,
-    birthMinute: u.birthMinute,
+    birthYear: u.birthYear, birthMonth: u.birthMonth, birthDay: u.birthDay,
+    birthHour: u.birthHour, birthMinute: u.birthMinute,
     birthplace: `${u.birthplace.province},${u.birthplace.city},${u.birthplace.district}`,
     birthplaceLng: u.birthplace.longitude,
+  };
+}
+
+function profileToStoredUser(userId: string, data: any): StoredUser {
+  return {
+    id: userId,
+    name: data.name || '',
+    gender: data.gender || '男',
+    birthYear: data.birth_year || 1990,
+    birthMonth: data.birth_month || 1,
+    birthDay: data.birth_day || 1,
+    birthHour: data.birth_hour || 0,
+    birthMinute: data.birth_minute || 0,
+    birthplace: {
+      province: data.birthplace_province || '',
+      city: data.birthplace_city || '',
+      district: data.birthplace_district || '',
+      longitude: data.birthplace_longitude || 120,
+    },
+    birthCalendar: data.birth_calendar || 'solar',
+    isLeapMonth: data.is_leap_month || false,
+    createdAt: data.created_at || new Date().toISOString(),
+    updatedAt: data.updated_at || new Date().toISOString(),
   };
 }
 
@@ -166,7 +181,7 @@ function loadHistory(): QueryHistory[] {
   } catch { return []; }
 }
 
-function saveHistory(history: QueryHistory[]) {
+function saveHistoryLocal(history: QueryHistory[]) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
@@ -182,29 +197,68 @@ const UserContext = createContext<UserContextType>({
   currentUser: null, users: [], addUser: () => {}, updateUser: () => {}, deleteUser: () => {}, switchUser: () => {},
   history: [], addHistory: () => {}, clearHistory: () => {},
   age: null, zodiacAnimal: null, zodiacSign: null,
+  syncing: false, synced: false,
 });
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
+  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<StoredUser[]>(loadUsers);
   const [currentUserId, setCurrentUserId] = useState<string | null>(loadCurrentUserId);
   const [history, setHistory] = useState<QueryHistory[]>(loadHistory);
   const [profile, setProfileState] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [syncing, setSyncing] = useState(false);
+  const [synced, setSynced] = useState(false);
 
-  // 初始化：从 localStorage 恢复用户
+  // 登录后从 Supabase 拉取档案
   useEffect(() => {
-    const savedUsers = loadUsers();
-    const savedId = loadCurrentUserId();
-    setUsers(savedUsers);
-    setCurrentUserId(savedId);
-    setHistory(loadHistory());
-  }, []);
+    if (!authUser) { setSynced(false); return; }
+    let cancelled = false;
+    (async () => {
+      setSyncing(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (!cancelled && data && !error) {
+        const profile = profileToStoredUser(authUser.id, data);
+        const updated = [profile, ...users.filter(u => u.id !== authUser.id)];
+        setUsers(updated);
+        saveUsers(updated);
+        setCurrentUserId(authUser.id);
+        saveCurrentUserId(authUser.id);
+
+        // 拉取云历史
+        const { data: cloudHistory } = await supabase
+          .from('query_history')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(200);
+
+        if (cloudHistory) {
+          const merged: QueryHistory[] = cloudHistory.map((h: any) => ({
+            userId: h.user_id,
+            module: h.module,
+            timestamp: h.created_at,
+            queryParams: h.query_params || {},
+            resultSummary: h.result_summary || '',
+          }));
+          setHistory(merged);
+          saveHistoryLocal(merged);
+        }
+      }
+      if (!cancelled) { setSyncing(false); setSynced(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [authUser?.id]);
 
   const currentUser = useMemo(() => {
     if (!currentUserId) return null;
     return users.find(u => u.id === currentUserId) || null;
   }, [users, currentUserId]);
 
-  // 同步 profile 到 currentUser
   useEffect(() => {
     setProfileState(storedUserToProfile(currentUser));
   }, [currentUser]);
@@ -225,7 +279,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     );
     setUsers(updated);
     saveUsers(updated);
-  }, [users]);
+
+    // 同步到 Supabase
+    if (authUser && id === authUser.id) {
+      const u = updated.find(x => x.id === id);
+      if (u) {
+        supabase.from('profiles').upsert({
+          id: authUser.id,
+          name: u.name,
+          gender: u.gender,
+          birth_year: u.birthYear,
+          birth_month: u.birthMonth,
+          birth_day: u.birthDay,
+          birth_hour: u.birthHour,
+          birth_minute: u.birthMinute,
+          birthplace_province: u.birthplace.province,
+          birthplace_city: u.birthplace.city,
+          birthplace_district: u.birthplace.district,
+          birthplace_longitude: u.birthplace.longitude,
+          birth_calendar: u.birthCalendar,
+          is_leap_month: u.isLeapMonth,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' }).then(({ error }) => {
+          if (error) console.error('sync profile error:', error);
+        });
+      }
+    }
+  }, [users, authUser]);
 
   const deleteUser = useCallback((id: string) => {
     const updated = users.filter(u => u.id !== id);
@@ -247,23 +327,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const addHistory = useCallback((entry: Omit<QueryHistory, 'timestamp'>) => {
     const newEntry: QueryHistory = { ...entry, timestamp: new Date().toISOString() };
-    const updated = [newEntry, ...history].slice(0, 200); // 最多保留200条
+    const updated = [newEntry, ...history].slice(0, 200);
     setHistory(updated);
-    saveHistory(updated);
-  }, [history]);
+    saveHistoryLocal(updated);
+
+    // 同步到 Supabase
+    if (authUser) {
+      supabase.from('query_history').insert({
+        user_id: authUser.id,
+        module: entry.module,
+        query_params: entry.queryParams || {},
+        result_summary: entry.resultSummary || '',
+      }).then(({ error }) => {
+        if (error) console.error('sync history error:', error);
+      });
+    }
+  }, [history, authUser]);
 
   const clearHistory = useCallback((module?: string) => {
     if (module) {
       const updated = history.filter(h => h.module !== module);
       setHistory(updated);
-      saveHistory(updated);
+      saveHistoryLocal(updated);
     } else {
       setHistory([]);
-      saveHistory([]);
+      saveHistoryLocal([]);
     }
   }, [history]);
 
-  // 兼容旧版 setProfile（直接更新 currentUser）
   const setProfile = useCallback((p: Partial<UserProfile>) => {
     if (!currentUser) {
       setProfileState(prev => ({ ...prev, ...p }));
@@ -279,9 +370,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (p.birthplace) {
       const parts = p.birthplace.split(',');
       updates.birthplace = {
-        province: parts[0] || '',
-        city: parts[1] || '',
-        district: parts[2] || '',
+        province: parts[0] || '', city: parts[1] || '', district: parts[2] || '',
         longitude: p.birthplaceLng || currentUser.birthplace.longitude,
       };
     }
@@ -297,16 +386,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const hasProfile = !!(currentUser || (profile.gender && profile.birthYear));
 
-  // 派生数据
   const age = useMemo(() => {
     const u = currentUser;
     if (!u) return null;
     const today = new Date();
     let age = today.getFullYear() - u.birthYear;
     const m = today.getMonth() + 1;
-    if (m < u.birthMonth || (m === u.birthMonth && today.getDate() < u.birthDay)) {
-      age--;
-    }
+    if (m < u.birthMonth || (m === u.birthMonth && today.getDate() < u.birthDay)) age--;
     return age;
   }, [currentUser]);
 
@@ -324,6 +410,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       currentUser, users, addUser, updateUser, deleteUser, switchUser,
       history, addHistory, clearHistory,
       age, zodiacAnimal, zodiacSign,
+      syncing, synced,
     }}>
       {children}
     </UserContext.Provider>

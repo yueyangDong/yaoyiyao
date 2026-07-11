@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { UserCircle, Plus } from 'lucide-react';
 import { useUser, getCityLng } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { LunarYear } from 'lunar-typescript';
@@ -37,7 +38,8 @@ const LUNAR_MONTH_OPTIONS = [
 const LUNAR_DAY_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }));
 
 export default function Profile() {
-  const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history } = useUser();
+  const { user: authUser } = useAuth();
+  const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history, syncing, synced } = useUser();
   const [editing, setEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -168,6 +170,26 @@ export default function Profile() {
         </Title>
         <Button type="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={openNew}>新增档案</Button>
       </div>
+
+      {/* 云端同步状态 */}
+      {authUser ? (
+        <Card size="small" style={{ marginBottom: 20, borderColor: 'var(--border-light)' }}>
+          <Space>
+            <Tag color={synced ? 'green' : 'processing'}>{syncing ? '同步中...' : synced ? '已同步到云端' : '未同步'}</Tag>
+            <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+              {authUser.email}
+            </Text>
+          </Space>
+        </Card>
+      ) : (
+        <Alert
+          message="未登录"
+          description="登录后数据自动同步到云端，换设备也能找回档案和历史记录。"
+          type="warning" showIcon
+          style={{ marginBottom: 20, borderRadius: 16 }}
+          action={<a href="/auth"><Button type="primary" size="small">去登录</Button></a>}
+        />
+      )}
 
       {users.length === 0 && !editing && (
         <Alert

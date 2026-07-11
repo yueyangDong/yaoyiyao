@@ -20,6 +20,7 @@
     "@freizl/yijing": "^2.1.0",
     "@react-three/drei": "^9.114.0",
     "@react-three/fiber": "^8.17.0",
+    "@supabase/supabase-js": "^2.110.2",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.7.0",
     "@ziweijs/core": "^0.3.0",

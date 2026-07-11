@@ -1,9 +1,11 @@
 import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import { ToastProvider } from './components/Toast';
 import AppLayout from './components/Layout';
 import Home from './pages/Home';
+import Auth from './pages/Auth';
 import PageSkeleton from './components/Skeleton';
 
 const Bazi = React.lazy(() => import('./pages/Bazi'));
@@ -21,8 +23,9 @@ const DailyFortune = React.lazy(() => import('./pages/DailyFortune'));
 
 export default function App() {
   return (
-    <UserProvider>
-      <ToastProvider>
+    <AuthProvider>
+      <UserProvider>
+        <ToastProvider>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
@@ -62,9 +65,11 @@ export default function App() {
             <Route path="/profile" element={
               <Suspense fallback={<PageSkeleton />}><Profile /></Suspense>
             } />
+            <Route path="/auth" element={<Auth />} />
           </Route>
         </Routes>
       </ToastProvider>
     </UserProvider>
+    </AuthProvider>
   );
 }
