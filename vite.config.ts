@@ -6,7 +6,8 @@ import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/yaoyiyao/' : '/',
   root: __dirname,
   plugins: [
     react(),
@@ -42,4 +43,4 @@ export default defineConfig({
       ignored: ['**/NTUSER.DAT', '**/C:/Users/**'],
     },
   },
-});
+}));
