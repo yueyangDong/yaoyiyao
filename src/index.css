@@ -638,6 +638,15 @@ p {
   }
 }
 
+/* ========== 命宫脉冲动画 ========== */
+@keyframes mingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(199,91,91,0.15); }
+  50% { box-shadow: 0 0 0 6px rgba(199,91,91,0); }
+}
+.ming-pulse {
+  animation: mingPulse 3s ease-in-out infinite;
+}
+
 /* ========== 移动端降级 ========== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

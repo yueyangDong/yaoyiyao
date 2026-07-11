@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 const { Title, Text } = Typography;
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +15,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -62,9 +63,26 @@ export default function Auth() {
 
   const switchMode = () => {
     setIsRegister(!isRegister);
+    setForgotMode(false);
     setPassword('');
     setPassword2('');
     setSuccess(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      message.warning('请输入邮箱地址');
+      return;
+    }
+    setLoading(true);
+    const { error } = await resetPassword(email);
+    setLoading(false);
+    if (error) {
+      message.error(error);
+      return;
+    }
+    message.success('重置密码邮件已发送，请检查邮箱');
+    setForgotMode(false);
   };
 
   if (success) {
@@ -94,86 +112,136 @@ export default function Auth() {
 
   return (
     <div style={{ maxWidth: 400, margin: '60px auto', padding: '0 16px' }}>
-      <Card style={{
-        background: 'var(--bg-card-solid)',
-        borderColor: 'var(--border-light)',
-        boxShadow: 'var(--shadow-md)',
-      }}>
-        <Title level={3} style={{
-          textAlign: 'center',
-          color: 'var(--text-primary)',
-          fontFamily: 'var(--font-display)',
-          marginBottom: 4,
+      {forgotMode ? (
+        <Card style={{
+          background: 'var(--bg-card-solid)',
+          borderColor: 'var(--border-light)',
+          boxShadow: 'var(--shadow-md)',
         }}>
-          {isRegister ? '注册' : '登录'}
-        </Title>
-        <Text style={{
-          display: 'block', textAlign: 'center',
-          color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16,
-        }}>
-          {isRegister
-            ? '注册即登录，数据自动同步到云端'
-            : '登录后数据自动同步到云端'}
-        </Text>
-
-        {isRegister && (
-          <Alert
-            type="info"
-            showIcon
-            icon={<InfoCircleOutlined />}
-            message="注册即自动登录，无需邮箱确认"
-            style={{ marginBottom: 16, borderRadius: 10, fontSize: 12 }}
-          />
-        )}
-
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Input
-            size="large"
-            placeholder="邮箱"
-            prefix={<MailOutlined style={{ color: 'var(--text-secondary)' }} />}
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onPressEnter={handleSubmit}
-          />
-          <Input.Password
-            size="large"
-            placeholder="密码（至少6位）"
-            prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onPressEnter={handleSubmit}
-          />
-          {isRegister && (
-            <Input.Password
+          <Title level={3} style={{
+            textAlign: 'center', color: 'var(--text-primary)',
+            fontFamily: 'var(--font-display)', marginBottom: 4,
+          }}>
+            重置密码
+          </Title>
+          <Text style={{
+            display: 'block', textAlign: 'center',
+            color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16,
+          }}>
+            输入注册邮箱，我们将发送重置链接
+          </Text>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Input
               size="large"
-              placeholder="再次输入密码"
-              prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
-              value={password2}
-              onChange={e => setPassword2(e.target.value)}
-              onPressEnter={handleSubmit}
+              placeholder="邮箱"
+              prefix={<MailOutlined style={{ color: 'var(--text-secondary)' }} />}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onPressEnter={handleForgotPassword}
+            />
+            <Button
+              type="primary" block size="large"
+              loading={loading}
+              onClick={handleForgotPassword}
+              style={{ height: 44 }}
+            >
+              发送重置邮件
+            </Button>
+          </Space>
+          <Divider style={{ borderColor: 'var(--border-light)', margin: '16px 0' }} />
+          <div style={{ textAlign: 'center' }}>
+            <Button type="link" onClick={() => setForgotMode(false)}>
+              返回登录
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <Card style={{
+          background: 'var(--bg-card-solid)',
+          borderColor: 'var(--border-light)',
+          boxShadow: 'var(--shadow-md)',
+        }}>
+          <Title level={3} style={{
+            textAlign: 'center',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-display)',
+            marginBottom: 4,
+          }}>
+            {isRegister ? '注册' : '登录'}
+          </Title>
+          <Text style={{
+            display: 'block', textAlign: 'center',
+            color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16,
+          }}>
+            {isRegister
+              ? '注册即登录，数据自动同步到云端'
+              : '登录后数据自动同步到云端'}
+          </Text>
+
+          {isRegister && (
+            <Alert
+              type="info"
+              showIcon
+              icon={<InfoCircleOutlined />}
+              message="注册即自动登录，无需邮箱确认"
+              style={{ marginBottom: 16, borderRadius: 10, fontSize: 12 }}
             />
           )}
 
-          <Button
-            type="primary"
-            block
-            size="large"
-            loading={loading}
-            onClick={handleSubmit}
-            style={{ height: 44 }}
-          >
-            {isRegister ? '注册并登录' : '登录'}
-          </Button>
-        </Space>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Input
+              size="large"
+              placeholder="邮箱"
+              prefix={<MailOutlined style={{ color: 'var(--text-secondary)' }} />}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onPressEnter={handleSubmit}
+            />
+            <Input.Password
+              size="large"
+              placeholder="密码（至少6位）"
+              prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onPressEnter={handleSubmit}
+            />
+            {isRegister && (
+              <Input.Password
+                size="large"
+                placeholder="再次输入密码"
+                prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
+                value={password2}
+                onChange={e => setPassword2(e.target.value)}
+                onPressEnter={handleSubmit}
+              />
+            )}
 
-        <Divider style={{ borderColor: 'var(--border-light)', margin: '16px 0' }} />
+            <Button
+              type="primary"
+              block
+              size="large"
+              loading={loading}
+              onClick={handleSubmit}
+              style={{ height: 44 }}
+            >
+              {isRegister ? '注册并登录' : '登录'}
+            </Button>
+          </Space>
 
-        <div style={{ textAlign: 'center' }}>
-          <Button type="link" onClick={switchMode}>
-            {isRegister ? '已有账号？去登录' : '没有账号？去注册'}
-          </Button>
-        </div>
-      </Card>
+          <Divider style={{ borderColor: 'var(--border-light)', margin: '16px 0' }} />
+
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Button type="link" onClick={switchMode}>
+              {isRegister ? '已有账号？去登录' : '没有账号？去注册'}
+            </Button>
+            {!isRegister && (
+              <Button type="link" onClick={() => { setForgotMode(true); }}>
+                忘记密码？
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

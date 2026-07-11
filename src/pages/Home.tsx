@@ -253,6 +253,40 @@ export default function Home() {
         ) : null}
       </motion.div>
 
+      {/* 最近使用 */}
+      {(() => {
+        const recentModules = [...new Set(history.map(h => h.module))]
+          .slice(0, 3)
+          .map(key => MODULES.find(m => m.key === key))
+          .filter(Boolean);
+        if (recentModules.length === 0) return null;
+        return (
+          <div style={{ maxWidth: 800, margin: '0 auto 16px', position: 'relative' }}>
+            <Text style={{ fontSize: 12, color: 'var(--text-disabled)', marginBottom: 8, display: 'block' }}>
+              最近使用
+            </Text>
+            <Space wrap>
+              {recentModules.map(mod => (
+                <Button
+                  key={mod!.key}
+                  size="small"
+                  onClick={() => navigate(mod!.path)}
+                  style={{
+                    borderRadius: 8,
+                    border: '1px solid var(--border-medium)',
+                    color: mod!.color,
+                    fontSize: 13,
+                  }}
+                >
+                  {mod!.icon}
+                  <span style={{ marginLeft: 6 }}>{mod!.title}</span>
+                </Button>
+              ))}
+            </Space>
+          </div>
+        );
+      })()}
+
       {/* 快捷入口 */}
       <div style={{
         textAlign: 'right', maxWidth: 800, margin: '0 auto 24px',

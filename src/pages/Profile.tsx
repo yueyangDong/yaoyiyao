@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Card, Typography, Button, Form, Input, Radio, InputNumber,
   Select, Cascader, Divider, Space, Tag, message, Popconfirm,
@@ -12,6 +12,8 @@ import { UserCircle, Plus } from 'lucide-react';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
+import ModuleCompare from '../components/ModuleCompare';
+import ShareButton from '../components/ShareButton';
 import { pcaCode } from 'cn-division';
 import { LunarYear } from 'lunar-typescript';
 
@@ -41,6 +43,7 @@ export default function Profile() {
   const { user: authUser } = useAuth();
   const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history, syncing, synced } = useUser();
   const [editing, setEditing] = useState(false);
+  const compareRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
@@ -399,6 +402,20 @@ export default function Profile() {
             );
           })()}
         </Card>
+      )}
+
+      {/* 模块交叉对比 */}
+      {currentUser && (
+        <div ref={compareRef} style={{ marginTop: 20 }}>
+          <ModuleCompare />
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <ShareButton
+              targetRef={compareRef}
+              fileName="爻一爻-八字紫微对比"
+              buttonText="保存对比图"
+            />
+          </div>
+        </div>
       )}
     </div>
   );

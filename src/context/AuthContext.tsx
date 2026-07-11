@@ -9,11 +9,13 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthState>({
   user: null, session: null, loading: true,
   signUp: async () => ({}), signIn: async () => ({}), signOut: async () => {},
+  resetPassword: async () => ({}),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -63,8 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/auth',
+      });
+      if (error) return { error: error.message };
+      return {};
+    } catch (e: any) {
+      return { error: e.message || '发送失败，请重试' };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

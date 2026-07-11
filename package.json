@@ -29,6 +29,7 @@
     "canvas-confetti": "^1.9.4",
     "cn-division": "^2026.0.0",
     "framer-motion": "^12.42.2",
+    "html2canvas": "^1.4.1",
     "iching-shifa": "^1.8.0",
     "lucide-react": "^1.23.0",
     "lunar-typescript": "^1.6.0",

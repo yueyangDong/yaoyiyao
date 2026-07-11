@@ -10,6 +10,7 @@ import {
   Star, Sun, Moon, Calendar, BookOpen, Sparkles,
   AlertTriangle, Lightbulb, ClipboardList, BarChart3, Home,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -74,6 +75,58 @@ const SIHUA_EFFECT: Record<string, string> = {
 
 const SIHUA_COLORS: Record<string, string> = {
   '禄': 'var(--wx-wood)', '权': 'var(--wx-water)', '科': 'var(--wx-earth)', '忌': 'var(--wx-fire)',
+};
+
+// 星曜吉凶分类
+const JI_STARS = new Set(['紫微','天府','天相','天梁','天同','太阴','太阳','文昌','文曲','天魁','天钺','左辅','右弼','禄存','天马']);
+const XIONG_STARS = new Set(['七杀','破军','廉贞','贪狼','巨门','擎羊','陀罗','火星','铃星','地空','地劫']);
+const GONG_JI_HINT: Record<string, string> = {
+  '命宫': '命自我立，福自己求。吉星是天赋，煞星是功课，都是你独一无二的生命底色',
+  '兄弟': '四海之内皆兄弟。星曜聚散，映照你与世界链接的方式',
+  '夫妻': '百年修得同船渡。夫妻宫里的每一颗星，都是你爱与被爱的能力',
+  '子女': '儿孙自有儿孙福。此宫不止看子息，更看你给予世界的创造力',
+  '财帛': '君子爱财，取之有道。财帛宫是你能量的流动，不只是数字的游戏',
+  '疾厄': '身安则道隆。疾厄宫不是诅咒，是提醒你爱惜这副行走世间的皮囊',
+  '迁移': '读万卷书，行万里路。迁移宫是你看向远方时，世界回望你的眼神',
+  '交友': '近朱者赤，近墨者黑。你遇到的人，都是你当下频率吸引来的镜子',
+  '官禄': '在其位，谋其政。官禄宫不是职位高低，而是你为世界贡献价值的方式',
+  '田宅': '此心安处是吾乡。田宅宫是你的根——根深才能叶茂，心安即是归处',
+  '福德': '知足者富，自胜者强。福德宫是你内心的花园，种什么因，得什么果',
+  '父母': '身体发肤，受之父母。此宫承载着你来时的路，也映照着你去往的方向',
+};
+
+// 哲理名言
+const PHILOSOPHY_QUOTES = [
+  '「知人者智，自知者明」—— 老子',
+  '「命由己造，相由心生」—— 《了凡四训》',
+  '「天行健，君子以自强不息」—— 《易经》',
+  '「祸兮福之所倚，福兮祸之所伏」—— 老子',
+  '「积善之家，必有余庆」—— 《易经》',
+];
+
+function getRandomQuote(): string {
+  return PHILOSOPHY_QUOTES[Math.floor(Math.random() * PHILOSOPHY_QUOTES.length)];
+}
+
+function getPalaceScore(gong: any): { level: '吉' | '中' | '凶'; jiCount: number; xiongCount: number; sihuaGood: number; sihuaBad: number } {
+  let jiCount = 0, xiongCount = 0, sihuaGood = 0, sihuaBad = 0;
+  const stars = [...(gong.majorStars || []), ...(gong.minorStars || []).map((s: string) => ({ name: s, sihua: null }))];
+  for (const s of stars) {
+    if (JI_STARS.has(s.name)) jiCount++;
+    if (XIONG_STARS.has(s.name)) xiongCount++;
+    if (s.sihua === '禄' || s.sihua === '权' || s.sihua === '科') sihuaGood++;
+    if (s.sihua === '忌') sihuaBad++;
+  }
+  const score = (jiCount + sihuaGood * 2) - (xiongCount + sihuaBad * 2);
+  if (score >= 2) return { level: '吉', jiCount, xiongCount, sihuaGood, sihuaBad };
+  if (score <= -1) return { level: '凶', jiCount, xiongCount, sihuaGood, sihuaBad };
+  return { level: '中', jiCount, xiongCount, sihuaGood, sihuaBad };
+}
+
+const PALACE_LEVEL_STYLE: Record<string, { border: string; bg: string; tag: string }> = {
+  '吉': { border: '2px solid rgba(91,140,90,0.3)', bg: 'rgba(91,140,90,0.03)', tag: '#5B8C5A' },
+  '中': { border: '1px solid var(--border-light)', bg: 'var(--bg-card-solid)', tag: 'var(--text-secondary)' },
+  '凶': { border: '2px solid rgba(199,91,91,0.25)', bg: 'rgba(199,91,91,0.03)', tag: '#C75B5B' },
 };
 
 // SVG星图组件 — 圆形十二宫命盘
@@ -398,9 +451,9 @@ export default function Ziwei() {
 
   const getStarColor = (star: any): string => {
     if (star.sihua) return SIHUA_COLORS[star.sihua] || 'var(--text-secondary)';
-    const ziweiStars = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
-    if (ziweiStars.includes(star.name)) return 'var(--wx-metal)';
-    return 'var(--text-secondary)';
+    if (JI_STARS.has(star.name)) return 'green';
+    if (XIONG_STARS.has(star.name)) return 'red';
+    return 'default';
   };
 
   // 生成某宫的白话解读
@@ -440,6 +493,11 @@ export default function Ziwei() {
       if (s.sihua && SIHUA_EFFECT[s.sihua]) {
         parts.push(SIHUA_EFFECT[s.sihua]);
       }
+    }
+
+    // 添加哲理性结语
+    if (GONG_JI_HINT[gong.name]) {
+      parts.push(` ${GONG_JI_HINT[gong.name]}。`);
     }
 
     return parts.join('');
@@ -558,7 +616,11 @@ export default function Ziwei() {
       </Card>
 
       {ziweiData && (
-        <>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+        >
           {/* 结果头部：公历+农历对照 */}
           <Card style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <div style={{ textAlign: 'center' }}>
@@ -579,6 +641,29 @@ export default function Ziwei() {
             </div>
           </Card>
 
+          {/* 哲理引言 */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card style={{
+              marginBottom: 16,
+              border: '1px solid rgba(196,164,90,0.2)',
+              background: 'linear-gradient(135deg, rgba(196,164,90,0.04) 0%, rgba(255,255,255,0.6) 100%)',
+              textAlign: 'center',
+            }}>
+              <Text style={{
+                fontSize: 14,
+                color: 'var(--wx-earth)',
+                fontFamily: 'var(--font-display)',
+                letterSpacing: '0.04em',
+              }}>
+                {getRandomQuote()}
+              </Text>
+            </Card>
+          </motion.div>
+
           {/* SVG星图命盘 */}
           <Card title={<span style={{ color: 'var(--text-primary)' }}>命盘星图</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <StarChart
@@ -592,75 +677,207 @@ export default function Ziwei() {
             />
           </Card>
 
-          {/* 十二宫详情卡片 */}
-          <Card title={<span style={{ color: 'var(--text-primary)' }}>十二宫详解</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
-            <Row gutter={[12, 12]}>
-              {ziweiData.gongData.map((gong: any, idx: number) => {
-                const isMing = gong.name === '命宫';
-                const majorStars = gong.majorStars || [];
-                const minorStars = gong.minorStars || [];
-                const allStars = [...majorStars, ...minorStars.map((s: string) => ({ name: s, sihua: null, type: 'minor' }))];
+          {/* 十二宫详解 — 传统四列布局 */}
+          <Card
+            title={<span style={{ color: 'var(--text-primary)' }}>十二宫详解</span>}
+            style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}
+            extra={
+              <Space size={8}>
+                <Tag color="green" style={{ fontSize: 11 }}>吉星</Tag>
+                <Tag color="red" style={{ fontSize: 11 }}>煞星</Tag>
+                <Tag style={{ fontSize: 11, background: 'var(--wx-wood)', color: '#fff', border: 'none' }}>禄</Tag>
+                <Tag style={{ fontSize: 11, background: 'var(--wx-water)', color: '#fff', border: 'none' }}>权</Tag>
+                <Tag style={{ fontSize: 11, background: 'var(--wx-earth)', color: '#fff', border: 'none' }}>科</Tag>
+                <Tag style={{ fontSize: 11, background: 'var(--wx-fire)', color: '#fff', border: 'none' }}>忌</Tag>
+              </Space>
+            }
+          >
+            {(() => {
+              // 传统紫微命盘排列: 巳午未申 / 辰  酉 / 卯  戌 / 寅丑子亥
+              const TRADITIONAL_ORDER = ['兄弟','命宫','父母','福德','夫妻',null,null,'田宅','子女',null,null,'官禄','财帛','疾厄','迁移','交友'];
+              const gongMap: Record<string, any> = {};
+              for (const g of ziweiData.gongData) gongMap[g.name] = g;
 
-                return (
-                  <Col xs={24} sm={12} lg={8} key={idx}>
-                    <Card
-                      size="small"
-                      title={
-                        <Space size={4}>
-                          <Home size={14} style={{ color: 'var(--text-secondary)', marginRight: 2 }} />
-                          <Text strong style={{
-                            color: 'var(--text-primary)',
-                            fontSize: 15,
-                          }}>
-                            {gong.name}宫（{gong.stem}{gong.branch}宫）
-                          </Text>
-                          {gong.isLaiYin && <Tag style={{ fontSize: 10, background: 'rgba(196,164,90,0.08)', color: 'var(--wx-earth)', border: 'none' }}>来因</Tag>}
-                          {isMing && <Tag style={{ fontSize: 10, background: 'rgba(199,91,91,0.08)', color: 'var(--wx-fire)', border: 'none' }}>核心</Tag>}
-                        </Space>
-                      }
-                      style={{
-                        border: isMing ? '1px solid var(--border-light)' : '1px solid var(--border-light)',
-                        background: isMing ? 'rgba(0,0,0,0.02)' : 'var(--bg-card-solid)',
-                        height: '100%',
-                      }}
-                      styles={{ body: { padding: '10px 14px' } }}
-                    >
-                      {/* 星曜 */}
-                      <div style={{ marginBottom: 8 }}>
-                        <Text type="secondary" style={{ fontSize: 11 }}>主星：</Text>
-                        {majorStars.length > 0 ? majorStars.map((s: any, i: number) => (
-                          <Tag key={`ms-${i}`} color={getStarColor(s)} style={{ fontSize: 11, marginBottom: 2 }}>
-                            {s.name}{s.sihua ? `化${s.sihua}` : ''}
-                          </Tag>
-                        )) : <Tag style={{ fontSize: 10 }}>无主星</Tag>}
+              const rows: (any | null)[][] = [
+                [gongMap['兄弟'], gongMap['命宫'], gongMap['父母'], gongMap['福德']],
+                [gongMap['夫妻'], null, null, gongMap['田宅']],
+                [gongMap['子女'], null, null, gongMap['官禄']],
+                [gongMap['财帛'], gongMap['疾厄'], gongMap['迁移'], gongMap['交友']],
+              ];
 
-                        {minorStars.length > 0 && (
-                          <>
-                            <br />
-                            <Text type="secondary" style={{ fontSize: 11 }}>辅星：</Text>
-                            {minorStars.map((s: string, i: number) => (
-                              <Tag key={`ns-${i}`} color="default" style={{ fontSize: 10, marginBottom: 2 }}>{s}</Tag>
-                            ))}
-                          </>
-                        )}
-                      </div>
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {rows.map((row, ri) => (
+                    <div key={ri} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+                      {row.map((gong, ci) => {
+                        if (!gong) {
+                          const cellKey = `${ri}-${ci}`;
+                          // 只在第一个空格渲染中心装饰
+                          if (cellKey === '1-1') {
+                            return (
+                              <motion.div
+                                key="center-deco"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.6, ease: 'easeOut' }}
+                                style={{
+                                  gridRow: 'span 2',
+                                  gridColumn: 'span 2',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <div style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 16,
+                                  background: 'linear-gradient(135deg, rgba(196,164,90,0.05) 0%, rgba(0,0,0,0.02) 100%)',
+                                  border: '1px dashed rgba(196,164,90,0.15)',
+                                  minHeight: 120,
+                                }}>
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+                                  >
+                                    <span style={{
+                                      fontSize: 40,
+                                      fontFamily: 'var(--font-display)',
+                                      color: 'rgba(196,164,90,0.3)',
+                                      lineHeight: 1,
+                                      userSelect: 'none',
+                                    }}>
+                                      道
+                                    </span>
+                                  </motion.div>
+                                  <Text style={{
+                                    fontSize: 10,
+                                    color: 'var(--text-disabled)',
+                                    marginTop: 4,
+                                    letterSpacing: '0.04em',
+                                  }}>
+                                    一阴一阳之谓道
+                                  </Text>
+                                </div>
+                              </motion.div>
+                            );
+                          }
+                          return null;
+                        }
+                        const score = getPalaceScore(gong);
+                        const style = PALACE_LEVEL_STYLE[score.level];
+                        const isMing = gong.name === '命宫';
+                        const isShen = gong.isShenGong;
+                        const majorStars = gong.majorStars || [];
+                        const minorStars = gong.minorStars || [];
 
-                      {/* 大白话解释 */}
-                      <div style={{
-                        background: 'rgba(0,0,0,0.02)',
-                        padding: '8px 10px',
-                        borderRadius: 6,
-                        marginTop: 6,
-                      }}>
-                        <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7 }}>
-                          <BookOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />{getGongExplanation(gong)}
-                        </Text>
-                      </div>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
+                        const animDelay = (ri * 4 + ci) * 0.04;
+                        return (
+                          <motion.div
+                            key={gong.name}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: animDelay, duration: 0.35, ease: 'easeOut' }}
+                            className={isMing ? 'ming-pulse' : ''}
+                            style={{
+                              border: isMing ? style.border : `1px solid var(--border-light)`,
+                              borderLeft: `3px solid ${style.tag}`,
+                              borderRadius: 10,
+                              background: isMing ? style.bg : 'var(--bg-card-solid)',
+                              padding: '10px 12px',
+                              position: 'relative',
+                            }}
+                          >
+                            {/* 标题栏 */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                              <Text strong style={{
+                                fontSize: 13,
+                                color: isMing ? 'var(--wx-fire)' : 'var(--text-primary)',
+                              }}>
+                                {gong.name}
+                              </Text>
+                              <Space size={2}>
+                                {isMing && <Tag style={{ fontSize: 10, background: 'rgba(199,91,91,0.1)', color: 'var(--wx-fire)', border: 'none', padding: '0 4px', lineHeight: '16px' }}>命</Tag>}
+                                {isShen && <Tag style={{ fontSize: 10, background: 'rgba(196,164,90,0.1)', color: 'var(--wx-earth)', border: 'none', padding: '0 4px', lineHeight: '16px' }}>身</Tag>}
+                                <Tag style={{
+                                  fontSize: 10, padding: '0 4px', lineHeight: '16px',
+                                  background: score.level === '吉' ? 'rgba(91,140,90,0.1)' : score.level === '凶' ? 'rgba(199,91,91,0.1)' : 'rgba(0,0,0,0.04)',
+                                  color: style.tag, border: 'none',
+                                }}>
+                                  {score.level}
+                                </Tag>
+                              </Space>
+                            </div>
+
+                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 4 }}>
+                              {gong.stem}{gong.branch}宫
+                            </Text>
+
+                            {/* 星曜 */}
+                            <div style={{ marginBottom: 4 }}>
+                              {majorStars.length > 0 ? majorStars.map((s: any, i: number) => (
+                                <Tag key={`ms-${i}`} color={getStarColor(s)} style={{ fontSize: 10, marginBottom: 2, padding: '0 4px' }}>
+                                  {s.name}{s.sihua ? `化${s.sihua}` : ''}
+                                </Tag>
+                              )) : <Tag style={{ fontSize: 10, padding: '0 4px' }}>空宫</Tag>}
+                              {minorStars.filter((s: string) => JI_STARS.has(s) || XIONG_STARS.has(s)).slice(0, 2).map((s: string, i: number) => (
+                                <Tag key={`ns-${i}`} color={JI_STARS.has(s) ? 'green' : 'red'} style={{ fontSize: 10, marginBottom: 2, padding: '0 4px' }}>
+                                  {s}
+                                </Tag>
+                              ))}
+                              {minorStars.filter((s: string) => !JI_STARS.has(s) && !XIONG_STARS.has(s)).length > 0 && (
+                                <Text type="secondary" style={{ fontSize: 10 }}>
+                                  +{minorStars.filter((s: string) => !JI_STARS.has(s) && !XIONG_STARS.has(s)).length}辅
+                                </Text>
+                              )}
+                            </div>
+
+                            {/* 一句话提示 */}
+                            <Text style={{ fontSize: 10, color: 'var(--text-disabled)', lineHeight: 1.4 }}>
+                              {GONG_JI_HINT[gong.name]}
+                            </Text>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </Card>
+
+          {/* 十二宫白话解读 — 折叠式详情 */}
+          <Card title={<span style={{ color: 'var(--text-primary)' }}>各宫白话解读</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+            {ziweiData.gongData.map((gong: any, idx: number) => {
+              const score = getPalaceScore(gong);
+              return (
+                <div key={idx} style={{
+                  padding: '10px 0',
+                  borderBottom: idx < ziweiData.gongData.length - 1 ? '1px solid var(--border-light)' : 'none',
+                }}>
+                  <Space style={{ marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{gong.name}宫</Text>
+                    <Tag style={{
+                      fontSize: 10, padding: '0 4px', lineHeight: '16px',
+                      background: score.level === '吉' ? 'rgba(91,140,90,0.1)' : score.level === '凶' ? 'rgba(199,91,91,0.1)' : 'rgba(0,0,0,0.04)',
+                      color: PALACE_LEVEL_STYLE[score.level].tag, border: 'none',
+                    }}>
+                      {score.level} · 吉{score.jiCount} 煞{score.xiongCount}
+                      {score.sihuaGood > 0 && ` 化吉×${score.sihuaGood}`}
+                      {score.sihuaBad > 0 && ` 化忌×${score.sihuaBad}`}
+                    </Tag>
+                  </Space>
+                  <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7, display: 'block' }}>
+                    <BookOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />
+                    {getGongExplanation(gong)}
+                  </Text>
+                </div>
+              );
+            })}
           </Card>
 
           {/* 命盘总结 */}
@@ -690,11 +907,27 @@ export default function Ziwei() {
 
             <Card size="small" title={<span><Sparkles size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />整体运势</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
               <Paragraph style={{ fontSize: 14, marginBottom: 0, color: 'var(--text-body)' }}>
-                综合来看，命盘格局清朗，整体运势不错。建议多关注命宫和官禄宫所指引的方向，
-                发挥命盘中吉星的优势，同时对化忌所在的宫位多花些心思经营。
-                记住：紫微斗数不是让你认命，而是帮你更好地了解自己的优势和短板，
-                在人生的每个阶段做出更明智的选择。
+                {(() => {
+                  const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
+                  const jiNames = results.filter((r: { level: string; name: string }) => r.level === '吉').map((r: { name: string }) => r.name);
+                  const xiongNames = results.filter((r: { level: string; name: string }) => r.level === '凶').map((r: { name: string }) => r.name);
+
+                  let summary = '';
+                  const jiCount = jiNames.length;
+                  if (jiCount >= 4) summary += `命盘整体格局较好，${jiNames.slice(0, 3).join('、')}等${jiCount}宫呈吉象。`;
+                  else if (jiCount >= 2) summary += `命盘${jiNames.join('、')}宫位较吉，其他宫位需多经营。`;
+                  else summary += '命盘吉星分布较散，各方面需稳扎稳打。';
+
+                  if (xiongNames.length > 0) summary += ` ${xiongNames.join('、')}宫有煞星/化忌，建议在这些领域多花心思。`;
+
+                  summary += ' 命盘不是宿命——吉星需善用，煞星可在磨砺中成长。了解优势与短板，在人生每个阶段做出更明智的选择。';
+                  return summary;
+                })()}
               </Paragraph>
+              <Divider style={{ margin: '12px 0' }} />
+              <Text style={{ fontSize: 12, color: 'var(--wx-earth)', fontStyle: 'italic', display: 'block', textAlign: 'center' }}>
+                {getRandomQuote()}
+              </Text>
             </Card>
           </Card>
 
@@ -713,7 +946,7 @@ export default function Ziwei() {
           </Card>
 
           <Alert message="以上排盘结果仅供娱乐参考。禄=红 权=蓝 科=绿 忌=橙 紫=十四主星。命理是工具，不是宿命。" type="warning" showIcon />
-        </>
+        </motion.div>
       )}
     </div>
   );

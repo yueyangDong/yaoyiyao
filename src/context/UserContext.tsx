@@ -224,11 +224,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!cancelled && !error) {
         if (data) {
           const profile = profileToStoredUser(authUser.id, data);
-          const updated = [profile, ...users.filter(u => u.id !== authUser.id)];
-          setUsers(updated);
-          saveUsers(updated);
-          setCurrentUserId(authUser.id);
-          saveCurrentUserId(authUser.id);
+          const uid = authUser.id;
+          setUsers(prev => {
+            const updated = [profile, ...prev.filter(u => u.id !== uid)];
+            saveUsers(updated);
+            return updated;
+          });
+          setCurrentUserId(uid);
+          saveCurrentUserId(uid);
 
           // 拉取云历史
           const { data: cloudHistory } = await supabase
