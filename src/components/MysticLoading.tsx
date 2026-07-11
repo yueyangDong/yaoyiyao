@@ -28,7 +28,7 @@ export default function MysticLoading({ text = '推演中...', done = false }: M
           style={{
             width: 64, height: 64, borderRadius: '50%',
             border: '2px solid transparent',
-            borderTopColor: '#1A1A1A',
+            borderTopColor: 'var(--text-primary)',
             borderRightColor: 'rgba(0,0,0,0.15)',
             borderBottomColor: 'rgba(0,0,0,0.06)',
             marginBottom: 24,
@@ -41,9 +41,9 @@ export default function MysticLoading({ text = '推演中...', done = false }: M
           transition={{ type: 'spring', stiffness: 200 }}
           style={{
             width: 64, height: 64, borderRadius: '50%',
-            background: '#1A1A1A',
+            background: 'var(--text-primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 28, marginBottom: 24,
+            color: 'var(--text-inverse)', fontSize: 28, marginBottom: 24,
           }}
         >
           ✓
@@ -55,7 +55,7 @@ export default function MysticLoading({ text = '推演中...', done = false }: M
         transition={{ duration: 1.5, repeat: done ? 0 : Infinity, ease: 'easeInOut' }}
       >
         <Text style={{
-          color: done ? '#5B8C5A' : 'var(--text-secondary)',
+          color: done ? 'var(--module-green)' : 'var(--text-secondary)',
           fontSize: 16,
           fontFamily: 'var(--font-title)',
           fontWeight: 500,

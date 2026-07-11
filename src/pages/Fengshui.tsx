@@ -358,7 +358,7 @@ export default function Fengshui() {
               return (
                 <div key={dir} style={{
                   marginBottom: 12, padding: '10px 14px', borderRadius: 8,
-                  background: isJi ? '#ffffff' : 'rgba(199,91,91,0.03)',
+                  background: isJi ? 'var(--text-inverse)' : 'rgba(199,91,91,0.03)',
                   border: `1px solid ${isJi ? 'var(--border-light)' : 'rgba(199,91,91,0.08)'}`,
                 }}>
                   <Text strong style={{ color: isJi ? 'var(--text-primary)' : 'var(--text-body)' }}>

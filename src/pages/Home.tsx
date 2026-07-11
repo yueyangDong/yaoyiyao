@@ -17,77 +17,77 @@ const MODULES = [
     key: 'daily', path: '/daily', title: '每日一爻',
     slogan: '黄历 · 天气 · 每日一签',
     desc: '今日运气怎么样？黄历宜忌、天气出行、每日灵签、幸运指南。',
-    color: '#C4A45A',
+    color: 'var(--module-gold)',
     icon: <Sun size={28} strokeWidth={1.5} />,
   },
   {
     key: 'bazi', path: '/bazi', title: '八字排盘',
     slogan: '解读你的天赋密码',
     desc: '排出四柱八字，看五行旺衰、十神关系、大运流年走势。',
-    color: '#5B8C5A',
+    color: 'var(--module-green)',
     icon: <Binary size={28} strokeWidth={1.5} />,
   },
   {
     key: 'ziwei', path: '/ziwei', title: '紫微斗数',
     slogan: '十二宫星曜揭示人生',
     desc: '排出紫微命盘，看十四主星落宫、四化飞星吉凶。',
-    color: '#4A5B6B',
+    color: 'var(--module-blue)',
     icon: <Star size={28} strokeWidth={1.5} />,
   },
   {
     key: 'liuyao', path: '/liuyao', title: '六爻占卜',
     slogan: '一事一问 · 铜钱问卦',
     desc: '默念问题，模拟铜钱抛掷，看本卦变卦白话解读。',
-    color: '#C4A45A',
+    color: 'var(--module-gold)',
     icon: <Sparkles size={28} strokeWidth={1.5} />,
   },
   {
     key: 'lingqian', path: '/lingqian', title: '灵签抽签',
     slogan: '庙宇求签 · 观音灵签',
     desc: '诚心默念，经历签筒摇晃仪式，古风签诗解签。',
-    color: '#9B9B9B',
+    color: 'var(--module-gray)',
     icon: <ScrollText size={28} strokeWidth={1.5} />,
   },
   {
     key: 'meihua', path: '/meihua', title: '梅花易数',
     slogan: '三个数字 · 万物可占',
     desc: '输入三个数字即时演算，体用生克分析吉凶。',
-    color: '#C75B5B',
+    color: 'var(--module-red)',
     icon: <Flower2 size={28} strokeWidth={1.5} />,
   },
   {
     key: 'nayin', path: '/nayin', title: '纳音查询',
     slogan: '干支纳音 · 五行探秘',
     desc: '查询六十甲子纳音体系，干支对应的五行属性。',
-    color: '#5B8C5A',
+    color: 'var(--module-green)',
     icon: <Waves size={28} strokeWidth={1.5} />,
   },
   {
     key: 'fengshui', path: '/fengshui', title: '风水相宅',
     slogan: '八宅吉凶 · 人宅匹配',
     desc: '选择住宅坐向，用八宅派规则判断方位吉凶。',
-    color: '#C4A45A',
+    color: 'var(--module-gold)',
     icon: <Compass size={28} strokeWidth={1.5} />,
   },
   {
     key: 'dream', path: '/dream', title: '周公解梦',
     slogan: '千年解梦智慧',
     desc: '输入梦到关键词，9大分类500+梦境传统文化解读。',
-    color: '#4A5B6B',
+    color: 'var(--module-blue)',
     icon: <Moon size={28} strokeWidth={1.5} />,
   },
   {
     key: 'ancient', path: '/ancient', title: '古籍经典',
     slogan: '易经 · 道德经 · 论语',
     desc: '浏览中华古籍经典，原文对照白话文解释，轻松读懂先贤智慧。',
-    color: '#5B8C5A',
+    color: 'var(--module-green)',
     icon: <BookOpen size={28} strokeWidth={1.5} />,
   },
   {
     key: 'profile', path: '/profile', title: '个人档案',
     slogan: '一次填写 · 全模块通用',
     desc: '创建档案后各模块自动读取出生信息，无需重复填写。',
-    color: '#9B9B9B',
+    color: 'var(--module-gray)',
     icon: <UserCircle size={28} strokeWidth={1.5} />,
   },
 ];
@@ -363,14 +363,6 @@ export default function Home() {
           </Col>
         ))}
       </Row>
-
-      {/* 自定义箭头hover效果 */}
-      <style>{`
-        .glass-card:hover .card-arrow {
-          transform: translateX(4px);
-          color: var(--text-primary);
-        }
-      `}</style>
 
       {/* 底部 */}
       <div style={{

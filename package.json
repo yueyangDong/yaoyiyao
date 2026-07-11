@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:gh": "tsc && vite build --base=/yaoyiyao/",
     "preview": "vite preview",
     "build:android": "npm run build && npx cap sync android && npx cap open android",
     "build:ios": "npm run build && npx cap sync ios && npx cap open ios",

@@ -37,13 +37,6 @@ export function PageSkeleton({ lines = 5, cardCount = 3 }: SkeletonProps) {
       {Array.from({ length: cardCount }, (_, i) => (
         <CardSkeleton key={i} lines={lines} />
       ))}
-      <style>{`
-        @keyframes shimmer {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

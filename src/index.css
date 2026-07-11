@@ -7,7 +7,7 @@
   --bg-card: rgba(255,255,255,0.85);
   --bg-card-solid: #FFFFFF;
   --bg-overlay: rgba(255,255,255,0.92);
-  --bg-input: rgba(0,0,0,0.02);
+  --bg-input: var(--overlay-02);
 
   /* === 文字层 === */
   --text-primary: #1A1A1A;
@@ -29,19 +29,19 @@
   --color-info: #4A5B6B;
 
   /* === 边框 === */
-  --border-light: rgba(0,0,0,0.06);
-  --border-medium: rgba(0,0,0,0.10);
-  --border-input: rgba(0,0,0,0.08);
+  --border-light: var(--overlay-06);
+  --border-medium: var(--overlay-10);
+  --border-input: var(--overlay-08);
 
   /* === 阴影 === */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.05);
-  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.06);
+  --shadow-xs: 0 1px 2px var(--overlay-02);
+  --shadow-sm: 0 1px 3px var(--overlay-04), 0 4px 16px var(--overlay-02);
+  --shadow-md: 0 2px 8px var(--overlay-06), 0 8px 32px rgba(0,0,0,0.05);
+  --shadow-lg: 0 4px 16px var(--overlay-08), 0 16px 48px var(--overlay-06);
 
   /* === 字体 === */
   --font-display: 'Noto Serif SC', 'Source Han Serif SC', '思源宋体', serif;
-  --font-title: 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  --font-title: 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', serif;
   --font-body: 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
   --font-mono: 'Inter', -apple-system, sans-serif;
 
@@ -78,6 +78,100 @@
   --transition-fast: 0.15s var(--ease-out);
   --transition-base: 0.25s var(--ease-out);
   --transition-slow: 0.35s var(--ease-out);
+
+  /* === 模块色 === */
+  --module-gold: #C4A45A;
+  --module-green: #5B8C5A;
+  --module-blue: #4A5B6B;
+  --module-gray: #9B9B9B;
+  --module-red: #C75B5B;
+  --module-brown: #8B7355;
+  --module-purple: #7B6BA8;
+  --module-teal: #5A9E96;
+  --module-orange: #D4943A;
+  --module-pink: #C47B8A;
+
+  /* === 半透明层 === */
+  --overlay-02: rgba(0,0,0,0.02);
+  --overlay-04: rgba(0,0,0,0.04);
+  --overlay-06: rgba(0,0,0,0.06);
+  --overlay-08: rgba(0,0,0,0.08);
+  --overlay-10: rgba(0,0,0,0.10);
+  --overlay-15: rgba(0,0,0,0.15);
+  --overlay-20: rgba(0,0,0,0.20);
+
+  /* === 楷体 === */
+  --font-kai: 'KaiTi', '楷体', 'STKaiti', 'SimSun', serif;
+
+  /* === 精简圆角 === */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+}
+
+/* ========== 暗色模式 ========== */
+[data-theme="dark"] {
+  --bg-warm: #0F0F14;
+  --bg-card: rgba(30,30,40,0.85);
+  --bg-card-solid: #1A1A24;
+  --bg-overlay: rgba(20,20,30,0.92);
+  --bg-input: rgba(255,255,255,0.04);
+
+  --text-primary: #E8E8EC;
+  --text-body: #B0B0B8;
+  --text-secondary: #707078;
+  --text-disabled: #484850;
+  --text-inverse: #0F0F14;
+
+  --border-light: rgba(255,255,255,0.06);
+  --border-medium: rgba(255,255,255,0.10);
+  --border-input: rgba(255,255,255,0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5);
+
+  --overlay-02: rgba(255,255,255,0.02);
+  --overlay-04: rgba(255,255,255,0.04);
+  --overlay-06: rgba(255,255,255,0.06);
+  --overlay-08: rgba(255,255,255,0.08);
+  --overlay-10: rgba(255,255,255,0.10);
+  --overlay-15: rgba(255,255,255,0.15);
+  --overlay-20: rgba(255,255,255,0.20);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-warm: #0F0F14;
+    --bg-card: rgba(30,30,40,0.85);
+    --bg-card-solid: #1A1A24;
+    --bg-overlay: rgba(20,20,30,0.92);
+    --bg-input: rgba(255,255,255,0.04);
+
+    --text-primary: #E8E8EC;
+    --text-body: #B0B0B8;
+    --text-secondary: #707078;
+    --text-disabled: #484850;
+    --text-inverse: #0F0F14;
+
+    --border-light: rgba(255,255,255,0.06);
+    --border-medium: rgba(255,255,255,0.10);
+    --border-input: rgba(255,255,255,0.08);
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.4);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5);
+
+    --overlay-02: rgba(255,255,255,0.02);
+    --overlay-04: rgba(255,255,255,0.04);
+    --overlay-06: rgba(255,255,255,0.06);
+    --overlay-08: rgba(255,255,255,0.08);
+    --overlay-10: rgba(255,255,255,0.10);
+    --overlay-15: rgba(255,255,255,0.15);
+    --overlay-20: rgba(255,255,255,0.20);
+  }
 }
 
 /* ========== 全局重置 ========== */
@@ -114,15 +208,15 @@ p {
 
 /* ========== 选择文本 ========== */
 ::selection {
-  background: rgba(0,0,0,0.08);
+  background: var(--overlay-08);
   color: var(--text-primary);
 }
 
 /* ========== 滚动条 ========== */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: var(--overlay-10); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--overlay-20); }
 
 /* ========== 背景纹理 ========== */
 .bg-texture {
@@ -134,9 +228,9 @@ p {
   inset: 0;
   opacity: 0.03;
   background-image:
-    radial-gradient(circle at 20% 50%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 80% 20%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 40% 80%, rgba(0,0,0,0.1) 0.5px, transparent 0.5px);
+    radial-gradient(circle at 20% 50%, var(--overlay-10) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 80% 20%, var(--overlay-10) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 40% 80%, var(--overlay-10) 0.5px, transparent 0.5px);
   background-size: 80px 80px, 100px 100px, 60px 60px;
   pointer-events: none;
 }
@@ -236,8 +330,8 @@ p {
   transition: all var(--transition-base) !important;
 }
 .ant-btn-default:hover {
-  background: rgba(0,0,0,0.03) !important;
-  border-color: rgba(0,0,0,0.2) !important;
+  background: var(--overlay-02) !important;
+  border-color: var(--overlay-20) !important;
   color: var(--text-primary) !important;
 }
 
@@ -249,7 +343,7 @@ p {
 }
 .ant-btn-text:hover {
   color: var(--text-primary) !important;
-  background: rgba(0,0,0,0.03) !important;
+  background: var(--overlay-02) !important;
 }
 
 /* Input */
@@ -263,12 +357,12 @@ p {
   transition: all 0.2s var(--ease-out) !important;
 }
 .ant-input:hover, .ant-input-number:hover {
-  border-color: rgba(0,0,0,0.15) !important;
+  border-color: var(--overlay-15) !important;
 }
 .ant-input:focus, .ant-input-number-focused {
   background: #fff !important;
   border-color: var(--text-primary) !important;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.04) !important;
+  box-shadow: 0 0 0 3px var(--overlay-04) !important;
 }
 .ant-input::placeholder { color: var(--text-disabled) !important; }
 
@@ -281,11 +375,11 @@ p {
   transition: all 0.2s var(--ease-out) !important;
 }
 .ant-select:hover .ant-select-selector {
-  border-color: rgba(0,0,0,0.15) !important;
+  border-color: var(--overlay-15) !important;
 }
 .ant-select-focused .ant-select-selector {
   border-color: var(--text-primary) !important;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.04) !important;
+  box-shadow: 0 0 0 3px var(--overlay-04) !important;
 }
 
 /* Tabs */
@@ -314,7 +408,7 @@ p {
   font-weight: 500 !important;
   border: none !important;
   padding: 3px 10px !important;
-  background: rgba(0,0,0,0.04) !important;
+  background: var(--overlay-04) !important;
   color: var(--text-body) !important;
 }
 
@@ -402,7 +496,7 @@ p {
   overflow: hidden;
 }
 .ant-table-thead > tr > th {
-  background: rgba(0,0,0,0.02) !important;
+  background: var(--overlay-02) !important;
   border-bottom: 1px solid var(--border-light) !important;
   font-weight: 500 !important;
   color: var(--text-secondary) !important;
@@ -465,6 +559,52 @@ p {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-8px) rotate(-3deg); }
+  75% { transform: translateX(8px) rotate(3deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+  50% { box-shadow: 0 10px 60px rgba(0,0,0,0.12); }
+}
+
+@keyframes flyOut {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  60% { transform: translateY(-10px) rotate(-15deg); opacity: 0.8; }
+  100% { transform: translateY(-40px) rotate(-25deg); opacity: 0; }
+}
+
+@keyframes flip {
+  0%, 100% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardArrow {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.shake-anim { animation: shake 0.12s infinite; }
+.pulse-anim { animation: pulse 2s infinite; }
+.fly-out-anim { animation: flyOut 1s ease-out forwards; }
+.flip-anim { animation: flip 0.8s infinite; }
+.shimmer-anim { background: linear-gradient(90deg, var(--overlay-04) 25%, var(--overlay-08) 50%, var(--overlay-04) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+.toast-slide-in { animation: toastSlideIn 0.3s var(--ease-out) forwards; }
+.card-arrow { transition: transform 0.2s var(--ease-out); }
+.card-arrow:hover { transform: translateX(3px); }
 
 .fade-in { animation: fadeIn 0.3s var(--ease-out) forwards; }
 .fade-in-up { animation: fadeInUp 0.3s var(--ease-out) forwards; }

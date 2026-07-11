@@ -241,7 +241,7 @@ export default function Dream() {
                 style={{
                   textAlign: 'center',
                   cursor: 'pointer',
-                  background: selectedCategory === key ? 'rgba(0,0,0,0.02)' : '#fff',
+                  background: selectedCategory === key ? 'rgba(0,0,0,0.02)' : 'var(--bg-card-solid)',
                   borderColor: selectedCategory === key ? 'var(--text-primary)' : 'var(--border-light)',
                 }}
                 onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}

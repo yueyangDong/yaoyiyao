@@ -302,7 +302,7 @@ export default function DailyFortune() {
               </Text>
               <Paragraph style={{
                 fontSize: 15, lineHeight: 2.4, textAlign: 'center',
-                fontFamily: '"KaiTi","楷体","STKaiti",serif',
+                fontFamily: 'var(--font-kai)',
                 whiteSpace: 'pre-line', color: 'var(--text-primary)',
                 marginBottom: 0,
               }}>

@@ -292,7 +292,7 @@ export default function Liuyao() {
         message="使用 iching-shifa 进行排盘，自动完成装卦（六亲、六兽、世应、纳甲）。"
         type="info"
         showIcon
-        style={{ marginBottom: 16, background: '#fff' }}
+        style={{ marginBottom: 16, background: 'var(--bg-card-solid)' }}
       />
 
       {/* 用神选择 */}
@@ -379,7 +379,7 @@ export default function Liuyao() {
       {/* 大衍过程日志 */}
       {dayanLog.length > 0 && (
         <Card title="大衍筮法推演日志" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
-          <div style={{ maxHeight: 300, overflow: 'auto', background: 'rgba(0,0,0,0.02)', color: 'var(--text-body)', padding: 16, borderRadius: 8, fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+          <div style={{ maxHeight: 300, overflow: 'auto', background: 'rgba(0,0,0,0.02)', color: 'var(--text-body)', padding: 16, borderRadius: 8, fontFamily: 'var(--font-mono)', fontSize: 13, whiteSpace: 'pre-wrap' }}>
             {dayanLog.join('\n')}
           </div>
         </Card>

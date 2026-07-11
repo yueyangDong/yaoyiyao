@@ -11,14 +11,14 @@ import { useUser } from '../context/UserContext';
 const { Title, Text } = Typography;
 
 const MODULE_INFO: Record<string, { title: string; icon: React.ReactNode; color: string }> = {
-  bazi: { title: '八字排盘', icon: <Binary size={16} strokeWidth={1.5} />, color: '#5B8C5A' },
-  ziwei: { title: '紫微斗数', icon: <Star size={16} strokeWidth={1.5} />, color: '#4A5B6B' },
-  nayin: { title: '纳音查询', icon: <Waves size={16} strokeWidth={1.5} />, color: '#5B8C5A' },
-  liuyao: { title: '六爻占卜', icon: <Sparkles size={16} strokeWidth={1.5} />, color: '#C4A45A' },
-  meihua: { title: '梅花易数', icon: <Flower2 size={16} strokeWidth={1.5} />, color: '#C75B5B' },
-  fengshui: { title: '风水相宅', icon: <Compass size={16} strokeWidth={1.5} />, color: '#C4A45A' },
-  dream: { title: '周公解梦', icon: <Moon size={16} strokeWidth={1.5} />, color: '#4A5B6B' },
-  lingqian: { title: '灵签抽签', icon: <ScrollText size={16} strokeWidth={1.5} />, color: '#9B9B9B' },
+  bazi: { title: '八字排盘', icon: <Binary size={16} strokeWidth={1.5} />, color: 'var(--module-green)' },
+  ziwei: { title: '紫微斗数', icon: <Star size={16} strokeWidth={1.5} />, color: 'var(--module-blue)' },
+  nayin: { title: '纳音查询', icon: <Waves size={16} strokeWidth={1.5} />, color: 'var(--module-green)' },
+  liuyao: { title: '六爻占卜', icon: <Sparkles size={16} strokeWidth={1.5} />, color: 'var(--module-gold)' },
+  meihua: { title: '梅花易数', icon: <Flower2 size={16} strokeWidth={1.5} />, color: 'var(--module-red)' },
+  fengshui: { title: '风水相宅', icon: <Compass size={16} strokeWidth={1.5} />, color: 'var(--module-gold)' },
+  dream: { title: '周公解梦', icon: <Moon size={16} strokeWidth={1.5} />, color: 'var(--module-blue)' },
+  lingqian: { title: '灵签抽签', icon: <ScrollText size={16} strokeWidth={1.5} />, color: 'var(--module-gray)' },
 };
 
 function formatDateTime(isoStr: string): string {
@@ -81,7 +81,7 @@ export default function History() {
           <List
             dataSource={filtered}
             renderItem={(item) => {
-              const info = MODULE_INFO[item.module] || { title: item.module, icon: null, color: '#999' };
+              const info = MODULE_INFO[item.module] || { title: item.module, icon: null, color: 'var(--text-secondary)' };
               return (
                 <List.Item
                   actions={[

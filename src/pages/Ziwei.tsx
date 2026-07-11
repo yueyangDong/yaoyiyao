@@ -117,7 +117,7 @@ function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarD
   const sihuaColors: Record<string, string> = { '禄': 'var(--wx-wood)', '权': 'var(--wx-water)', '科': 'var(--wx-earth)', '忌': 'var(--wx-fire)' };
 
   const starColor = (star: any) => {
-    if (star.sihua) return sihuaColors[star.sihua] || '#888';
+    if (star.sihua) return sihuaColors[star.sihua] || 'var(--text-secondary)';
     return 'var(--text-primary)';
   };
 
@@ -397,7 +397,7 @@ export default function Ziwei() {
   };
 
   const getStarColor = (star: any): string => {
-    if (star.sihua) return SIHUA_COLORS[star.sihua] || '#888';
+    if (star.sihua) return SIHUA_COLORS[star.sihua] || 'var(--text-secondary)';
     const ziweiStars = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
     if (ziweiStars.includes(star.name)) return 'var(--wx-metal)';
     return 'var(--text-secondary)';
@@ -620,7 +620,7 @@ export default function Ziwei() {
                       }
                       style={{
                         border: isMing ? '1px solid var(--border-light)' : '1px solid var(--border-light)',
-                        background: isMing ? 'rgba(0,0,0,0.02)' : '#fff',
+                        background: isMing ? 'rgba(0,0,0,0.02)' : 'var(--bg-card-solid)',
                         height: '100%',
                       }}
                       styles={{ body: { padding: '10px 14px' } }}
@@ -667,7 +667,7 @@ export default function Ziwei() {
           <Card title={<span><BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘总结</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
+                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.highlights.map((h: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{h}</li>
@@ -676,7 +676,7 @@ export default function Ziwei() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
+                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.warnings.map((w: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{w}</li>
@@ -688,7 +688,7 @@ export default function Ziwei() {
 
             <Divider />
 
-            <Card size="small" title={<span><Sparkles size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />整体运势</span>} style={{ background: '#fff', border: '1px solid var(--border-light)' }}>
+            <Card size="small" title={<span><Sparkles size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />整体运势</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
               <Paragraph style={{ fontSize: 14, marginBottom: 0, color: 'var(--text-body)' }}>
                 综合来看，命盘格局清朗，整体运势不错。建议多关注命宫和官禄宫所指引的方向，
                 发挥命盘中吉星的优势，同时对化忌所在的宫位多花些心思经营。

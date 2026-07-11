@@ -41,7 +41,7 @@ export default function AncientBooks() {
   const guaList = useMemo(() => {
     return (gua64 as any[]).map((g: any) => ({
       name: g.name,
-      symbol: GUA_SYMBOL_MAP[g.name] || '',
+      symbol: GUA_SYMBOL_MAP[g.name] || g.symbol || '',
       guaCi: g.gua_ci || '',
       tuanCi: g.tuan_ci || '',
       daXiang: g.da_xiang || '',
@@ -286,7 +286,7 @@ export default function AncientBooks() {
                   lineHeight: 2.2,
                   color: 'var(--text-primary)',
                   whiteSpace: 'pre-wrap',
-                  fontFamily: '"KaiTi", "楷体", "STKaiti", "SimSun", serif',
+                  fontFamily: 'var(--font-kai)',
                   marginBottom: 0,
                 }}>
                   {sec.original}
@@ -342,7 +342,7 @@ export default function AncientBooks() {
             >
               <Paragraph style={{
                 fontSize: 15, lineHeight: 2, color: 'var(--text-primary)',
-                fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
+                fontFamily: 'var(--font-kai)',
                 whiteSpace: 'pre-wrap', marginBottom: 4,
               }}>
                 {selectedGuaData.guaCi}
@@ -359,7 +359,7 @@ export default function AncientBooks() {
             >
               <Paragraph style={{
                 fontSize: 14, lineHeight: 2, color: 'var(--text-body)',
-                fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
+                fontFamily: 'var(--font-kai)',
                 whiteSpace: 'pre-wrap', marginBottom: 4,
               }}>
                 {selectedGuaData.tuanCi}
@@ -376,7 +376,7 @@ export default function AncientBooks() {
             >
               <Paragraph style={{
                 fontSize: 14, lineHeight: 2, color: 'var(--text-body)',
-                fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
+                fontFamily: 'var(--font-kai)',
                 whiteSpace: 'pre-wrap', marginBottom: 4,
               }}>
                 {selectedGuaData.daXiang}
@@ -394,7 +394,7 @@ export default function AncientBooks() {
               {selectedGuaData.yaoCi.map((yc: string, i: number) => (
                 <Paragraph key={i} style={{
                   fontSize: 13, lineHeight: 2, color: 'var(--text-body)',
-                  fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
+                  fontFamily: 'var(--font-kai)',
                   whiteSpace: 'pre-wrap', marginBottom: 6,
                 }}>
                   {yc}

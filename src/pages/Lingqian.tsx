@@ -7,7 +7,7 @@ import {
   RedoOutlined, FireOutlined,
 } from '@ant-design/icons';
 import { ScrollText, Shuffle } from 'lucide-react';
-import { guanyinLots } from '../data/guanyinLots';
+import { guanyinLots, type LotData as GuanyinLot } from '../data/guanyinLots';
 import { guandiLots } from '../data/guandiLots';
 import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
 import { useUser } from '../context/UserContext';
@@ -20,6 +20,50 @@ const { Title, Text, Paragraph } = Typography;
 const LEVEL_COLORS: Record<string, string> = {
   '上上': 'var(--wx-earth)', '上': 'var(--color-warn)', '中': 'var(--wx-wood)', '下': 'var(--wx-water)', '下下': 'var(--wx-metal)',
 };
+
+// 统一结果格式
+interface NormalizedLot {
+  index: number;
+  name: string;
+  level: string;
+  gongWei: string;
+  poem: string;
+  explanation: string;
+  interpretation: string;
+  guide: Record<string, string>;
+  story: string;
+}
+
+function normalizeLot(lot: any, lotType: string): NormalizedLot {
+  if (lotType === 'guanyin') {
+    const g = lot as GuanyinLot;
+    return {
+      index: g.id,
+      name: g.name,
+      level: g.level.replace('签', ''),
+      gongWei: g.gongwei,
+      poem: g.poem,
+      explanation: [g.qianyu, g.jieyue].filter(Boolean).join('\n\n'),
+      interpretation: g.interpretations
+        ? Object.entries(g.interpretations).map(([k, v]) => `${k}：${v}`).join('\n')
+        : '',
+      guide: (g.xianji || {}) as Record<string, string>,
+      story: g.diangu || '',
+    };
+  }
+  // guandi / zhuge: already close to unified shape
+  return {
+    index: lot.index ?? lot.id ?? 0,
+    name: lot.name || '',
+    level: (lot.level || '').replace('签', ''),
+    gongWei: lot.gongWei || lot.gongwei || '',
+    poem: lot.poem || '',
+    explanation: lot.explanation || '',
+    interpretation: lot.interpretation || '',
+    guide: lot.guide || (lot.xianji as Record<string, string>) || {},
+    story: lot.story || lot.diangu || '',
+  };
+}
 
 type DrawPhase = 'idle' | 'praying' | 'shaking' | 'confirming' | 'revealing' | 'done';
 
@@ -48,14 +92,15 @@ export default function Lingqian() {
         return;
       }
       const r = getZhugeLotByStrokes(zhugeWords.w1, zhugeWords.w2, zhugeWords.w3);
-      setResult(r.lot);
+      const normalized = normalizeLot(r.lot, 'zhuge');
+      setResult(normalized);
       setPhase('done');
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
       addHistory({
         userId: currentUser?.id || '',
         module: 'lingqian',
         queryParams: { type: 'zhuge', words: zhugeWords },
-        resultSummary: `诸葛神数第${r.lotIndex}签 ${r.lot.name} ${r.lot.level}`,
+        resultSummary: `诸葛神数第${r.lotIndex}签 ${normalized.name} ${normalized.level}`,
       });
       return;
     }
@@ -94,10 +139,12 @@ export default function Lingqian() {
                     // 随机抽签
                     const idx = Math.floor(Math.random() * currentLots.length);
                     const lot = currentLots[idx];
-                    setResult(lot);
+                    const normalized = normalizeLot(lot, lotType);
+                    setResult(normalized);
                     setPhase('done');
                     // 放彩带
-                    if (lot.level === '上上' || lot.level === '上') {
+                    const lv = normalized.level;
+                    if (lv === '上上' || lv === '上') {
                       confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
                     } else {
                       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
@@ -106,7 +153,7 @@ export default function Lingqian() {
                       userId: currentUser?.id || '',
                       module: 'lingqian',
                       queryParams: { type: lotType },
-                      resultSummary: `${lotType === 'guanyin' ? '观音' : '关帝'}灵签第${(lot as any).id || (lot as any).index}签 ${lot.name} ${lot.level}`,
+                      resultSummary: `${lotType === 'guanyin' ? '观音' : '关帝'}灵签第${normalized.index}签 ${normalized.name} ${normalized.level}`,
                     });
                   }
                 }, 100);
@@ -218,7 +265,7 @@ export default function Lingqian() {
               style={{
                 height: 56, fontSize: 18, padding: '0 48px',
                 background: 'var(--text-primary)',
-                color: '#ffffff',
+                color: 'var(--text-inverse)',
                 border: 'none', borderRadius: 30,
               }}
             >
@@ -379,7 +426,7 @@ export default function Lingqian() {
             >
               <Paragraph style={{
                 fontSize: 16, lineHeight: 2.2, textAlign: 'center',
-                fontFamily: '"KaiTi", "楷体", "STKaiti", serif',
+                fontFamily: 'var(--font-kai)',
                 whiteSpace: 'pre-line',
                 color: 'var(--text-body)',
               }}>
@@ -522,7 +569,7 @@ export default function Lingqian() {
                 onClick={resetDraw}
                 style={{
                   background: 'var(--text-primary)',
-                  color: '#ffffff',
+                  color: 'var(--text-inverse)',
                   border: 'none',
                 }}
               >
@@ -538,7 +585,7 @@ export default function Lingqian() {
                 }}
                 style={{
                   background: 'var(--text-primary)',
-                  color: '#ffffff',
+                  color: 'var(--text-inverse)',
                   border: 'none',
                 }}
               >
@@ -549,27 +596,6 @@ export default function Lingqian() {
         </div>
       )}
 
-      {/* CSS 动画 */}
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          25% { transform: translateX(-8px) rotate(-3deg); }
-          75% { transform: translateX(8px) rotate(3deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
-          50% { box-shadow: 0 10px 60px rgba(0,0,0,0.12); }
-        }
-        @keyframes flyOut {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          60% { transform: translateY(-10px) rotate(-15deg); opacity: 0.8; }
-          100% { transform: translateY(-40px) rotate(-25deg); opacity: 0; }
-        }
-        @keyframes flip {
-          0%, 100% { transform: rotateY(0deg); }
-          50% { transform: rotateY(180deg); }
-        }
-      `}</style>
     </div>
   );
 }

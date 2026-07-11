@@ -239,8 +239,8 @@ export default function AppLayout() {
                 width: 34,
                 height: 34,
                 borderRadius: '50%',
-                background: '#1A1A1A',
-                color: '#fff',
+                background: 'var(--text-primary)',
+                color: 'var(--text-inverse)',
                 fontWeight: 600,
                 fontSize: 14,
                 cursor: 'pointer',
@@ -281,8 +281,8 @@ export default function AppLayout() {
           <Space size="small" wrap>
             <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 24, height: 24, borderRadius: '50%', background: '#1A1A1A',
-              color: '#fff', fontWeight: 600, fontSize: 12,
+              width: 24, height: 24, borderRadius: '50%', background: 'var(--text-primary)',
+              color: 'var(--text-inverse)', fontWeight: 600, fontSize: 12,
             }}>
               {currentUser.name.charAt(0)}
             </span>
@@ -487,7 +487,7 @@ export default function AppLayout() {
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: 32, height: 32, borderRadius: '50%',
-                        background: '#1A1A1A', color: '#fff',
+                        background: 'var(--text-primary)', color: 'var(--text-inverse)',
                         fontWeight: 600, fontSize: 14,
                       }}>
                         {u.name.charAt(0)}
