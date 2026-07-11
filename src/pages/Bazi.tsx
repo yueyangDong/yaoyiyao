@@ -1836,6 +1836,42 @@ export default function Bazi() {
             </div>
           </Card>
 
+          {/* 神煞 */}
+          <Card title="神煞一览" style={{ marginBottom: 16 }}>
+            {baziData.shenSha.length === 0 ? (
+              <Alert message="此八字四柱中未发现常见神煞，但不代表不好——平凡也是一种福气。" type="info" showIcon />
+            ) : (
+              <>
+                <Row gutter={[8, 8]}>
+                  {baziData.shenSha.map((sha, i) => (
+                    <Col xs={24} sm={12} md={8} key={i}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
+                          background: sha.type === '吉' ? 'rgba(91,140,90,0.06)' : sha.type === '凶' ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)',
+                        }}
+                      >
+                        <Space>
+                          <Tag style={{
+                            background: sha.type === '吉' ? 'rgba(91,140,90,0.08)' : sha.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
+                            color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
+                            border: 'none',
+                          }}>
+                            {sha.type}
+                          </Tag>
+                          <Text strong>{sha.name}</Text>
+                          <Tag>{sha.pillar}</Tag>
+                        </Space>
+                        <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </>
+            )}
+          </Card>
+
           {/* 日主强弱 + 用神 */}
           {strengthAnalysis && (
             <Card title="日主强弱分析" style={{ marginBottom: 16, borderColor: WX_COLORS[baziData.dayWx] }}>
@@ -1930,42 +1966,6 @@ export default function Bazi() {
                 </ul>
               </Col>
             </Row>
-          </Card>
-
-          {/* 神煞 */}
-          <Card title="神煞一览" style={{ marginBottom: 16 }}>
-            {baziData.shenSha.length === 0 ? (
-              <Alert message="此八字四柱中未发现常见神煞，但不代表不好——平凡也是一种福气。" type="info" showIcon />
-            ) : (
-              <>
-                <Row gutter={[8, 8]}>
-                  {baziData.shenSha.map((sha, i) => (
-                    <Col xs={24} sm={12} md={8} key={i}>
-                      <Card
-                        size="small"
-                        style={{
-                          borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
-                          background: sha.type === '吉' ? 'rgba(91,140,90,0.06)' : sha.type === '凶' ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)',
-                        }}
-                      >
-                        <Space>
-                          <Tag style={{
-                            background: sha.type === '吉' ? 'rgba(91,140,90,0.08)' : sha.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
-                            color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
-                            border: 'none',
-                          }}>
-                            {sha.type}
-                          </Tag>
-                          <Text strong>{sha.name}</Text>
-                          <Tag>{sha.pillar}</Tag>
-                        </Space>
-                        <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              </>
-            )}
           </Card>
 
           {/* 刑冲合害 */}
