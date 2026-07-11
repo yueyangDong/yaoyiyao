@@ -14,6 +14,14 @@
   <body>
     <div id="root"></div>
     <script>
+      // 清理旧 Service Worker 防止缓存白屏
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) { reg.unregister(); });
+        });
+      }
+    </script>
+    <script>
       // GitHub Pages SPA fallback: restore the original path from 404.html redirect
       (function () {
         var redirect = sessionStorage.redirect;
