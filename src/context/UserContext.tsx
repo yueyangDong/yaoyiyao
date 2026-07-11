@@ -432,9 +432,15 @@ import { CITY_LNG_MAP } from '../data/cityLng';
 export { CITY_LNG_MAP };
 
 export function getCityLng(province: string, city: string, district?: string): number {
-  const key = `${province},${city}`;
-  if (CITY_LNG_MAP[key]) return CITY_LNG_MAP[key];
-  // 模糊匹配：截取省名前两字+市名
+  // 1) 精确3级匹配：省,市,区
+  if (district) {
+    const key3 = `${province},${city},${district}`;
+    if (CITY_LNG_MAP[key3] !== undefined) return CITY_LNG_MAP[key3];
+  }
+  // 2) 2级匹配：省,市
+  const key2 = `${province},${city}`;
+  if (CITY_LNG_MAP[key2] !== undefined) return CITY_LNG_MAP[key2];
+  // 3) 模糊匹配：key包含市名
   for (const [k, v] of Object.entries(CITY_LNG_MAP)) {
     if (k.includes(city)) return v;
   }
