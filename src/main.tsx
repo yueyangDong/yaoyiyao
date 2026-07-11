@@ -42,7 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         },
       }}
     >
-      <BrowserRouter basename="/yaoyiyao">
+      <BrowserRouter basename={import.meta.env.DEV ? '/' : '/yaoyiyao'}>
         <App />
       </BrowserRouter>
     </ConfigProvider>

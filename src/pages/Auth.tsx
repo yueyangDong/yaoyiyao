@@ -34,7 +34,7 @@ export default function Auth() {
       const { error } = await signUp(email, password);
       setLoading(false);
       if (error) {
-        message.error(error);
+        message.error(typeof error === 'string' && error.length > 0 ? error : '注册失败，请重试');
         return;
       }
       // auto-confirm 已开，注册即登录
@@ -45,10 +45,12 @@ export default function Auth() {
       const { error } = await signIn(email, password);
       setLoading(false);
       if (error) {
-        if (error.includes('Invalid login credentials')) {
+        if (typeof error === 'string' && error.includes('Invalid login credentials')) {
           message.error('邮箱或密码错误');
-        } else {
+        } else if (typeof error === 'string' && error.length > 0) {
           message.error(error);
+        } else {
+          message.error('登录失败，请检查网络或稍后重试');
         }
         return;
       }

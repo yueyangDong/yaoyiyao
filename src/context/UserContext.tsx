@@ -219,35 +219,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .maybeSingle();
 
-      if (!cancelled && data && !error) {
-        const profile = profileToStoredUser(authUser.id, data);
-        const updated = [profile, ...users.filter(u => u.id !== authUser.id)];
-        setUsers(updated);
-        saveUsers(updated);
-        setCurrentUserId(authUser.id);
-        saveCurrentUserId(authUser.id);
+      if (!cancelled && !error) {
+        if (data) {
+          const profile = profileToStoredUser(authUser.id, data);
+          const updated = [profile, ...users.filter(u => u.id !== authUser.id)];
+          setUsers(updated);
+          saveUsers(updated);
+          setCurrentUserId(authUser.id);
+          saveCurrentUserId(authUser.id);
 
-        // 拉取云历史
-        const { data: cloudHistory } = await supabase
-          .from('query_history')
-          .select('*')
-          .eq('user_id', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(200);
+          // 拉取云历史
+          const { data: cloudHistory } = await supabase
+            .from('query_history')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .order('created_at', { ascending: false })
+            .limit(200);
 
-        if (cloudHistory) {
-          const merged: QueryHistory[] = cloudHistory.map((h: any) => ({
-            userId: h.user_id,
-            module: h.module,
-            timestamp: h.created_at,
-            queryParams: h.query_params || {},
-            resultSummary: h.result_summary || '',
-          }));
-          setHistory(merged);
-          saveHistoryLocal(merged);
+          if (cloudHistory) {
+            const merged: QueryHistory[] = cloudHistory.map((h: any) => ({
+              userId: h.user_id,
+              module: h.module,
+              timestamp: h.created_at,
+              queryParams: h.query_params || {},
+              resultSummary: h.result_summary || '',
+            }));
+            setHistory(merged);
+            saveHistoryLocal(merged);
+          }
         }
+        // data 为 null（新用户无档案）= 正常，不同步本地记录
       }
       if (!cancelled) { setSyncing(false); setSynced(true); }
     })();

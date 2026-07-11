@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout, Button, Typography, Space, Drawer, Form,
   Radio, InputNumber, Cascader, Tag, Divider, message,
-  Select, List, Popconfirm, Input, Modal,
+  Select, List, Popconfirm, Input, Modal, Dropdown,
 } from 'antd';
 import {
   ArrowLeftOutlined, UserOutlined, SettingOutlined,
@@ -45,7 +45,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
   const {
     profile, setProfile, hasProfile, currentUser,
     users, addUser, updateUser, deleteUser, switchUser,
@@ -246,27 +246,44 @@ export default function AppLayout() {
           )}
 
           {authUser && (
-            <span
-              onClick={() => navigate('/profile')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: 'var(--text-primary)',
-                color: 'var(--text-inverse)',
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: 'pointer',
-                opacity: syncing ? 0.5 : 1,
-                transition: 'opacity 0.3s',
+            <Dropdown
+              menu={{
+                items: [
+                  { key: 'profile', label: '个人档案', onClick: () => navigate('/profile') },
+                  { type: 'divider' },
+                  {
+                    key: 'logout', label: '退出登录', danger: true,
+                    onClick: async () => {
+                      await signOut();
+                      message.success('已退出登录');
+                      navigate('/');
+                    },
+                  },
+                ],
               }}
-              title={syncing ? '同步中...' : synced ? '已同步' : currentUser?.name || ''}
+              placement="bottomRight"
             >
-              {currentUser?.name?.charAt(0) || authUser.email?.charAt(0)?.toUpperCase()}
-            </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'var(--text-primary)',
+                  color: 'var(--text-inverse)',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  opacity: syncing ? 0.5 : 1,
+                  transition: 'opacity 0.3s',
+                }}
+                title={syncing ? '同步中...' : synced ? '已同步' : currentUser?.name || ''}
+              >
+                {currentUser?.name?.charAt(0) || authUser.email?.charAt(0)?.toUpperCase()}
+              </span>
+            </Dropdown>
           )}
 
           {!authUser && currentUser && (

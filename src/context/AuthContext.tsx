@@ -38,15 +38,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    return {};
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return { error: error.message };
+      return {};
+    } catch (e: any) {
+      return { error: e.message || '注册失败，请检查网络连接' };
+    }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return {};
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      return {};
+    } catch (e: any) {
+      return { error: e.message || '登录失败，请检查网络连接' };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
