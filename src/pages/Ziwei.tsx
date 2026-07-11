@@ -693,105 +693,115 @@ export default function Ziwei() {
             }
           >
             {(() => {
-              // 传统紫微命盘排列: 巳午未申 / 辰  酉 / 卯  戌 / 寅丑子亥
-              const TRADITIONAL_ORDER = ['兄弟','命宫','父母','福德','夫妻',null,null,'田宅','子女',null,null,'官禄','财帛','疾厄','迁移','交友'];
               const gongMap: Record<string, any> = {};
               for (const g of ziweiData.gongData) gongMap[g.name] = g;
 
-              const rows: (any | null)[][] = [
-                [gongMap['兄弟'], gongMap['命宫'], gongMap['父母'], gongMap['福德']],
-                [gongMap['夫妻'], null, null, gongMap['田宅']],
-                [gongMap['子女'], null, null, gongMap['官禄']],
-                [gongMap['财帛'], gongMap['疾厄'], gongMap['迁移'], gongMap['交友']],
+              // 传统紫微斗数四列布局，绝对定位确保对称
+              // 列1      列2      列3      列4
+              // 兄弟     命宫     父母     福德     ← 上排
+              // 夫妻     [ 道 ]   [ 道 ]   田宅     ← 中上
+              // 子女     [ 道 ]   [ 道 ]   官禄     ← 中下
+              // 财帛     疾厄     迁移     交友     ← 下排
+              const placements: { gong: any; row: number; col: number }[] = [
+                { gong: gongMap['兄弟'], row: 1, col: 1 },
+                { gong: gongMap['命宫'], row: 1, col: 2 },
+                { gong: gongMap['父母'], row: 1, col: 3 },
+                { gong: gongMap['福德'], row: 1, col: 4 },
+                { gong: gongMap['夫妻'], row: 2, col: 1 },
+                { gong: gongMap['田宅'], row: 2, col: 4 },
+                { gong: gongMap['子女'], row: 3, col: 1 },
+                { gong: gongMap['官禄'], row: 3, col: 4 },
+                { gong: gongMap['财帛'], row: 4, col: 1 },
+                { gong: gongMap['疾厄'], row: 4, col: 2 },
+                { gong: gongMap['迁移'], row: 4, col: 3 },
+                { gong: gongMap['交友'], row: 4, col: 4 },
               ];
 
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {rows.map((row, ri) => (
-                    <div key={ri} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-                      {row.map((gong, ci) => {
-                        if (!gong) {
-                          const cellKey = `${ri}-${ci}`;
-                          // 只在第一个空格渲染中心装饰
-                          if (cellKey === '1-1') {
-                            return (
-                              <motion.div
-                                key="center-deco"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.6, ease: 'easeOut' }}
-                                style={{
-                                  gridRow: 'span 2',
-                                  gridColumn: 'span 2',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <div style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  borderRadius: 16,
-                                  background: 'linear-gradient(135deg, rgba(196,164,90,0.05) 0%, rgba(0,0,0,0.02) 100%)',
-                                  border: '1px dashed rgba(196,164,90,0.15)',
-                                  minHeight: 120,
-                                }}>
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
-                                  >
-                                    <span style={{
-                                      fontSize: 40,
-                                      fontFamily: 'var(--font-display)',
-                                      color: 'rgba(196,164,90,0.3)',
-                                      lineHeight: 1,
-                                      userSelect: 'none',
-                                    }}>
-                                      道
-                                    </span>
-                                  </motion.div>
-                                  <Text style={{
-                                    fontSize: 10,
-                                    color: 'var(--text-disabled)',
-                                    marginTop: 4,
-                                    letterSpacing: '0.04em',
-                                  }}>
-                                    一阴一阳之谓道
-                                  </Text>
-                                </div>
-                              </motion.div>
-                            );
-                          }
-                          return null;
-                        }
-                        const score = getPalaceScore(gong);
-                        const style = PALACE_LEVEL_STYLE[score.level];
-                        const isMing = gong.name === '命宫';
-                        const isShen = gong.isShenGong;
-                        const majorStars = gong.majorStars || [];
-                        const minorStars = gong.minorStars || [];
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                  gridTemplateRows: 'auto auto auto auto',
+                  gap: 8,
+                }}>
+                  {/* 中心装饰 */}
+                  <motion.div
+                    key="center-deco"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    style={{
+                      gridRow: '2 / 4',
+                      gridColumn: '2 / 4',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 16,
+                      background: 'linear-gradient(135deg, rgba(196,164,90,0.05) 0%, rgba(0,0,0,0.02) 100%)',
+                      border: '1px dashed rgba(196,164,90,0.15)',
+                      minHeight: 100,
+                    }}>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <span style={{
+                          fontSize: 36,
+                          fontFamily: 'var(--font-display)',
+                          color: 'rgba(196,164,90,0.3)',
+                          lineHeight: 1,
+                          userSelect: 'none',
+                        }}>
+                          道
+                        </span>
+                      </motion.div>
+                      <Text style={{
+                        fontSize: 10,
+                        color: 'var(--text-disabled)',
+                        marginTop: 4,
+                        letterSpacing: '0.04em',
+                      }}>
+                        一阴一阳之谓道
+                      </Text>
+                    </div>
+                  </motion.div>
 
-                        const animDelay = (ri * 4 + ci) * 0.04;
-                        return (
-                          <motion.div
-                            key={gong.name}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: animDelay, duration: 0.35, ease: 'easeOut' }}
-                            className={isMing ? 'ming-pulse' : ''}
-                            style={{
-                              border: isMing ? style.border : `1px solid var(--border-light)`,
-                              borderLeft: `3px solid ${style.tag}`,
-                              borderRadius: 10,
-                              background: isMing ? style.bg : 'var(--bg-card-solid)',
-                              padding: '10px 12px',
-                              position: 'relative',
-                            }}
-                          >
+                  {/* 十二宫卡片 */}
+                  {placements.map(({ gong, row, col }, idx) => {
+                    const score = getPalaceScore(gong);
+                    const style = PALACE_LEVEL_STYLE[score.level];
+                    const isMing = gong.name === '命宫';
+                    const isShen = gong.isShenGong;
+                    const majorStars = gong.majorStars || [];
+                    const minorStars = gong.minorStars || [];
+
+                    return (
+                      <motion.div
+                        key={gong.name}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.04, duration: 0.35, ease: 'easeOut' }}
+                        className={isMing ? 'ming-pulse' : ''}
+                        style={{
+                          gridRow: row,
+                          gridColumn: col,
+                          border: isMing ? style.border : `1px solid var(--border-light)`,
+                          borderLeft: `3px solid ${style.tag}`,
+                          borderRadius: 10,
+                          background: isMing ? style.bg : 'var(--bg-card-solid)',
+                          padding: '10px 12px',
+                          position: 'relative',
+                        }}
+                      >
                             {/* 标题栏 */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                               <Text strong style={{
@@ -841,10 +851,8 @@ export default function Ziwei() {
                               {GONG_JI_HINT[gong.name]}
                             </Text>
                           </motion.div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}
