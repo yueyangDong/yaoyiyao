@@ -428,30 +428,15 @@ export function useUser() {
 }
 
 // ========== 城市经度映射 ==========
-export const CITY_LNG_MAP: Record<string, number> = {
-  '北京市,市辖区': 116.4, '上海市,市辖区': 121.5, '天津市,市辖区': 117.2, '重庆市,市辖区': 106.5,
-  '广东省,广州市': 113.3, '广东省,深圳市': 114.1, '广东省,珠海市': 113.6, '广东省,东莞市': 113.8, '广东省,佛山市': 113.1,
-  '浙江省,杭州市': 120.2, '浙江省,宁波市': 121.5, '浙江省,温州市': 120.7,
-  '江苏省,南京市': 118.8, '江苏省,苏州市': 120.6, '江苏省,无锡市': 120.3,
-  '山东省,济南市': 117.0, '山东省,青岛市': 120.4,
-  '福建省,福州市': 119.3, '福建省,厦门市': 118.1,
-  '四川省,成都市': 104.1, '湖北省,武汉市': 114.3, '湖南省,长沙市': 113.0,
-  '河南省,郑州市': 113.7, '河北省,石家庄市': 114.5,
-  '陕西省,西安市': 108.9, '辽宁省,沈阳市': 123.4, '辽宁省,大连市': 121.6,
-  '吉林省,长春市': 125.3, '黑龙江省,哈尔滨市': 126.6,
-  '安徽省,合肥市': 117.3, '江西省,南昌市': 115.9,
-  '广西壮族自治区,南宁市': 108.4, '云南省,昆明市': 102.7, '贵州省,贵阳市': 106.7,
-  '海南省,海口市': 110.3, '甘肃省,兰州市': 103.8,
-  '山西省,太原市': 112.5, '内蒙古自治区,呼和浩特市': 111.7,
-  '新疆维吾尔自治区,乌鲁木齐市': 87.6, '西藏自治区,拉萨市': 91.1,
-  '宁夏回族自治区,银川市': 106.3, '青海省,西宁市': 101.8,
-};
+import { CITY_LNG_MAP } from '../data/cityLng';
+export { CITY_LNG_MAP };
 
-export function getCityLng(province: string, city: string): number {
+export function getCityLng(province: string, city: string, district?: string): number {
   const key = `${province},${city}`;
   if (CITY_LNG_MAP[key]) return CITY_LNG_MAP[key];
+  // 模糊匹配：截取省名前两字+市名
   for (const [k, v] of Object.entries(CITY_LNG_MAP)) {
-    if (k.includes(province) && k.includes(city)) return v;
+    if (k.includes(city)) return v;
   }
   return 120;
 }

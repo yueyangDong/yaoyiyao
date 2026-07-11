@@ -1007,7 +1007,7 @@ export default function Bazi() {
       let calcMinute = minute || 0;
       let lng = 120;
       if (birthplace && birthplace.length >= 2) {
-        lng = getCityLng(birthplace[0], birthplace[1]);
+        lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
       }
       if (lng !== 120) {
         const trueSolar = getTrueSolarHour(hour, minute || 0, lng);
