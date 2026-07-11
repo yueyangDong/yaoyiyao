@@ -461,7 +461,29 @@ export default function Ziwei() {
     const base = GONG_PLAIN_TEXT[gong.name] || `${gong.name}宫是命盘中的重要组成部分。`;
     const majorStars = gong.majorStars || [];
     const minorStars = gong.minorStars || [];
-    const parts: string[] = [base];
+    const score = getPalaceScore(gong);
+
+    // 开头：直白结论
+    const verdicts: Record<string, string[]> = {
+      '吉': [
+        `整体来看，你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
+        `你的${gong.name}宫吉星汇聚，在这一方面有天然优势。`,
+        `${gong.name}宫星曜清朗，在这个领域你比大多数人顺利。`,
+      ],
+      '凶': [
+        `你的${gong.name}宫煞星较重，这个领域是人生中需要多花心思经营的地方。`,
+        `${gong.name}宫挑战较多，但记住——煞星也是成就一个人的磨刀石。`,
+        `${gong.name}宫波折较多，早经历、早成长，晚景反而更稳健。`,
+      ],
+      '中': [
+        `你的${gong.name}宫吉凶参半，有好有坏，整体还算平稳。`,
+        `${gong.name}宫中规中矩，不算突出也不算差，知足常乐。`,
+      ],
+    };
+    const verdictList = verdicts[score.level] || verdicts['中'];
+    const verdict = verdictList[Math.floor(Math.random() * verdictList.length)];
+
+    const parts: string[] = ['<strong>' + verdict + '</strong> ' + base];
 
     if (majorStars.length > 0) {
       const starNames = majorStars.map((s: any) => {
@@ -677,6 +699,80 @@ export default function Ziwei() {
             />
           </Card>
 
+          {/* 命盘总评 — 一句话看懂好坏 */}
+          {(() => {
+            const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
+            const jiCount = results.filter((r: { level: string }) => r.level === '吉').length;
+            const xiongCount = results.filter((r: { level: string }) => r.level === '凶').length;
+            const zhongCount = results.filter((r: { level: string }) => r.level === '中').length;
+            const jiNames = results.filter((r: { level: string }) => r.level === '吉').map((r: { name: string }) => r.name);
+            const xiongNames = results.filter((r: { level: string }) => r.level === '凶').map((r: { name: string }) => r.name);
+
+            let grade: string; let gradeColor: string; let gradeBg: string; let summary: string;
+            if (jiCount >= 6) {
+              grade = '上等'; gradeColor = '#5B8C5A'; gradeBg = 'rgba(91,140,90,0.08)';
+              summary = '命盘整体格局优良，多宫吉星汇聚。你天生底子好，在多个领域都有不错的运势。吉星是天赋，善加利用可成大器。';
+            } else if (jiCount >= 4 && xiongCount <= 3) {
+              grade = '中上'; gradeColor = '#5B8C5A'; gradeBg = 'rgba(91,140,90,0.06)';
+              summary = '命盘中等偏上，吉多于凶。大部分领域较为顺利，少数领域需要多下功夫。整体来说是一副不错的牌。';
+            } else if (jiCount >= 2 && xiongCount <= 4) {
+              grade = '中等'; gradeColor = '#C4A45A'; gradeBg = 'rgba(196,164,90,0.06)';
+              summary = '命盘吉凶参半，有好有坏。不算一帆风顺，但也不是寸步难行。吉星是你的筹码，煞星是你的老师——这副牌怎么打，看你自己。';
+            } else if (xiongCount >= 5) {
+              grade = '中下'; gradeColor = '#C75B5B'; gradeBg = 'rgba(199,91,91,0.06)';
+              summary = '命盘煞星偏多，人生磨砺较多。但请记住——历史上成就大业者，往往命盘煞重。煞星不是诅咒，是逼你变强的磨刀石。宝剑锋从磨砺出。';
+            } else {
+              grade = '中等'; gradeColor = '#C4A45A'; gradeBg = 'rgba(196,164,90,0.06)';
+              summary = '命盘中规中矩，平稳是最大的福气。不求大富大贵，但求岁岁平安。知足常乐，平安是福。';
+            }
+
+            return (
+              <Card style={{
+                marginBottom: 16,
+                border: `2px solid ${gradeColor}`,
+                background: gradeBg,
+              }}>
+                <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                  <Tag style={{
+                    fontSize: 18, fontWeight: 700, padding: '4px 16px',
+                    background: gradeColor, color: '#fff', border: 'none', borderRadius: 8,
+                  }}>
+                    {grade}
+                  </Tag>
+                  <Text style={{ fontSize: 13, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                    {jiCount}宫吉 · {zhongCount}宫平 · {xiongCount}宫凶
+                  </Text>
+                </div>
+                <Paragraph style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-body)', marginBottom: 12 }}>
+                  {summary}
+                </Paragraph>
+                <Row gutter={[12, 8]}>
+                  {jiNames.length > 0 && (
+                    <Col span={12}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '8px 12px' }}>
+                        <Text strong style={{ color: '#5B8C5A', fontSize: 12 }}>优势领域：</Text>
+                        <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{jiNames.join('、')}</Text>
+                      </div>
+                    </Col>
+                  )}
+                  {xiongNames.length > 0 && (
+                    <Col span={12}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '8px 12px' }}>
+                        <Text strong style={{ color: '#C75B5B', fontSize: 12 }}>需注意的领域：</Text>
+                        <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{xiongNames.join('、')}</Text>
+                      </div>
+                    </Col>
+                  )}
+                </Row>
+                <div style={{ textAlign: 'center', marginTop: 10 }}>
+                  <Text style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic' }}>
+                    {getRandomQuote()}
+                  </Text>
+                </div>
+              </Card>
+            );
+          })()}
+
           {/* 十二宫详解 — 传统四列布局 */}
           <Card
             title={<span style={{ color: 'var(--text-primary)' }}>十二宫详解</span>}
@@ -858,30 +954,37 @@ export default function Ziwei() {
             })()}
           </Card>
 
-          {/* 十二宫白话解读 — 折叠式详情 */}
+          {/* 十二宫白话解读 */}
           <Card title={<span style={{ color: 'var(--text-primary)' }}>各宫白话解读</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             {ziweiData.gongData.map((gong: any, idx: number) => {
               const score = getPalaceScore(gong);
+              const style = PALACE_LEVEL_STYLE[score.level];
               return (
                 <div key={idx} style={{
-                  padding: '10px 0',
+                  padding: '12px 14px',
                   borderBottom: idx < ziweiData.gongData.length - 1 ? '1px solid var(--border-light)' : 'none',
+                  borderLeft: `4px solid ${style.tag}`,
+                  background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
+                  marginBottom: 0,
                 }}>
-                  <Space style={{ marginBottom: 4 }}>
-                    <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{gong.name}宫</Text>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+                    <Text strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{gong.name}宫</Text>
                     <Tag style={{
-                      fontSize: 10, padding: '0 4px', lineHeight: '16px',
-                      background: score.level === '吉' ? 'rgba(91,140,90,0.1)' : score.level === '凶' ? 'rgba(199,91,91,0.1)' : 'rgba(0,0,0,0.04)',
-                      color: PALACE_LEVEL_STYLE[score.level].tag, border: 'none',
+                      fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 6,
+                      background: score.level === '吉' ? '#5B8C5A' : score.level === '凶' ? '#C75B5B' : '#C4A45A',
+                      color: '#fff', border: 'none',
                     }}>
-                      {score.level} · 吉{score.jiCount} 煞{score.xiongCount}
-                      {score.sihuaGood > 0 && ` 化吉×${score.sihuaGood}`}
-                      {score.sihuaBad > 0 && ` 化忌×${score.sihuaBad}`}
+                      {score.level === '吉' ? '好' : score.level === '凶' ? '注意' : '平稳'}
                     </Tag>
-                  </Space>
-                  <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7, display: 'block' }}>
-                    <BookOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />
-                    {getGongExplanation(gong)}
+                    <Text style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                      吉星 {score.jiCount} · 煞星 {score.xiongCount}
+                      {score.sihuaGood > 0 && ` · 化吉 ${score.sihuaGood}`}
+                      {score.sihuaBad > 0 && ` · 化忌 ${score.sihuaBad}`}
+                    </Text>
+                  </div>
+                  <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
+                    <BookOpen size={13} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />
+                    <span dangerouslySetInnerHTML={{ __html: getGongExplanation(gong) }} />
                   </Text>
                 </div>
               );
@@ -889,10 +992,10 @@ export default function Ziwei() {
           </Card>
 
           {/* 命盘总结 */}
-          <Card title={<span><BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘总结</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+          <Card title={<span><BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />星曜解读详情</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
+                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'rgba(91,140,90,0.03)', border: '1px solid rgba(91,140,90,0.15)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.highlights.map((h: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{h}</li>
@@ -901,7 +1004,7 @@ export default function Ziwei() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
+                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: 'rgba(199,91,91,0.03)', border: '1px solid rgba(199,91,91,0.15)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.warnings.map((w: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{w}</li>
@@ -910,33 +1013,6 @@ export default function Ziwei() {
                 </Card>
               </Col>
             </Row>
-
-            <Divider />
-
-            <Card size="small" title={<span><Sparkles size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />整体运势</span>} style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>
-              <Paragraph style={{ fontSize: 14, marginBottom: 0, color: 'var(--text-body)' }}>
-                {(() => {
-                  const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
-                  const jiNames = results.filter((r: { level: string; name: string }) => r.level === '吉').map((r: { name: string }) => r.name);
-                  const xiongNames = results.filter((r: { level: string; name: string }) => r.level === '凶').map((r: { name: string }) => r.name);
-
-                  let summary = '';
-                  const jiCount = jiNames.length;
-                  if (jiCount >= 4) summary += `命盘整体格局较好，${jiNames.slice(0, 3).join('、')}等${jiCount}宫呈吉象。`;
-                  else if (jiCount >= 2) summary += `命盘${jiNames.join('、')}宫位较吉，其他宫位需多经营。`;
-                  else summary += '命盘吉星分布较散，各方面需稳扎稳打。';
-
-                  if (xiongNames.length > 0) summary += ` ${xiongNames.join('、')}宫有煞星/化忌，建议在这些领域多花心思。`;
-
-                  summary += ' 命盘不是宿命——吉星需善用，煞星可在磨砺中成长。了解优势与短板，在人生每个阶段做出更明智的选择。';
-                  return summary;
-                })()}
-              </Paragraph>
-              <Divider style={{ margin: '12px 0' }} />
-              <Text style={{ fontSize: 12, color: 'var(--wx-earth)', fontStyle: 'italic', display: 'block', textAlign: 'center' }}>
-                {getRandomQuote()}
-              </Text>
-            </Card>
           </Card>
 
           {/* 四化说明 */}
