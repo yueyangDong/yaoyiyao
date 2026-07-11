@@ -1,16 +1,20 @@
 import { useState } from 'react';
-import { Card, Button, Input, Typography, Space, message, Divider } from 'antd';
-import { MailOutlined, LockOutlined } from '@ant-design/icons';
+import { Card, Button, Input, Typography, Space, message, Divider, Alert } from 'antd';
+import { MailOutlined, LockOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -21,19 +25,70 @@ export default function Auth() {
       message.warning('密码至少6位');
       return;
     }
-    setLoading(true);
-    const { error } = isRegister
-      ? await signUp(email, password)
-      : await signIn(email, password);
-    setLoading(false);
-    if (error) {
-      message.error(error);
+    if (isRegister && password !== password2) {
+      message.warning('两次密码不一致');
       return;
     }
+    setLoading(true);
     if (isRegister) {
-      message.success('注册成功，请查看邮箱确认链接（或已在 Supabase 关闭邮箱验证则直接登录）');
+      const { error } = await signUp(email, password);
+      setLoading(false);
+      if (error) {
+        message.error(error);
+        return;
+      }
+      // auto-confirm 已开，注册即登录
+      setSuccess(true);
+      message.success('注册成功，已自动登录');
+      setTimeout(() => navigate('/profile'), 1500);
+    } else {
+      const { error } = await signIn(email, password);
+      setLoading(false);
+      if (error) {
+        if (error.includes('Invalid login credentials')) {
+          message.error('邮箱或密码错误');
+        } else {
+          message.error(error);
+        }
+        return;
+      }
+      setSuccess(true);
+      message.success('登录成功');
+      setTimeout(() => navigate('/'), 1000);
     }
   };
+
+  const switchMode = () => {
+    setIsRegister(!isRegister);
+    setPassword('');
+    setPassword2('');
+    setSuccess(false);
+  };
+
+  if (success) {
+    return (
+      <div style={{ maxWidth: 400, margin: '60px auto', padding: '0 16px' }}>
+        <Card style={{
+          background: 'var(--bg-card-solid)',
+          borderColor: 'var(--border-light)',
+          boxShadow: 'var(--shadow-md)',
+          textAlign: 'center',
+        }}>
+          <CheckCircleOutlined style={{ fontSize: 48, color: 'var(--color-ji)', marginBottom: 16 }} />
+          <Title level={3} style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-display)',
+            marginBottom: 8,
+          }}>
+            {isRegister ? '注册成功' : '登录成功'}
+          </Title>
+          <Text style={{ color: 'var(--text-secondary)' }}>
+            {isRegister ? '数据已自动同步到云端' : '欢迎回来'}
+          </Text>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 400, margin: '60px auto', padding: '0 16px' }}>
@@ -48,14 +103,26 @@ export default function Auth() {
           fontFamily: 'var(--font-display)',
           marginBottom: 4,
         }}>
-          登录 / 注册
+          {isRegister ? '注册' : '登录'}
         </Title>
         <Text style={{
           display: 'block', textAlign: 'center',
-          color: 'var(--text-secondary)', fontSize: 13, marginBottom: 24,
+          color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16,
         }}>
-          登录后数据自动同步到云端
+          {isRegister
+            ? '注册即登录，数据自动同步到云端'
+            : '登录后数据自动同步到云端'}
         </Text>
+
+        {isRegister && (
+          <Alert
+            type="info"
+            showIcon
+            icon={<InfoCircleOutlined />}
+            message="注册即自动登录，无需邮箱确认"
+            style={{ marginBottom: 16, borderRadius: 10, fontSize: 12 }}
+          />
+        )}
 
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Input
@@ -68,12 +135,22 @@ export default function Auth() {
           />
           <Input.Password
             size="large"
-            placeholder="密码"
+            placeholder="密码（至少6位）"
             prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
             value={password}
             onChange={e => setPassword(e.target.value)}
             onPressEnter={handleSubmit}
           />
+          {isRegister && (
+            <Input.Password
+              size="large"
+              placeholder="再次输入密码"
+              prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
+              value={password2}
+              onChange={e => setPassword2(e.target.value)}
+              onPressEnter={handleSubmit}
+            />
+          )}
 
           <Button
             type="primary"
@@ -83,14 +160,14 @@ export default function Auth() {
             onClick={handleSubmit}
             style={{ height: 44 }}
           >
-            {isRegister ? '注册' : '登录'}
+            {isRegister ? '注册并登录' : '登录'}
           </Button>
         </Space>
 
         <Divider style={{ borderColor: 'var(--border-light)', margin: '16px 0' }} />
 
         <div style={{ textAlign: 'center' }}>
-          <Button type="link" onClick={() => setIsRegister(!isRegister)}>
+          <Button type="link" onClick={switchMode}>
             {isRegister ? '已有账号？去登录' : '没有账号？去注册'}
           </Button>
         </div>
