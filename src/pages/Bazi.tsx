@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
@@ -925,6 +926,7 @@ export interface PillarData {
 }
 
 export default function Bazi() {
+const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
   const [form] = Form.useForm();
   const [baziData, setBaziData] = useState<{
@@ -1419,7 +1421,7 @@ export default function Bazi() {
           showIcon
           style={{ marginBottom: 16 }}
           action={
-            <Button size="small" type="link" onClick={() => window.location.href = '/profile'}>
+            <Button size="small" type="link" onClick={() => navigate('/profile')}>
               切换档案
             </Button>
           }
@@ -1431,7 +1433,7 @@ export default function Bazi() {
           showIcon
           style={{ marginBottom: 16 }}
           action={
-            <Button size="small" type="primary" onClick={() => window.location.href = '/profile'}>
+            <Button size="small" type="primary" onClick={() => navigate('/profile')}>
               立即创建
             </Button>
           }
