@@ -2,7 +2,6 @@
 (function () {
   'use strict';
 
-  var PROFILE_KEY = 'yaoyiyao_profile';
   var APP_USERS_KEY = 'fortune_app_users';
   var APP_CURRENT_KEY = 'fortune_app_current_user';
 
@@ -19,7 +18,6 @@
     });
     if (!p.name && !p.birthDate) return null;
 
-    // 解析日期
     var y = 1990, m = 1, d = 1;
     if (p.birthDate) {
       var parts = p.birthDate.split('-');
@@ -30,7 +28,6 @@
       }
     }
 
-    // 解析出生地
     var province = '', city = '', district = '';
     if (p.birthplace) {
       var bp = p.birthplace.split(' ');
@@ -53,51 +50,81 @@
     };
   }
 
+  // --- 查找已有用户（按姓名+出生日期匹配） ---
+  function findExistingUser(profile) {
+    try {
+      var users = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '[]');
+      for (var i = 0; i < users.length; i++) {
+        var u = users[i];
+        if (u.name === profile.name &&
+            u.birthYear === profile.birthYear &&
+            u.birthMonth === profile.birthMonth &&
+            u.birthDay === profile.birthDay) {
+          return u;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   // --- 保存到 React App 的 localStorage 格式 ---
   function saveToApp(profile) {
-    var userId = 'mp_' + Date.now();
-    var now = new Date().toISOString();
-    var storedUser = {
-      id: userId,
-      name: profile.name,
-      gender: profile.gender,
-      birthYear: profile.birthYear,
-      birthMonth: profile.birthMonth,
-      birthDay: profile.birthDay,
-      birthHour: profile.birthHour,
-      birthMinute: profile.birthMinute,
-      birthplace: {
-        province: profile.province,
-        city: profile.city,
-        district: profile.district,
-        longitude: 120,
-      },
-      birthCalendar: 'solar',
-      isLeapMonth: false,
-      createdAt: now,
-      updatedAt: now,
-    };
+    var existing = findExistingUser(profile);
+    var userId, storedUser, now = new Date().toISOString();
 
-    // 保存用户列表
+    if (existing) {
+      userId = existing.id;
+      storedUser = existing;
+      // 更新可能变化的字段
+      storedUser.birthHour = profile.birthHour;
+      storedUser.birthMinute = profile.birthMinute;
+      storedUser.birthplace.province = profile.province;
+      storedUser.birthplace.city = profile.city;
+      storedUser.birthplace.district = profile.district;
+      storedUser.updatedAt = now;
+    } else {
+      userId = 'mp_' + Date.now();
+      storedUser = {
+        id: userId,
+        name: profile.name,
+        gender: profile.gender,
+        birthYear: profile.birthYear,
+        birthMonth: profile.birthMonth,
+        birthDay: profile.birthDay,
+        birthHour: profile.birthHour,
+        birthMinute: profile.birthMinute,
+        birthplace: {
+          province: profile.province,
+          city: profile.city,
+          district: profile.district,
+          longitude: 120,
+        },
+        birthCalendar: 'solar',
+        isLeapMonth: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+
+    // 构建用户列表：匹配的用户置顶
     var users = [storedUser];
     try {
-      var existing = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '[]');
-      var existingIds = existing.map(function (u) { return u.id; });
-      if (existingIds.indexOf(userId) === -1) {
-        users = [storedUser].concat(existing);
+      var all = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '[]');
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].id !== userId) {
+          users.push(all[i]);
+        }
       }
     } catch (e) {}
 
     localStorage.setItem(APP_USERS_KEY, JSON.stringify(users));
     localStorage.setItem(APP_CURRENT_KEY, userId);
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   }
 
   // --- 检查 React App 是否有档案 ---
   function appHasProfile() {
     var currentId = localStorage.getItem(APP_CURRENT_KEY);
     if (!currentId) {
-      // 如果没有 current user，但有 users，设置第一个
       try {
         var users = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '[]');
         if (users.length > 0) {
@@ -131,7 +158,6 @@
   var urlProfile = readUrlProfile();
   if (urlProfile) {
     saveToApp(urlProfile);
-    // 清理 URL 参数
     if (window.history && window.history.replaceState) {
       try {
         window.history.replaceState({}, '', window.location.pathname);
