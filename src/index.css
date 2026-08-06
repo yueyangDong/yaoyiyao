@@ -615,26 +615,170 @@ p {
   transition: transform 0.15s var(--ease-out);
 }
 
-/* ========== 响应式 ========== */
+/* ========== 手机端全局适配 ========== */
 @media (max-width: 768px) {
   :root {
-    --text-3xl: 24px;
+    --text-3xl: 22px;
     --text-2xl: 20px;
     --text-xl: 18px;
     --text-lg: 16px;
-    --text-base: 14px;
+    --text-base: 15px;
     --text-ganzhi: 22px;
     --text-ganzhi-lg: 36px;
     --sp-2xl: 32px;
     --sp-3xl: 40px;
   }
 
+  body {
+    font-size: 15px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 页面容器居中 + 安全区 */
+  .mobile-container {
+    max-width: 480px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* 所有可点击元素最小触摸面积 */
+  button, [role="button"], .ant-btn, .ant-tabs-tab, .ant-radio-button-wrapper,
+  .ant-select-selector, .ant-picker, input[type="radio"], input[type="checkbox"] {
+    min-height: 44px;
+  }
+
   .ant-card-body {
     padding: var(--sp-md) !important;
   }
 
+  /* 取消 hover 效果，改用点击反馈 */
   .glass-card:hover {
-    transform: translateY(-1px);
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .ant-card:hover {
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .card-arrow:hover {
+    transform: none !important;
+  }
+
+  /* 按钮按下反馈 */
+  .ant-btn:active {
+    transform: scale(0.97) !important;
+    filter: brightness(0.9);
+    transition: all 0.1s ease !important;
+  }
+
+  /* 输入框加高 */
+  .ant-input, .ant-input-number, .ant-picker, .ant-select-selector {
+    min-height: 48px !important;
+  }
+
+  /* 弹窗改底部抽屉 */
+  .ant-modal {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+  }
+  .ant-modal .ant-modal-content {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* 滚动到顶部按钮加大 */
+  .scroll-top-btn {
+    width: 48px !important;
+    height: 48px !important;
+    right: 16px !important;
+    bottom: 100px !important;
+  }
+
+  /* 底部安全区 */
+  .safe-bottom {
+    padding-bottom: 34px !important;
+    padding-bottom: calc(34px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* 横向滚动容器 */
+  .scroll-x {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .scroll-x::-webkit-scrollbar { display: none; }
+
+  /* Pill 标签按钮 */
+  .pill-btn {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-medium);
+    background: transparent;
+    color: var(--text-body);
+    font-size: 13px;
+    font-family: var(--font-body);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pill-btn.active {
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    border-color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* 2x2 四柱表格 */
+  .bazi-grid-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .bazi-grid-2x2 > .bazi-pillar {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  /* 首页卡片 */
+  .home-module-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    padding: 0 16px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .home-module-card:active {
+    background: var(--overlay-04);
+  }
+
+  /* 折叠卡片触摸区 */
+  .collapsible-card-header:active {
+    background: var(--overlay-04);
   }
 }
 

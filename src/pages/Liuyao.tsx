@@ -7,6 +7,7 @@ import { Sparkles, RefreshCw, HelpCircle } from 'lucide-react';
 import { dayan, decodePan, threeNumberQiGua, manualQiGua } from 'iching-shifa';
 import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 import { useUser } from '../context/UserContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -425,7 +426,8 @@ export default function Liuyao() {
           </Card>
 
           {/* 三层说明：古文原文 + 直译 + 白话 */}
-          <Card title="卦辞解读" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+          <CollapsibleCard title="卦辞解读" summary="古文原文、直译、白话三层解读" accordionGroup="liuyao-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Collapse defaultActiveKey={['plain']} items={[
               {
                 key: 'original',
@@ -559,9 +561,11 @@ export default function Liuyao() {
               })()}
             </Paragraph>
           </Card>
+            </CollapsibleCard>
 
           {/* 用神分析 */}
-          <Card title="用神分析" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+          <CollapsibleCard title="用神分析" summary={yongShenType ? `用神：${yongShenType}分析` : '选择问事类型进行用神分析'} accordionGroup="liuyao-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={[12, 12]}>
               <Col xs={24} sm={8}>
                 <Card size="small" title="选择问事类型" style={{ borderColor: 'var(--border-light)' }}>
@@ -603,10 +607,12 @@ export default function Liuyao() {
               </Col>
             </Row>
           </Card>
+            </CollapsibleCard>
 
           {/* 综合断语 */}
           {pan && yongShenType && yongShenAnalysis && (
-            <Card title="综合断语" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+            <CollapsibleCard title="综合断语" summary="基于卦象与用神的综合解读" accordionGroup="liuyao-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Paragraph style={{ fontSize: 14, color: 'var(--text-body)' }}>
                 {(() => {
                   const targetLiuQin = YONGSHEN_MAP[yongShenType];
@@ -654,10 +660,12 @@ export default function Liuyao() {
                 以上分析基于卦象六亲生克关系，仅供娱乐参考。六爻占卜讲究"无事不占"，心中有事所想时起卦最准。
               </Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 六爻详细列表 */}
-          <Card title="六爻详细信息" size="small" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
+          <CollapsibleCard title="六爻详细信息" summary="每爻纳甲、六亲、世应详解" accordionGroup="liuyao-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             {[...pan.benGua.yaoList].reverse().map((y: any, i: number) => (
               <div key={i} style={{ padding: '6px 8px', marginBottom: 4, background: y.isMoving ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 4 }}>
                 <Space wrap size={4}>
@@ -673,6 +681,7 @@ export default function Liuyao() {
               </div>
             ))}
           </Card>
+            </CollapsibleCard>
 
           <div style={{ textAlign: 'center' }}>
             <Button onClick={resetAll} icon={<RefreshCw size={16} />} size="large">重新起卦</Button>

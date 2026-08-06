@@ -11,6 +11,7 @@ import { guanyinLots, type LotData as GuanyinLot } from '../data/guanyinLots';
 import { guandiLots } from '../data/guandiLots';
 import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
 import { useUser } from '../context/UserContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 // @ts-ignore - canvas-confetti types not available
 import confetti from 'canvas-confetti';
 
@@ -456,10 +457,12 @@ export default function Lingqian() {
             </Card>
 
             {/* 仙机指引 */}
-            <Card size="small" title="仙机指引" style={{
+            <CollapsibleCard title="仙机指引" summary="签文各项指引信息">
+            <Card size="small" style={{
               marginBottom: 12,
               background: 'var(--bg-card-solid)',
               borderColor: 'var(--border-light)',
+              border: 'none', boxShadow: 'none',
             }}>
               <Row gutter={[8, 8]}>
                 {Object.entries(result.guide).map(([key, val]) => (
@@ -473,16 +476,18 @@ export default function Lingqian() {
                 ))}
               </Row>
             </Card>
+            </CollapsibleCard>
 
             {/* 分维度解读 */}
             {result.level && (
+              <CollapsibleCard title="分维度解读" summary="事业、感情、财运、健康四维度" accordionGroup="lingqian-analysis">
               <Card
                 size="small"
-                title={<span style={{ color: 'var(--text-primary)' }}>📋 分维度解读</span>}
                 style={{
                   marginBottom: 12,
                   background: 'var(--bg-card-solid)',
                   borderColor: 'var(--border-light)',
+                  border: 'none', boxShadow: 'none',
                 }}
               >
                 <Row gutter={[8, 12]}>
@@ -523,6 +528,7 @@ export default function Lingqian() {
                   })}
                 </Row>
               </Card>
+            </CollapsibleCard>
             )}
 
             {/* 凶签化解建议 */}
@@ -544,10 +550,10 @@ export default function Lingqian() {
             )}
 
             {/* 典故 */}
+            <CollapsibleCard title="签文典故" summary="签文背后的历史故事">
             <Card
               size="small"
-              title={<><FireOutlined /> 签文典故</>}
-              style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'var(--border-light)' }}
+              style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'var(--border-light)', border: 'none', boxShadow: 'none' }}
             >
               <Paragraph style={{ fontSize: 13, lineHeight: 1.8, fontStyle: 'italic', color: 'var(--text-body)' }}>
                 {result.story}
@@ -558,6 +564,7 @@ export default function Lingqian() {
                 </Paragraph>
               )}
             </Card>
+            </CollapsibleCard>
           </Card>
 
           {/* 操作按钮 */}

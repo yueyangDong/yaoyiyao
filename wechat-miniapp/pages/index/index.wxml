@@ -1,0 +1,2 @@
+<!-- 全屏 WebView 加载爻一爻 Web App -->
+<web-view src="{{webUrl}}" bindmessage="onMessage" bindload="onLoad" binderror="onError"></web-view>

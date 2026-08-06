@@ -8,6 +8,7 @@ import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -925,6 +926,13 @@ export interface PillarData {
 }
 
 export default function Bazi() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const { profile, currentUser, addHistory } = useUser();
   const [form] = Form.useForm();
   const [baziData, setBaziData] = useState<{
@@ -1564,35 +1572,43 @@ export default function Bazi() {
 
           {/* 竖列四柱布局 + 功能栏 */}
           <Card title="四柱八字" style={{ marginBottom: 16 }}>
-            {/* 功能栏 */}
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12,
-              paddingBottom: 8, borderBottom: '1px solid var(--border-light)',
-              overflowX: 'auto',
-            }}>
+            {/* 功能栏 - 手机端横向滚动 pill */}
+            <div className={isMobile ? 'scroll-x' : ''}
+              style={{
+                display: 'flex', flexWrap: isMobile ? 'nowrap' : 'wrap', gap: isMobile ? 6 : 4,
+                marginBottom: 12, paddingBottom: 8,
+                borderBottom: '1px solid var(--border-light)',
+                overflowX: 'auto',
+              }}>
               {(() => {
                 const ROWS = [
-                  { key: 'shishen', label: '十神', desc: '十神是根据日主（出生日的天干）推算出的十种关系模式。日主是核心，比肩/劫财=同辈，食神/伤官=才华，正财/偏财=财富，正官/七杀=权威/压力，正印/偏印=长辈/贵人。' },
-                  { key: 'tiangan', label: '天干', desc: '天干是八字的上半部分，代表外在显露的特质。甲乙(木)、丙丁(火)、戊己(土)、庚辛(金)、壬癸(水)，各有阴阳属性。' },
-                  { key: 'dizhi', label: '地支', desc: '地支是八字的下半部分，代表内在隐藏的特质。十二地支对应不同月份和五行：寅卯(春木)、巳午(夏火)、申酉(秋金)、亥子(冬水)、辰戌丑未(四季土)。' },
-                  { key: 'canggan', label: '藏干', desc: '藏干是地支里藏着的天干，代表隐藏的性格、潜在的能力或不为人知的一面。每个地支藏1-3个天干，是命理中"暗藏玄机"的部分。' },
-                  { key: 'zhishen', label: '支神', desc: '支神是地支对应的十神，从地支层面看人际关系。同一个地支藏干在不同柱位代表不同十神，反映隐藏的社会关系和潜在影响力。' },
-                  { key: 'nayin', label: '纳音', desc: '纳音是六十甲子配五音十二律，每个干支组合都有独特的纳音五行。纳音代表命格的"底色"和人生韵调，如"杨柳木"温柔,"覆灯火"明亮,"涧下水"灵动。' },
-                  { key: 'kongwang', label: '空亡', desc: '空亡代表这个柱对应的人和事容易落空、不实在。年柱空亡→祖上缘薄或早年搬家；月柱空亡→与父母或事业有隔阂；日柱空亡→婚姻易有遗憾；时柱空亡→子女缘薄或晚年孤独。' },
-                  { key: 'dishi', label: '地势', desc: '十二长生是天干落在地支时的"生命力阶段"：帝旺=力量巅峰 ⬆️ | 临官=稳步上升 ↗️ | 长生=潜力初生 🌱 | 胎=酝酿中 ⏳ | 死=力量最低 ⬇️ | 墓=被压制 📦。日主在帝旺/临官=身强，在死/绝=需要印比来帮。' },
-                  { key: 'zizuo', label: '自坐', desc: '自坐是天干坐在什么地支上，决定这个天干有没有"根"。同五行=根基扎实 ✅，天干生地支=付出型人格，地支生天干=暗中助力，天干克地支=掌控力强，地支克天干=表面风光内心压力大。' },
-                  { key: 'shensha', label: '神煞', desc: '神煞是命理学中的特殊标记，来自天干地支的特定组合。天乙贵人⭐=逢凶化吉，桃花💮=异性缘，驿马🐴=奔波，羊刃⚔️=双刃剑，华盖☂️=孤独有才。吉神带来好运，凶煞提示需注意之处。' },
+                  { key: 'shishen', label: '十神' },
+                  { key: 'tiangan', label: '天干' },
+                  { key: 'dizhi', label: '地支' },
+                  { key: 'canggan', label: '藏干' },
+                  { key: 'zhishen', label: '支神' },
+                  { key: 'nayin', label: '纳音' },
+                  { key: 'kongwang', label: '空亡' },
+                  { key: 'dishi', label: '地势' },
+                  { key: 'zizuo', label: '自坐' },
+                  { key: 'shensha', label: '神煞' },
                 ];
                 return ROWS.map(row => {
                   const isActive = activeRow === row.key;
-                  return (
+                  return isMobile ? (
+                    <button
+                      key={row.key}
+                      className={`pill-btn${isActive ? ' active' : ''}`}
+                      onClick={() => setActiveRow(isActive ? null : row.key)}
+                    >
+                      {row.label}
+                    </button>
+                  ) : (
                     <Button
                       key={row.key}
                       size="small"
                       type={isActive ? 'primary' : 'default'}
-                      style={{
-                        fontSize: 12, padding: '2px 10px',
-                      }}
+                      style={{ fontSize: 12, padding: '2px 10px' }}
                       onClick={() => setActiveRow(isActive ? null : row.key)}
                     >
                       {row.label}
@@ -1626,6 +1642,44 @@ export default function Bazi() {
                 })()}
                 style={{ marginBottom: 12 }}
               />
+            )}
+
+            {/* 手机端 2x2 四柱卡片 */}
+            {isMobile && (
+              <div className="bazi-grid-2x2" style={{ marginBottom: 12 }}>
+                {baziData.pillars.map((p, idx) => (
+                  <div key={idx} className="bazi-pillar" style={{
+                    borderColor: idx === 2 ? 'rgba(196,164,90,0.3)' : 'var(--border-light)',
+                  }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      {p.pillar}{idx === 2 ? ' ★' : ''}
+                    </div>
+                    <div style={{
+                      fontSize: 36, fontWeight: 600,
+                      fontFamily: 'var(--font-display)',
+                      color: 'var(--text-primary)',
+                      lineHeight: 1.2,
+                    }}>
+                      {p.ganZhi}
+                    </div>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
+                      <Tag color="purple" style={{ fontSize: 11, margin: 0 }}>{idx === 2 ? '日主' : p.shiShen}</Tag>
+                      {p.nayin && <Tag color="gold" style={{ fontSize: 11, margin: 0 }}>{p.nayin}</Tag>}
+                    </div>
+                    {p.cangGan && p.cangGan.length > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                        藏干: {p.cangGan.join(' ')}
+                      </div>
+                    )}
+                    {(baziData.shenSha || []).filter((s: any) => s.pillar === p.pillar).slice(0, 2).map((s: any, si: number) => (
+                      <Tag key={si} style={{ fontSize: 10, marginTop: 4, marginRight: 2 }}
+                        color={s.type === '吉' ? 'green' : s.type === '凶' ? 'red' : 'default'}>
+                        {s.name}
+                      </Tag>
+                    ))}
+                  </div>
+                ))}
+              </div>
             )}
 
             {/* 竖向表格 */}
@@ -1874,7 +1928,13 @@ export default function Bazi() {
 
           {/* 日主强弱 + 用神 */}
           {strengthAnalysis && (
-            <Card title="日主强弱分析" style={{ marginBottom: 16, borderColor: WX_COLORS[baziData.dayWx] }}>
+            <CollapsibleCard
+              title="日主强弱分析"
+              icon={<span style={{ color: WX_COLORS[baziData.dayWx], fontSize: 16 }}>{WX_ICON[baziData.dayWx]}</span>}
+              summary={`日主${baziData.dayGan}(${baziData.dayWx})：${strengthAnalysis.level}（得分${strengthAnalysis.score}/8）`}
+              accordionGroup="bazi-analysis"
+            >
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Row gutter={16}>
                 <Col xs={24} md={12}>
                   <Paragraph>
@@ -1918,11 +1978,13 @@ export default function Bazi() {
                 </Col>
               </Row>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 五行旺衰统计 */}
           {wxStats && (
-            <Card title="五行旺衰统计" style={{ marginBottom: 16 }}>
+            <CollapsibleCard title="五行旺衰统计" summary={`${baziData.dayGan}(${baziData.dayWx})五行分布`} accordionGroup="bazi-analysis">
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Row gutter={[12, 12]}>
                 {Object.entries(wxStats).map(([wx, info]) => (
                   <Col xs={12} sm={4.8} key={wx}>
@@ -1945,10 +2007,12 @@ export default function Bazi() {
                 ))}
               </Row>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 命格 */}
-          <Card title="命格分析" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="命格分析" summary={`${baziData.mingGe.geName} · ${baziData.mingGe.geType} · ${baziData.mingGe.score}`} accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={16}>
               <Col xs={24} md={8}>
                 <Card size="small" style={{ textAlign: 'center', background: 'rgba(196,164,90,0.04)' }}>
@@ -1967,9 +2031,11 @@ export default function Bazi() {
               </Col>
             </Row>
           </Card>
+            </CollapsibleCard>
 
           {/* 刑冲合害 */}
-          <Card title="刑冲合害关系分析" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态" accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert
               message="刑冲合害反映了四柱之间的互动关系，是理解命局动态的关键。"
               type="info"
@@ -1996,18 +2062,22 @@ export default function Bazi() {
               ))
             )}
           </Card>
+            </CollapsibleCard>
 
           {/* 十神组合解读 */}
           {shiShenCombos.length > 0 && (
-            <Card title="十神组合解读" style={{ marginBottom: 16 }}>
+            <CollapsibleCard title="十神组合解读" summary="十神搭配解读你的性格模式" accordionGroup="bazi-analysis">
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               {shiShenCombos.map((c, i) => (
                 <Paragraph key={i} style={{ fontSize: 13, marginBottom: 8 }}>{c}</Paragraph>
               ))}
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 大运 */}
-          <Card title="大运（一生运势走势）" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · ${baziData.dayun.direction}`} accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert message={`起运年龄：${baziData.dayun.startAge}岁 | 排法：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排`} type="info" showIcon style={{ marginBottom: 12 }} />
             <Row gutter={[8, 8]}>
               {baziData.dayun.steps.map((step, i) => {
@@ -2032,9 +2102,11 @@ export default function Bazi() {
               <Paragraph key={i} style={{ fontSize: 13, marginBottom: 6 }}>{d}</Paragraph>
             ))}
           </Card>
+            </CollapsibleCard>
 
           {/* 流年 */}
-          <Card title="流年分析" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="流年分析" summary={selectedYear ? `${selectedYear}年流年运势` : '查看特定年份流年运势'} accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space>
               <InputNumber
                 min={1900} max={2100} placeholder={String(currentYear)}
@@ -2049,9 +2121,11 @@ export default function Bazi() {
               </div>
             )}
           </Card>
+            </CollapsibleCard>
 
           {/* 流月 */}
-          <Card title="流月推算" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="流月推算" summary={liuYueYear ? `${liuYueYear}年逐月运势` : '查看逐月运势变化'} accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space style={{ marginBottom: 12 }}>
               <Text strong>选择年份：</Text>
               <InputNumber
@@ -2082,9 +2156,11 @@ export default function Bazi() {
               </Row>
             )}
           </Card>
+            </CollapsibleCard>
 
           {/* 流日 */}
-          <Card title="流日推算" style={{ marginBottom: 16 }}>
+          <CollapsibleCard title="流日推算" summary={liuRiYear && liuRiMonth ? `${liuRiYear}年${liuRiMonth}月逐日` : '查看逐日干支运势'} accordionGroup="bazi-analysis">
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space style={{ marginBottom: 12 }}>
               <Text strong>年：</Text>
               <InputNumber min={1900} max={2100} placeholder={String(currentYear)}
@@ -2120,6 +2196,7 @@ export default function Bazi() {
               </div>
             )}
           </Card>
+            </CollapsibleCard>
 
           {/* ========== 六大领域分析 ========== */}
           <Divider orientation="left" style={{ marginTop: 24 }}>
@@ -2128,9 +2205,13 @@ export default function Bazi() {
 
           {/* 爱情婚姻 */}
           {loveAnalysis && (
+            <CollapsibleCard
+              title="💕 爱情婚姻"
+              summary={loveAnalysis.spouseFeature}
+              accordionGroup="bazi-analysis"
+            >
             <Card
-              title="爱情婚姻"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-fire)' }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-fire)' }}
               styles={{ body: { background: 'rgba(199,91,91,0.02)' } }}
             >
               <Paragraph><Text strong>配偶特征：</Text>{loveAnalysis.spouseFeature}</Paragraph>
@@ -2138,13 +2219,14 @@ export default function Bazi() {
               <Paragraph><Text strong>桃花运势：</Text>{loveAnalysis.peachBlossom}</Paragraph>
               <Paragraph><Text strong style={{ color: 'var(--wx-fire)' }}>建议：</Text>{loveAnalysis.advice}</Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 事业财运 */}
           {careerAnalysis && (
+            <CollapsibleCard title="💼 事业财运" summary={careerAnalysis.direction} accordionGroup="bazi-analysis">
             <Card
-              title="事业财运"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-water)' }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
               styles={{ body: { background: 'rgba(74,91,107,0.02)' } }}
             >
               <Paragraph><Text strong>事业方向：</Text>{careerAnalysis.direction}</Paragraph>
@@ -2153,14 +2235,14 @@ export default function Bazi() {
               <Paragraph><Text strong>贵人运：</Text>{careerAnalysis.nobleHelp}</Paragraph>
               <Paragraph><Text strong style={{ color: 'var(--wx-water)' }}>建议：</Text>{careerAnalysis.advice}</Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 身体健康 */}
           {healthAnalysis && (
+            <CollapsibleCard title="💚 身体健康" summary={healthAnalysis.bodyOverview} accordionGroup="bazi-analysis">
             <Card
-              title="身体健康"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-wood)' }}
-              styles={{ body: { background: 'rgba(91,140,90,0.02)' } }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
               <Paragraph><Text strong>体质概况：</Text>{healthAnalysis.bodyOverview}</Paragraph>
               <Paragraph><Text strong>需要留意的方面：</Text></Paragraph>
@@ -2169,42 +2251,42 @@ export default function Bazi() {
               </ul>
               <Paragraph><Text strong style={{ color: 'var(--wx-wood)' }}>养生建议：</Text>{healthAnalysis.wellnessAdvice}</Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 家庭亲情 */}
           {familyAnalysis && (
+            <CollapsibleCard title="🏠 家庭亲情" summary={familyAnalysis.parentRelation} accordionGroup="bazi-analysis">
             <Card
-              title="家庭亲情"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-earth)' }}
-              styles={{ body: { background: 'rgba(196,164,90,0.02)' } }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
               <Paragraph><Text strong>与父母关系：</Text>{familyAnalysis.parentRelation}</Paragraph>
               <Paragraph><Text strong>兄弟姐妹：</Text>{familyAnalysis.siblings}</Paragraph>
               <Paragraph><Text strong>家庭氛围：</Text>{familyAnalysis.familyAtmosphere}</Paragraph>
               <Paragraph><Text strong style={{ color: 'var(--wx-earth)' }}>建议：</Text>{familyAnalysis.advice}</Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 社交朋友 */}
           {socialAnalysis && (
+            <CollapsibleCard title="🤝 社交朋友" summary={socialAnalysis.socialTrait} accordionGroup="bazi-analysis">
             <Card
-              title="社交朋友"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-metal)' }}
-              styles={{ body: { background: 'rgba(155,155,155,0.02)' } }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
               <Paragraph><Text strong>社交特质：</Text>{socialAnalysis.socialTrait}</Paragraph>
               <Paragraph><Text strong>朋友质量：</Text>{socialAnalysis.friendQuality}</Paragraph>
               <Paragraph><Text strong>贵人类型：</Text>{socialAnalysis.nobleType}</Paragraph>
               <Paragraph><Text strong style={{ color: 'var(--wx-metal)' }}>合伙建议：</Text>{socialAnalysis.partnerAdvice}</Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
 
           {/* 综合运势总览 */}
           {fortuneOverview && (
+            <CollapsibleCard title="🌟 运势总览" summary={fortuneOverview.keywords?.join('、') || '人生综合运势'} accordionGroup="bazi-analysis">
             <Card
-              title="运势总览"
-              style={{ marginBottom: 16, borderLeft: '3px solid var(--wx-earth)' }}
-              styles={{ body: { background: 'rgba(196,164,90,0.02)' } }}
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
               <Paragraph>
                 <Text strong>人生关键词：</Text>
@@ -2237,6 +2319,7 @@ export default function Bazi() {
                 ))}
               </Paragraph>
             </Card>
+            </CollapsibleCard>
           )}
         </>
       )}

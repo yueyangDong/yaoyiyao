@@ -11,6 +11,7 @@ import {
   AlertTriangle, Lightbulb, ClipboardList, BarChart3, Home,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -955,7 +956,8 @@ export default function Ziwei() {
           </Card>
 
           {/* 十二宫白话解读 */}
-          <Card title={<span style={{ color: 'var(--text-primary)' }}>各宫白话解读</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+          <CollapsibleCard title="各宫白话解读" summary="十二宫位详解，点击展开查看各宫详情" accordionGroup="ziwei-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             {ziweiData.gongData.map((gong: any, idx: number) => {
               const score = getPalaceScore(gong);
               const style = PALACE_LEVEL_STYLE[score.level];
@@ -990,9 +992,11 @@ export default function Ziwei() {
               );
             })}
           </Card>
+            </CollapsibleCard>
 
           {/* 命盘总结 */}
-          <Card title={<span><BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />星曜解读详情</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+          <CollapsibleCard title="星曜解读详情" summary={ziweiData.summary || '命盘总结与亮点分析'} accordionGroup="ziwei-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
                 <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'rgba(91,140,90,0.03)', border: '1px solid rgba(91,140,90,0.15)' }}>
@@ -1014,9 +1018,11 @@ export default function Ziwei() {
               </Col>
             </Row>
           </Card>
+            </CollapsibleCard>
 
           {/* 四化说明 */}
-          <Card title={<span style={{ color: 'var(--text-primary)' }}>四化星说明</span>} size="small" style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
+          <CollapsibleCard title="四化星说明" summary="禄权科忌在各宫位的影响" accordionGroup="ziwei-analysis">
+          <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={[16, 8]}>
               {Object.entries(SIHUA_COLORS).map(([key, color]) => (
                 <Col xs={12} sm={6} key={key}>
@@ -1028,6 +1034,7 @@ export default function Ziwei() {
               ))}
             </Row>
           </Card>
+            </CollapsibleCard>
 
           <Alert message="以上排盘结果仅供娱乐参考。禄=红 权=蓝 科=绿 忌=橙 紫=十四主星。命理是工具，不是宿命。" type="warning" showIcon />
         </motion.div>

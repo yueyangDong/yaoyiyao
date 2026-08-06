@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ALL_DREAMS, DREAM_CATEGORIES, PINYIN_MAP, DreamEntry } from '../data/dreamData';
 import { useUser } from '../context/UserContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -356,6 +357,11 @@ export default function Dream() {
       >
         {selectedDream && (
           <>
+            <CollapsibleCard
+              title="解梦详情"
+              summary={selectedDream.content?.slice(0, 50) + (selectedDream.content?.length > 50 ? '...' : '')}
+              defaultOpen={false}
+            >
             <div style={{
               whiteSpace: 'pre-wrap',
               fontSize: 14,
@@ -368,6 +374,7 @@ export default function Dream() {
             }}>
               {selectedDream.content}
             </div>
+            </CollapsibleCard>
 
             <div style={{ marginBottom: 12 }}>
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>相关标签：</Text>

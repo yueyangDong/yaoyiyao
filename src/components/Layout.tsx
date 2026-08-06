@@ -16,6 +16,7 @@ import {
   ScrollText, Binary, House, BookOpen, Sun,
 } from 'lucide-react';
 import ScrollTop from './ScrollTop';
+import MobileBottomNav from './MobileBottomNav';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
@@ -40,6 +41,13 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const { user: authUser, signOut } = useAuth();
   const {
     profile, setProfile, hasProfile, currentUser,
@@ -342,8 +350,8 @@ export default function AppLayout() {
       )}
 
       <Content style={{
-        padding: isHome ? 0 : '20px',
-        maxWidth: 800,
+        padding: isHome ? 0 : (isMobile ? '12px 8px 110px' : '20px'),
+        maxWidth: isMobile ? 480 : 800,
         margin: '0 auto',
         width: '100%',
         background: 'transparent',
@@ -367,12 +375,13 @@ export default function AppLayout() {
         textAlign: 'center',
         background: 'transparent',
         color: 'var(--text-disabled)',
-        padding: '16px',
+        padding: '16px 16px 110px',
         fontSize: 12,
       }}>
         仅供娱乐 · 不具科学依据
       </Footer>
       <ScrollTop />
+      <MobileBottomNav />
 
       {/* 档案设置 Drawer */}
       <ProfileDrawer

@@ -2,13 +2,21 @@
 import { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 
+const isMobile = () => window.innerWidth <= 768;
+
 export default function ScrollTop() {
   const [visible, setVisible] = useState(false);
+  const [mobile, setMobile] = useState(isMobile());
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > window.innerHeight);
+    const resize = () => setMobile(isMobile());
     window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
+    window.addEventListener('resize', resize);
+    return () => {
+      window.removeEventListener('scroll', handler);
+      window.removeEventListener('resize', resize);
+    };
   }, []);
 
   const scrollToTop = () => {
@@ -22,8 +30,13 @@ export default function ScrollTop() {
       onClick={scrollToTop}
       aria-label="回到顶部"
       style={{
-        position: 'fixed', bottom: 32, right: 24, zIndex: 900,
-        width: 40, height: 40, borderRadius: '50%',
+        position: 'fixed',
+        bottom: mobile ? 100 : 32,
+        right: mobile ? 12 : 24,
+        zIndex: 900,
+        width: mobile ? 48 : 40,
+        height: mobile ? 48 : 40,
+        borderRadius: '50%',
         border: '1px solid var(--border-light)',
         background: 'rgba(255,255,255,0.9)',
         backdropFilter: 'blur(10px)',
@@ -33,7 +46,7 @@ export default function ScrollTop() {
         animation: 'fadeIn 0.2s var(--ease-out) forwards',
       }}
     >
-      <ArrowUp size={18} strokeWidth={1.5} color="var(--text-secondary)" />
+      <ArrowUp size={mobile ? 22 : 18} strokeWidth={1.5} color="var(--text-secondary)" />
     </button>
   );
 }

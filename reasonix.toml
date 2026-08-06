@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Bash=cd /e/算命小程序 && GIT_DIR=$(cd \"$(git rev-parse --git-dir)\" 2>/dev/null && pwd -P) && GIT_COMMON=$(cd \"$(git rev-parse --git-common-dir)\" 2>/dev/null && pwd -P) && echo \"GIT_DIR=$GIT_DIR\" && echo \"GIT_COMMON=$GIT_COMMON\" && echo \"BRANCH=$(git branch --show-current)\" && git rev-parse --show-superproject-working-tree 2>/dev/null; echo \"submodule-check-done\"; git status --short | wc -l"]
