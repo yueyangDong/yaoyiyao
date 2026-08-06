@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Form, InputNumber, Button, Typography, Row, Col,
   Tag, Space, message, Radio, Alert, Divider, Select, Checkbox,
@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
+import PlainConclusionCard from '../components/PlainConclusionCard';
+import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
+import { renderWithTerms } from '../utils/renderWithTerms';
+import { generateSummarizedReport } from '../utils/ziweiAnalysis';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -450,6 +454,18 @@ export default function Ziwei() {
     }
   };
 
+  // 总评与一句话结论（generateSummarizedReport 生成，供结论卡与总评首句加粗使用）
+  const summarized = useMemo(() => {
+    if (!ziweiData) return null;
+    return generateSummarizedReport(ziweiData.gongData);
+  }, [ziweiData]);
+
+  const plainConclusion = useMemo(() => {
+    if (!summarized) return null;
+    const highlight = summarized.highlights[0] || null;
+    return generateZiweiPlainConclusion(summarized.overall, highlight);
+  }, [summarized]);
+
   const getStarColor = (star: any): string => {
     if (star.sihua) return SIHUA_COLORS[star.sihua] || 'var(--text-secondary)';
     if (JI_STARS.has(star.name)) return 'green';
@@ -700,6 +716,13 @@ export default function Ziwei() {
             />
           </Card>
 
+          {/* 一句话结论卡 */}
+          {plainConclusion && (
+            <PlainConclusionCard icon="✨" title="一句话看懂你的命盘">
+              {renderWithTerms(plainConclusion)}
+            </PlainConclusionCard>
+          )}
+
           {/* 命盘总评 — 一句话看懂好坏 */}
           {(() => {
             const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
@@ -727,6 +750,9 @@ export default function Ziwei() {
               summary = '命盘中规中矩，平稳是最大的福气。不求大富大贵，但求岁岁平安。知足常乐，平安是福。';
             }
 
+            // 总评首句（按 。！! 分割），页面展示层加粗，不改 ziweiAnalysis.ts
+            const overallFirst = summarized ? summarized.overall.split(/[。！!]/)[0] : '';
+
             return (
               <Card style={{
                 marginBottom: 16,
@@ -747,6 +773,12 @@ export default function Ziwei() {
                 <Paragraph style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-body)', marginBottom: 12 }}>
                   {summary}
                 </Paragraph>
+                {summarized && (
+                  <Paragraph style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-body)', marginBottom: 12 }}>
+                    <Text strong>{overallFirst}</Text>
+                    {summarized.overall.slice(overallFirst.length)}
+                  </Paragraph>
+                )}
                 <Row gutter={[12, 8]}>
                   {jiNames.length > 0 && (
                     <Col span={12}>
