@@ -1364,16 +1364,16 @@ export default function Bazi() {
     return getDayunInterpretation(ganZhiList, baziData.dayGan, baziData.dayun.startAge);
   }, [baziData]);
 
-  // 一句话结论（用神与喜神可能重叠，合并去重后再拆分，避免结论文案中五行重复）
+  // 一句话结论（xiShen 实为忌神，不并入结论文案，避免与专业分析自相矛盾）
   const plainConclusion = useMemo(() => {
     if (!baziData || !strengthAnalysis || !yongShenRec) return null;
     const wxs = Object.entries(wxStats || {}).sort((a, b) => b[1].count - a[1].count);
     const wxStrongest = wxs[0]?.[0] || '';
     const wxWeakest = wxs[wxs.length - 1]?.[0] || '';
     const dayunFirst = baziData.dayun.steps[0]?.ganZhi || null;
-    const yongXi = Array.from(new Set([...yongShenRec.yongShen, ...yongShenRec.xiShen]));
+    // 用神与喜神可能重叠，但 xiShen（身强时比劫、身弱时财星）实为忌神，不并入结论文案
     const yongShen = yongShenRec.yongShen;
-    const xiShen = yongXi.filter((wx) => !yongShen.includes(wx));
+    const xiShen: string[] = [];
     return generateBaziPlainConclusion({
       dayGan: baziData.dayGan,
       dayWx: baziData.dayWx,

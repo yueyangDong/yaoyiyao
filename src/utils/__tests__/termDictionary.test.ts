@@ -28,4 +28,10 @@ describe('termDictionary', () => {
   it('findTermsInText returns empty array for plain text', () => {
     expect(findTermsInText('今天天气不错')).toEqual([]);
   });
+
+  it('findTermsInText ignores single-character terms to avoid false matches', () => {
+    const hits = findTermsInText('今天适合出门');
+    const terms = hits.map(h => h.term);
+    expect(terms).not.toContain('合');
+  });
 });

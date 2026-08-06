@@ -9,6 +9,7 @@ import {
   SwapOutlined,
 } from '@ant-design/icons';
 import { UserCircle, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
@@ -40,6 +41,7 @@ const LUNAR_MONTH_OPTIONS = [
 const LUNAR_DAY_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }));
 
 export default function Profile() {
+  const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history, syncing, synced } = useUser();
   const [editing, setEditing] = useState(false);
@@ -192,7 +194,7 @@ export default function Profile() {
           style={{ marginBottom: 20, borderRadius: 16 }}
           action={
             <Space direction="vertical" align="end" size={4}>
-              <a href="/auth"><Button type="primary" size="small">登录以云同步</Button></a>
+              <Button type="primary" size="small" onClick={() => navigate('/auth')}>登录以云同步</Button>
               <Text type="secondary" style={{ fontSize: 12 }}>不登录也能用，数据存在本机；登录后自动备份到云端</Text>
             </Space>
           }

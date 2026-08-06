@@ -116,6 +116,7 @@ export function findTermsInText(text: string): TermEntry[] {
   const found: TermEntry[] = [];
   const seen = new Set<string>();
   for (const entry of sorted) {
+    if (entry.term.length < 2) continue; // 跳过单字条目，避免「适合」→「合」、「冲动」→「冲」等误匹配
     if (seen.has(entry.term)) continue;
     if (text.includes(entry.term)) {
       found.push(entry);

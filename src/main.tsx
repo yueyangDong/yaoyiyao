@@ -7,6 +7,9 @@ import App from './App';
 import 'antd/dist/reset.css';
 import './index.css';
 
+// APK 内 vite base 为 './'（相对路径），Web 构建 base 为 '/yaoyiyao/'，据此派生 router basename
+const basename = import.meta.env.BASE_URL === './' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ConfigProvider
@@ -42,7 +45,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         },
       }}
     >
-      <BrowserRouter basename={import.meta.env.DEV ? '/' : '/yaoyiyao'}>
+      <BrowserRouter basename={basename}>
         <App />
       </BrowserRouter>
     </ConfigProvider>
