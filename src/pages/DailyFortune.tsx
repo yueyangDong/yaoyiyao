@@ -1,5 +1,5 @@
 // 每日一爻：黄历 + 天气 + 每日签 + 幸运指南 + 出行提示
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, Typography, Space, Tag, Row, Col, Button, Spin, message,
 } from 'antd';
@@ -12,6 +12,9 @@ import {
 } from '../utils/dailyFortuneUtils';
 import { guanyinLots } from '../data/guanyinLots';
 import { useToast } from '../components/Toast';
+import { generateDailyPlainConclusion } from '../utils/plainConclusion';
+import { renderWithTerms } from '../utils/renderWithTerms';
+import PlainConclusionCard from '../components/PlainConclusionCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -38,6 +41,14 @@ export default function DailyFortune() {
   const [luckyGuide] = useState<LuckyGuide>(() => getLuckyGuide());
   const [dailyLot, setDailyLot] = useState<any>(null);
   const [travelAdvice, setTravelAdvice] = useState<TravelAdvice | null>(null);
+
+  // 今日一句话结论（jiShen/xiongSha 自带「宜/忌」前缀，先清洗再传入生成器）
+  const dailyConclusion = useMemo(() => {
+    const ji = (luckyGuide.jiShen || []).map(s => s.replace(/^[宜忌]/, ''));
+    const xiong = (luckyGuide.xiongSha || []).map(s => s.replace(/^[宜忌]/, ''));
+    const desc = weather ? getWeatherDesc(weather.weatherCode) : null;
+    return generateDailyPlainConclusion(ji, xiong, desc, weather?.temp ?? null);
+  }, [luckyGuide, weather]);
 
   // 加载天气
   const loadWeather = useCallback(async (lat: number, lng: number, cityName?: string) => {
@@ -170,6 +181,13 @@ export default function DailyFortune() {
           </div>
         </Card>
       </motion.div>
+
+      {/* 今日一句话 */}
+      {dailyConclusion && (
+        <PlainConclusionCard icon="☀️" title="今日一句话">
+          {renderWithTerms(dailyConclusion)}
+        </PlainConclusionCard>
+      )}
 
       {/* 宜忌卡片 */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
