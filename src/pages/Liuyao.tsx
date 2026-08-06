@@ -8,6 +8,9 @@ import { dayan, decodePan, threeNumberQiGua, manualQiGua } from 'iching-shifa';
 import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 import { useUser } from '../context/UserContext';
 import CollapsibleCard from '../components/CollapsibleCard';
+import { generateLiuyaoPlainConclusion } from '../utils/plainConclusion';
+import PlainConclusionCard from '../components/PlainConclusionCard';
+import { renderWithTerms } from '../utils/renderWithTerms';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -389,6 +392,25 @@ export default function Liuyao() {
       {/* 排盘结果 */}
       {pan && (
         <>
+          {/* 白话断卦 */}
+          {pan && (() => {
+            const con = generateLiuyaoPlainConclusion(
+              pan.benGua.guaName,
+              pan.dongYaoCount,
+              !!pan.zhiGua && pan.zhiGua.guaName !== pan.benGua.guaName,
+            );
+            const tone = con.verdict === '宜守' ? 'default' : con.verdict === '有变' ? 'warn' : 'good';
+            return (
+              <PlainConclusionCard
+                icon={con.verdict === '宜守' ? '🧘' : con.verdict === '有变' ? '🌊' : '🔥'}
+                title={`白话断卦 · ${con.verdict}`}
+                tone={tone}
+              >
+                {renderWithTerms(con.text)}
+              </PlainConclusionCard>
+            );
+          })()}
+
           {/* 卦象总览 */}
           <Card title="卦象排盘" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>
             <Row gutter={[16, 16]}>
