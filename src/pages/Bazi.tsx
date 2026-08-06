@@ -8,6 +8,7 @@ import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
+import { useNavigate } from 'react-router-dom';
 import CollapsibleCard from '../components/CollapsibleCard';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
@@ -929,6 +930,7 @@ export interface PillarData {
 }
 
 export default function Bazi() {
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -1452,7 +1454,7 @@ export default function Bazi() {
           showIcon
           style={{ marginBottom: 16 }}
           action={
-            <Button size="small" type="link" onClick={() => window.location.href = '/profile'}>
+            <Button size="small" type="link" onClick={() => navigate('/profile')}>
               切换档案
             </Button>
           }
@@ -1464,7 +1466,7 @@ export default function Bazi() {
           showIcon
           style={{ marginBottom: 16 }}
           action={
-            <Button size="small" type="primary" onClick={() => window.location.href = '/profile'}>
+            <Button size="small" type="primary" onClick={() => navigate('/profile')}>
               立即创建
             </Button>
           }

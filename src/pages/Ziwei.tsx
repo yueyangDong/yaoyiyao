@@ -3,6 +3,7 @@ import {
   Card, Form, InputNumber, Button, Typography, Row, Col,
   Tag, Space, message, Radio, Alert, Divider, Select, Checkbox,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
@@ -272,6 +273,7 @@ function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarD
 }
 
 export default function Ziwei() {
+  const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
   const [form] = Form.useForm();
   const [ziweiData, setZiweiData] = useState<any>(null);
@@ -550,13 +552,13 @@ export default function Ziwei() {
         <Alert
           message={<span><ClipboardList size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />当前使用档案：<strong>{currentUser.name}</strong>（{currentUser.gender}·{currentUser.birthCalendar === 'solar' ? '公历' : '农历'}·{currentUser.birthYear}.{currentUser.birthMonth}.{currentUser.birthDay}）</span>}
           type="success" showIcon style={{ marginBottom: 16 }}
-          action={<Button size="small" type="link" onClick={() => window.location.href = '/profile'}>切换档案</Button>}
+          action={<Button size="small" type="link" onClick={() => navigate('/profile')}>切换档案</Button>}
         />
       ) : (
         <Alert
           message={<span><Lightbulb size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />创建个人档案后，可一键自动填入，无需每次手动输入。</span>}
           type="info" showIcon style={{ marginBottom: 16 }}
-          action={<Button size="small" type="primary" onClick={() => window.location.href = '/profile'}>立即创建</Button>}
+          action={<Button size="small" type="primary" onClick={() => navigate('/profile')}>立即创建</Button>}
         />
       )}
 
