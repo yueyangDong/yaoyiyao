@@ -7,3 +7,4 @@ dist/
 # 工具与私有配置
 .reasonix/
 project.private.config.json
+.worktrees/
