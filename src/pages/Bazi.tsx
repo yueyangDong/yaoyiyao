@@ -9,6 +9,9 @@ import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
 import CollapsibleCard from '../components/CollapsibleCard';
+import PlainConclusionCard from '../components/PlainConclusionCard';
+import { generateBaziPlainConclusion } from '../utils/plainConclusion';
+import { renderWithTerms } from '../utils/renderWithTerms';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -509,21 +512,21 @@ function getShiShenComboAnalysis(pillars: any[], dayGan: string): string[] {
   const allShiShen = pillars.map((p) => p.shiShen).filter(Boolean);
 
   if (allShiShen.includes('伤官') && allShiShen.includes('正官')) {
-    combos.push('【伤官见官】你的命局中伤官和正官同时出现，这代表你骨子里不服管束，讨厌规章制度，工作中容易和领导对着干。但也正因为这种叛逆，你有打破常规的创造力。建议把"叛逆"用在对的地方——创新而非对抗。');
+    combos.push('【伤官见官】你骨子里不服管束，讨厌规章制度，工作中容易和领导对着干——因为命局中伤官和正官同时出现。但也正因为这种叛逆，你有打破常规的创造力。建议把"叛逆"用在对的地方——创新而非对抗。');
   }
   if (allShiShen.includes('食神') && allShiShen.includes('七杀')) {
     combos.push('【食神制杀】食神压制七杀是一个很好的组合！七杀代表压力和小人，而食神代表智慧和手段。你有能力用聪明才智化解压力和对手，好比"以智取胜"。这是能成大事的格局。');
   }
   if (allShiShen.includes('正财') && allShiShen.includes('偏印')) {
-    combos.push('【财破印】正财克偏印，代表你可能为了赚钱而放弃学业或进修。注意：金钱和知识不是对立的，两者兼得才是长久之计。');
+    combos.push('【财破印】你可能为了赚钱而放弃学业或进修——因为正财克偏印。注意：金钱和知识不是对立的，两者兼得才是长久之计。');
   }
   if (allShiShen.includes('正印') && allShiShen.includes('伤官')) {
-    combos.push('【印制伤官】正印克制伤官，让你的聪明才智有了边界和分寸。你不会因为太"跳脱"而闯祸，能在规则内发挥创意，这是很好的平衡。');
+    combos.push('【印制伤官】你的聪明才智有了边界和分寸，不会因为太"跳脱"而闯祸，能在规则内发挥创意，这是很好的平衡——因为正印克制伤官。');
   }
   const caiCount = allShiShen.filter((s) => s === '正财' || s === '偏财').length;
   const shaCount = allShiShen.filter((s) => s === '七杀').length;
   if (caiCount >= 2 && shaCount >= 1) {
-    combos.push('【财生杀】命中财多又带七杀，钱财多了反而带来压力。要注意理财方式，避免为钱所困，也不要因为贪财而得罪人。');
+    combos.push('【财生杀】钱财多了反而带来压力——因为命中财多又带七杀。要注意理财方式，避免为钱所困，也不要因为贪财而得罪人。');
   }
   if (allShiShen.includes('正官') && allShiShen.includes('正印')) {
     combos.push('【官印相生】正官生正印，这是很好的组合！官代表事业地位，印代表贵人助力，说明你在事业上不仅有作为，还有贵人扶持，是比较理想的格局。');
@@ -1361,6 +1364,28 @@ export default function Bazi() {
     return getDayunInterpretation(ganZhiList, baziData.dayGan, baziData.dayun.startAge);
   }, [baziData]);
 
+  // 一句话结论（用神与喜神可能重叠，合并去重后再拆分，避免结论文案中五行重复）
+  const plainConclusion = useMemo(() => {
+    if (!baziData || !strengthAnalysis || !yongShenRec) return null;
+    const wxs = Object.entries(wxStats || {}).sort((a, b) => b[1].count - a[1].count);
+    const wxStrongest = wxs[0]?.[0] || '';
+    const wxWeakest = wxs[wxs.length - 1]?.[0] || '';
+    const dayunFirst = baziData.dayun.steps[0]?.ganZhi || null;
+    const yongXi = Array.from(new Set([...yongShenRec.yongShen, ...yongShenRec.xiShen]));
+    const yongShen = yongShenRec.yongShen;
+    const xiShen = yongXi.filter((wx) => !yongShen.includes(wx));
+    return generateBaziPlainConclusion({
+      dayGan: baziData.dayGan,
+      dayWx: baziData.dayWx,
+      level: strengthAnalysis.level,
+      yongShen,
+      xiShen,
+      wxStrongest,
+      wxWeakest,
+      dayunFirst,
+    });
+  }, [baziData, strengthAnalysis, yongShenRec, wxStats]);
+
 
   // 按柱分组的神煞
   const shenShaByPillar = useMemo(() => {
@@ -1518,6 +1543,13 @@ export default function Bazi() {
 
       {baziData && (
         <>
+          {/* 一句话结论卡 */}
+          {plainConclusion && (
+            <PlainConclusionCard icon="🔮" title="一句话看懂你的八字">
+              {renderWithTerms(plainConclusion)}
+            </PlainConclusionCard>
+          )}
+
           {/* 基本信息 */}
           <Card style={{ marginBottom: 16 }} size="small">
             <Text type="secondary">{baziData.lunarInfo}</Text>
