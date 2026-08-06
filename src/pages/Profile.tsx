@@ -190,7 +190,12 @@ export default function Profile() {
           description="登录后数据自动同步到云端，换设备也能找回档案和历史记录。"
           type="warning" showIcon
           style={{ marginBottom: 20, borderRadius: 16 }}
-          action={<a href="/auth"><Button type="primary" size="small">去登录</Button></a>}
+          action={
+            <Space direction="vertical" align="end" size={4}>
+              <a href="/auth"><Button type="primary" size="small">登录以云同步</Button></a>
+              <Text type="secondary" style={{ fontSize: 12 }}>不登录也能用，数据存在本机；登录后自动备份到云端</Text>
+            </Space>
+          }
         />
       )}
 
