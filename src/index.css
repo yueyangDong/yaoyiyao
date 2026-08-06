@@ -91,6 +91,13 @@
   --module-orange: #D4943A;
   --module-pink: #C47B8A;
 
+  /* === 命理品牌色（增量补充） === */
+  --brand-gold: #B8860B;
+  --brand-gold-soft: #E8D5A3;
+  --brand-cinnabar: #B03A2E;
+  --card-radius: 16px;
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+
   /* === 半透明层 === */
   --overlay-02: rgba(0,0,0,0.02);
   --overlay-04: rgba(0,0,0,0.04);
@@ -549,6 +556,23 @@ p {
 .tag-metal { background: rgba(155,155,155,0.08) !important; color: var(--wx-metal) !important; }
 .tag-water { background: rgba(74,91,107,0.08) !important; color: var(--wx-water) !important; }
 
+/* ========== 术语标签与结论卡 ========== */
+.term-tag {
+  border-bottom: 1.5px dotted var(--module-gold);
+  cursor: help;
+  padding: 0 1px;
+  transition: background-color 0.2s;
+}
+.term-tag:hover { background: rgba(232, 213, 163, 0.35); }
+
+.plain-conclusion-card {
+  animation: fadeUp 0.35s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ========== 淡入动画 ========== */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -768,9 +792,14 @@ p {
     padding: 0 16px;
     background: var(--bg-card-solid);
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, transform 0.25s, box-shadow 0.25s;
+  }
+  .home-module-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow);
   }
   .home-module-card:active {
     background: var(--overlay-04);

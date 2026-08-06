@@ -13,17 +13,17 @@ import {
 const { Title, Text } = Typography;
 
 const MODULES = [
-  { key: 'daily', path: '/daily', title: '每日一爻', color: 'var(--module-gold)', icon: <Sun size={22} strokeWidth={1.5} /> },
-  { key: 'bazi', path: '/bazi', title: '八字排盘', color: 'var(--module-green)', icon: <Binary size={22} strokeWidth={1.5} /> },
-  { key: 'ziwei', path: '/ziwei', title: '紫微斗数', color: 'var(--module-blue)', icon: <Star size={22} strokeWidth={1.5} /> },
-  { key: 'liuyao', path: '/liuyao', title: '六爻占卜', color: 'var(--module-gold)', icon: <Sparkles size={22} strokeWidth={1.5} /> },
-  { key: 'lingqian', path: '/lingqian', title: '灵签抽签', color: 'var(--module-gray)', icon: <ScrollText size={22} strokeWidth={1.5} /> },
-  { key: 'meihua', path: '/meihua', title: '梅花易数', color: 'var(--module-red)', icon: <Flower2 size={22} strokeWidth={1.5} /> },
-  { key: 'nayin', path: '/nayin', title: '纳音查询', color: 'var(--module-green)', icon: <Waves size={22} strokeWidth={1.5} /> },
-  { key: 'fengshui', path: '/fengshui', title: '风水相宅', color: 'var(--module-gold)', icon: <Compass size={22} strokeWidth={1.5} /> },
-  { key: 'dream', path: '/dream', title: '周公解梦', color: 'var(--module-blue)', icon: <Moon size={22} strokeWidth={1.5} /> },
-  { key: 'ancient', path: '/ancient', title: '古籍经典', color: 'var(--module-green)', icon: <BookOpen size={22} strokeWidth={1.5} /> },
-  { key: 'profile', path: '/profile', title: '个人档案', color: 'var(--module-gray)', icon: <UserCircle size={22} strokeWidth={1.5} /> },
+  { key: 'daily', path: '/daily', title: '每日一爻', subtitle: '每天摇一卦，看看今日运势', color: 'var(--module-gold)', icon: <Sun size={22} strokeWidth={1.5} /> },
+  { key: 'bazi', path: '/bazi', title: '八字排盘', subtitle: '八字排盘 — 看你天生的底牌', color: 'var(--module-green)', icon: <Binary size={22} strokeWidth={1.5} /> },
+  { key: 'ziwei', path: '/ziwei', title: '紫微斗数', subtitle: '十二宫位，照见一生的格局', color: 'var(--module-blue)', icon: <Star size={22} strokeWidth={1.5} /> },
+  { key: 'liuyao', path: '/liuyao', title: '六爻占卜', subtitle: '三枚铜钱，问个明白', color: 'var(--module-gold)', icon: <Sparkles size={22} strokeWidth={1.5} /> },
+  { key: 'lingqian', path: '/lingqian', title: '灵签抽签', subtitle: '摇一支签，听听签文怎么说', color: 'var(--module-gray)', icon: <ScrollText size={22} strokeWidth={1.5} /> },
+  { key: 'meihua', path: '/meihua', title: '梅花易数', subtitle: '观物起卦，处处皆可问', color: 'var(--module-red)', icon: <Flower2 size={22} strokeWidth={1.5} /> },
+  { key: 'nayin', path: '/nayin', title: '纳音查询', subtitle: '六十甲子，听听你的五行纳音', color: 'var(--module-green)', icon: <Waves size={22} strokeWidth={1.5} /> },
+  { key: 'fengshui', path: '/fengshui', title: '风水相宅', subtitle: '看看宅相，图个安居顺遂', color: 'var(--module-gold)', icon: <Compass size={22} strokeWidth={1.5} /> },
+  { key: 'dream', path: '/dream', title: '周公解梦', subtitle: '梦里乾坤，醒来解一解', color: 'var(--module-blue)', icon: <Moon size={22} strokeWidth={1.5} /> },
+  { key: 'ancient', path: '/ancient', title: '古籍经典', subtitle: '翻翻古籍，句句都是老理', color: 'var(--module-green)', icon: <BookOpen size={22} strokeWidth={1.5} /> },
+  { key: 'profile', path: '/profile', title: '个人档案', subtitle: '存好生辰八字，走到哪算到哪', color: 'var(--module-gray)', icon: <UserCircle size={22} strokeWidth={1.5} /> },
 ];
 
 function getTodayLunar(): string {
@@ -245,13 +245,25 @@ export default function Home() {
               >
                 <Space size={12}>
                   <span style={{ color: mod.color, display: 'flex' }}>{mod.icon}</span>
-                  <Text strong style={{
-                    fontSize: 15,
-                    fontFamily: 'var(--font-title)',
-                    color: 'var(--text-primary)',
-                  }}>
-                    {mod.title}
-                  </Text>
+                  <div>
+                    <Text strong style={{
+                      fontSize: 15,
+                      fontFamily: 'var(--font-title)',
+                      color: 'var(--text-primary)',
+                    }}>
+                      {mod.title}
+                    </Text>
+                    <br />
+                    <Text style={{
+                      fontSize: 11,
+                      color: 'var(--text-secondary)',
+                      display: 'block',
+                      lineHeight: 1.4,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {mod.subtitle}
+                    </Text>
+                  </div>
                 </Space>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {lastQueryMap[mod.key] && (
@@ -286,8 +298,8 @@ export default function Home() {
                       {mod.title}
                     </Text>
                     <br />
-                    <Text style={{ fontSize: 'var(--text-sm)', color: mod.color, letterSpacing: '0.02em' }}>
-                      {MODULES.find(m => m.key === mod.key)?.title}
+                    <Text style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', letterSpacing: '0.02em' }}>
+                      {mod.subtitle}
                     </Text>
                   </div>
                 </div>
