@@ -1716,7 +1716,8 @@ export default function Bazi() {
               </div>
             )}
 
-            {/* 竖向表格 */}
+            {/* 竖向表格（仅桌面端；移动端使用上方 2×2 卡片） */}
+            {!isMobile && (
             <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
               <table style={{
                 width: '100%', minWidth: 480, borderCollapse: 'collapse',
@@ -1922,6 +1923,7 @@ export default function Bazi() {
                 </tbody>
               </table>
             </div>
+            )}
           </Card>
 
           {/* 神煞 */}
@@ -2206,13 +2208,13 @@ export default function Bazi() {
             </Space>
             {liuRiDays && (
               <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                <Row gutter={[4, 4]}>
+                <Row gutter={isMobile ? ([0, 4] as [number, number]) : [4, 4]} style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 } : undefined}>
                   {liuRiDays.map((d) => {
                     const isGood = d.desc === '印生' || d.desc === '财运';
                     const isBad = d.desc === '官杀';
                     const isWeekend = d.desc.includes('周末');
                     return (
-                      <Col span={3} key={d.day} style={{ minWidth: 80 }}>
+                      <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
                         <Card size="small" style={{
                           textAlign: 'center',
                           padding: 2,
