@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Form, InputNumber, Button, Typography, Row, Col,
-  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox,
+  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox, Cascader,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
+import { pcaCode } from 'cn-division';
+import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
 import {
@@ -16,6 +17,7 @@ import CollapsibleCard from '../components/CollapsibleCard';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
+import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth } from '../utils/dateValidation';
 import { generateSummarizedReport } from '../utils/ziweiAnalysis';
 
 const { Title, Text, Paragraph } = Typography;
@@ -313,17 +315,35 @@ export default function Ziwei() {
 
   const handleCalc = () => {
     const values = form.getFieldsValue();
-    const { year, month, day, hour, minute, gender } = values;
+    const { year, month, day, hour, minute, gender, birthplace } = values;
 
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的出生信息');
       return;
     }
 
+    const dateOk = calendarType === 'lunar'
+      ? isValidLunarDate(year, month, day, isLeapMonth)
+      : isValidSolarDate(year, month, day);
+    if (!dateOk) {
+      message.warning('日期无效，请检查（注意闰月）');
+      return;
+    }
+
     setLoading(true);
     try {
-      const calcHour = hour;
-      const calcMinute = minute || 0;
+      // 真太阳时校正（仿八字页 handleCalc）
+      let calcHour = hour;
+      let calcMinute = minute || 0;
+      let lng = 120;
+      if (birthplace && birthplace.length >= 2) {
+        lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
+      }
+      if (lng !== 120) {
+        const trueSolar = getTrueSolarHour(hour, minute || 0, lng);
+        calcHour = trueSolar.hour;
+        calcMinute = trueSolar.minute;
+      }
 
       const birthDate = new Date(year, month - 1, day, calcHour, calcMinute, 0);
 
@@ -353,7 +373,7 @@ export default function Ziwei() {
         gender: gender || 'male',
         date: birthDate,
         language: 'zh-CN',
-        longitude: 120,
+        longitude: lng,
       } as any);
 
       const gongData = result.palaces.map((p: any) => ({
@@ -585,6 +605,7 @@ export default function Ziwei() {
               <Checkbox
                 checked={isLeapMonth}
                 onChange={(e) => setIsLeapMonth(e.target.checked)}
+                disabled={calendarType !== 'lunar' || getLunarLeapMonth(form.getFieldValue('year')) !== (form.getFieldValue('month') as number)}
                 style={{ marginLeft: 16 }}
               >
                 闰月
@@ -624,7 +645,20 @@ export default function Ziwei() {
               </Form.Item>
             </Col>
             <Col xs={12} sm={3}>
-              <Form.Item name="day" label="日" rules={[{ required: true }]}>
+              <Form.Item name="day" label="日" rules={[
+                { required: true },
+                ({ getFieldValue }) => ({
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve();
+                    const y = getFieldValue('year');
+                    const m = getFieldValue('month');
+                    const ok = calendarType === 'lunar'
+                      ? isValidLunarDate(y, m, value, isLeapMonth)
+                      : isValidSolarDate(y, m, value);
+                    return ok ? Promise.resolve() : Promise.reject(new Error(calendarType === 'lunar' ? '农历日期无效（注意闰月）' : '该月没有这一天'));
+                  },
+                }),
+              ]}>
                 <Select placeholder="选择日期"
                   options={Array.from({ length: calendarType === 'solar' ? 31 : 30 }, (_, i) => ({
                     value: i + 1, label: `${i + 1}日`,
@@ -655,6 +689,19 @@ export default function Ziwei() {
             <Col xs={12} sm={4}>
               <Form.Item name="minute" label="分">
                 <InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="birthplace" label="出生地（真太阳时校正）">
+                <Cascader
+                  options={pcaCode}
+                  fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
+                  placeholder="请选择省市区（可选）"
+                  changeOnSelect
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
             </Col>
           </Row>
