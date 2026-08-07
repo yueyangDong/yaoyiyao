@@ -1,3 +1,4 @@
+import { Geolocation } from '@capacitor/geolocation';
 // 天气 API：open-meteo，无需 API Key
 const CACHE_KEY = 'weather_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30分钟
@@ -121,6 +122,25 @@ export function getUserPosition(): Promise<GeoPosition> {
       { enableHighAccuracy: false, timeout: 10000 },
     );
   });
+}
+
+/**
+ * 系统定位（统一 API）：Android/iOS 走 Capacitor 原生定位（自动请求运行时权限），
+ * Web 走该插件内置的浏览器 navigator.geolocation 实现。
+ */
+export async function getPositionNative(): Promise<GeoPosition> {
+  const pos = await Geolocation.getCurrentPosition({
+    enableHighAccuracy: false,
+    timeout: 10000,
+  });
+  return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+}
+
+/** 定位 + 城市反查（近似判断） */
+export async function getPositionWithCity(): Promise<GeoPosition> {
+  const pos = await getPositionNative();
+  const city = await reverseGeocode(pos.lat, pos.lng);
+  return { ...pos, city };
 }
 
 async function reverseGeocode(lat: number, lng: number): Promise<string> {

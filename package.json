@@ -19,6 +19,7 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/geolocation": "^8.2.1",
     "@freizl/yijing": "^2.1.0",
     "@supabase/supabase-js": "^2.110.2",
     "@ziweijs/core": "^0.3.0",
