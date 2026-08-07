@@ -526,7 +526,9 @@ export default function Ziwei() {
       ],
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
-    const verdict = verdictList[Math.floor(Math.random() * verdictList.length)];
+    // 按宫位名哈希确定性选择，保证折叠重开文案稳定
+    const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+    const verdict = verdictList[hash(gong.name) % verdictList.length];
 
     const parts: string[] = ['<strong>' + verdict + '</strong> ' + base];
 
@@ -597,7 +599,7 @@ export default function Ziwei() {
           }}>
           {/* 公历/农历切换 */}
           <Form.Item label="时间类型" style={{ marginBottom: 12 }}>
-            <Radio.Group value={calendarType} onChange={(e) => { setCalendarType(e.target.value); form.resetFields(['month', 'day']); }}>
+            <Radio.Group value={calendarType} onChange={(e) => { setCalendarType(e.target.value); }}>
               <Radio.Button value="solar"><Sun size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />公历</Radio.Button>
               <Radio.Button value="lunar"><Moon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />农历</Radio.Button>
             </Radio.Group>
