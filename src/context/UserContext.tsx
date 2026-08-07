@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { getNameByCode } from 'cn-division';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -432,17 +433,21 @@ import { CITY_LNG_MAP } from '../data/cityLng';
 export { CITY_LNG_MAP };
 
 export function getCityLng(province: string, city: string, district?: string): number {
+  // 兼容区划编码（Cascader value:'c'）：编码 → 名称；名称输入 getNameByCode 返回 undefined 则原样保留
+  const p = getNameByCode(province) || province;
+  const c = getNameByCode(city) || city;
+  const d = district ? (getNameByCode(district) || district) : '';
   // 1) 精确3级匹配：省,市,区
-  if (district) {
-    const key3 = `${province},${city},${district}`;
+  if (d) {
+    const key3 = `${p},${c},${d}`;
     if (CITY_LNG_MAP[key3] !== undefined) return CITY_LNG_MAP[key3];
   }
   // 2) 2级匹配：省,市
-  const key2 = `${province},${city}`;
+  const key2 = `${p},${c}`;
   if (CITY_LNG_MAP[key2] !== undefined) return CITY_LNG_MAP[key2];
   // 3) 模糊匹配：key包含市名
   for (const [k, v] of Object.entries(CITY_LNG_MAP)) {
-    if (k.includes(city)) return v;
+    if (k.includes(c)) return v;
   }
   return 120;
 }
