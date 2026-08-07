@@ -862,6 +862,7 @@ export default function Ziwei() {
                   gap: 8,
                 }}>
                   {/* 中心装饰 */}
+                  {!isMobile && (
                   <motion.div
                     key="center-deco"
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -911,6 +912,7 @@ export default function Ziwei() {
                       </Text>
                     </div>
                   </motion.div>
+                  )}
 
                   {/* 十二宫卡片 */}
                   {placements.map(({ gong, row, col }, idx) => {
@@ -929,8 +931,8 @@ export default function Ziwei() {
                         transition={{ delay: idx * 0.04, duration: 0.35, ease: 'easeOut' }}
                         className={isMing ? 'ming-pulse' : ''}
                         style={{
-                          gridRow: row,
-                          gridColumn: col,
+                          gridRow: isMobile ? Math.floor(idx / 2) + 1 : row,
+                          gridColumn: isMobile ? (idx % 2) + 1 : col,
                           border: isMing ? style.border : `1px solid var(--border-light)`,
                           borderLeft: `3px solid ${style.tag}`,
                           borderRadius: 10,
