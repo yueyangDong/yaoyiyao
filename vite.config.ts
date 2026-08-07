@@ -6,12 +6,17 @@ import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   base: command === 'build' ? '/yaoyiyao/' : '/',
   root: __dirname,
+  build: {
+    // 保守目标：兼容较旧系统 WebView（Android 8/9 及未更新的 WebView）
+    target: 'es2018',
+  },
   plugins: [
     react(),
-    VitePWA({
+    // APK 构建（--mode android）禁用 PWA/SW：Capacitor 内 Service Worker 是白屏隐患（陈旧缓存）
+    ...(mode === 'android' ? [] : [VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
       includeAssets: ['logo-192.png', 'logo-512.png'],
@@ -36,7 +41,7 @@ export default defineConfig(({ command }) => ({
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
       },
-    }),
+    })]),
   ],
   server: {
     port: 3000,
