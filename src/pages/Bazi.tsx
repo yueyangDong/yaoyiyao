@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
   Typography, Space, Tag, message, Radio, Row, Col,
-  Progress, Alert, Divider, Cascader, Tooltip, Select,
+  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select,
 } from 'antd';
 import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
@@ -1483,7 +1483,7 @@ export default function Bazi() {
         />
       )}
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card id="bazi-form-card" style={{ marginBottom: 16 }}>
         <Form
           form={form}
           layout="vertical"
@@ -1592,6 +1592,18 @@ export default function Bazi() {
               {renderWithTerms(plainConclusion)}
             </PlainConclusionCard>
           )}
+
+            <Button
+              type="text"
+              size="small"
+              icon={<span style={{ marginRight: 4 }}>✏️</span>}
+              onClick={() => {
+                document.getElementById('bazi-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              style={{ marginBottom: 8 }}
+            >
+              修改信息
+            </Button>
 
           {/* 基本信息 */}
           <Card style={{ marginBottom: 16 }} size="small">
@@ -1938,7 +1950,7 @@ export default function Bazi() {
                               ) : (
                                 pillarSS.map((ss: ShenShaItem, si: number) => (
                                   <div key={si} style={{ margin: '1px 0' }}>
-                                    <Tooltip title={ss.desc}>
+                                    <Popover content={ss.desc} trigger="click">
                                       <Tag
                                         style={{
                                           fontSize: 10, margin: 0, cursor: 'pointer',
@@ -1949,7 +1961,7 @@ export default function Bazi() {
                                       >
                                         {ss.name}
                                       </Tag>
-                                    </Tooltip>
+                                    </Popover>
                                   </div>
                                 ))
                               )}
@@ -2009,7 +2021,6 @@ export default function Bazi() {
               title="日主强弱分析"
               icon={<span style={{ color: WX_COLORS[baziData.dayWx], fontSize: 16 }}>{WX_ICON[baziData.dayWx]}</span>}
               summary={`日主${baziData.dayGan}(${baziData.dayWx})：${strengthAnalysis.level}（得分${strengthAnalysis.score}/8）`}
-              accordionGroup="bazi-analysis"
             >
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Row gutter={16}>
@@ -2060,7 +2071,7 @@ export default function Bazi() {
 
           {/* 五行旺衰统计 */}
           {wxStats && (
-            <CollapsibleCard title="五行旺衰统计" summary={`${baziData.dayGan}(${baziData.dayWx})五行分布`} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="五行旺衰统计" summary={`${baziData.dayGan}(${baziData.dayWx})五行分布`}>
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Row gutter={[12, 12]}>
                 {Object.entries(wxStats).map(([wx, info]) => (
@@ -2088,7 +2099,7 @@ export default function Bazi() {
           )}
 
           {/* 命格 */}
-          <CollapsibleCard title="命格分析" summary={`${baziData.mingGe.geName} · ${baziData.mingGe.geType} · ${baziData.mingGe.score}`} accordionGroup="bazi-analysis">
+          <CollapsibleCard title="命格分析" summary={`${baziData.mingGe.geName} · ${baziData.mingGe.geType} · ${baziData.mingGe.score}`}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={16}>
               <Col xs={24} md={8}>
@@ -2111,7 +2122,7 @@ export default function Bazi() {
             </CollapsibleCard>
 
           {/* 刑冲合害 */}
-          <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态" accordionGroup="bazi-analysis">
+          <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态">
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert
               message="刑冲合害反映了四柱之间的互动关系，是理解命局动态的关键。"
@@ -2143,7 +2154,7 @@ export default function Bazi() {
 
           {/* 十神组合解读 */}
           {shiShenCombos.length > 0 && (
-            <CollapsibleCard title="十神组合解读" summary="十神搭配解读你的性格模式" accordionGroup="bazi-analysis">
+            <CollapsibleCard title="十神组合解读" summary="十神搭配解读你的性格模式">
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               {shiShenCombos.map((c, i) => (
                 <Paragraph key={i} style={{ fontSize: 13, marginBottom: 8 }}>{c}</Paragraph>
@@ -2153,7 +2164,7 @@ export default function Bazi() {
           )}
 
           {/* 大运 */}
-          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · ${baziData.dayun.direction}`} accordionGroup="bazi-analysis">
+          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · ${baziData.dayun.direction}`} defaultOpen>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert message={`起运年龄：${baziData.dayun.startAge}岁 | 排法：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排`} type="info" showIcon style={{ marginBottom: 12 }} />
             <Row gutter={[8, 8]}>
@@ -2182,7 +2193,7 @@ export default function Bazi() {
             </CollapsibleCard>
 
           {/* 流年 */}
-          <CollapsibleCard title="流年分析" summary={selectedYear ? `${selectedYear}年流年运势` : '查看特定年份流年运势'} accordionGroup="bazi-analysis">
+          <CollapsibleCard title="流年分析" summary={selectedYear ? `${selectedYear}年流年运势` : '查看特定年份流年运势'}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space>
               <InputNumber
@@ -2201,7 +2212,7 @@ export default function Bazi() {
             </CollapsibleCard>
 
           {/* 流月 */}
-          <CollapsibleCard title="流月推算" summary={liuYueYear ? `${liuYueYear}年逐月运势` : '查看逐月运势变化'} accordionGroup="bazi-analysis">
+          <CollapsibleCard title="流月推算" summary={liuYueYear ? `${liuYueYear}年逐月运势` : '查看逐月运势变化'}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space style={{ marginBottom: 12 }}>
               <Text strong>选择年份：</Text>
@@ -2210,7 +2221,6 @@ export default function Bazi() {
                 value={liuYueYear} onChange={(v) => { if (v) handleLiuYue(v); else { setLiuYueYear(null); setLiuYueMonths(null); } }}
                 style={{ width: 120 }}
               />
-              <Button onClick={() => liuYueYear && handleLiuYue(liuYueYear)}>查看流月</Button>
             </Space>
             {liuYueMonths && (
               <Row gutter={[6, 6]}>
@@ -2236,7 +2246,7 @@ export default function Bazi() {
             </CollapsibleCard>
 
           {/* 流日 */}
-          <CollapsibleCard title="流日推算" summary={liuRiYear && liuRiMonth ? `${liuRiYear}年${liuRiMonth}月逐日` : '查看逐日干支运势'} accordionGroup="bazi-analysis">
+          <CollapsibleCard title="流日推算" summary={liuRiYear && liuRiMonth ? `${liuRiYear}年${liuRiMonth}月逐日` : '查看逐日干支运势'}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Space style={{ marginBottom: 12 }}>
               <Text strong>年：</Text>
@@ -2285,7 +2295,6 @@ export default function Bazi() {
             <CollapsibleCard
               title="💕 爱情婚姻"
               summary={loveAnalysis.spouseFeature}
-              accordionGroup="bazi-analysis"
             >
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-fire)' }}
@@ -2301,7 +2310,7 @@ export default function Bazi() {
 
           {/* 事业财运 */}
           {careerAnalysis && (
-            <CollapsibleCard title="💼 事业财运" summary={careerAnalysis.direction} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="💼 事业财运" summary={careerAnalysis.direction}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
               styles={{ body: { background: 'rgba(74,91,107,0.02)' } }}
@@ -2317,7 +2326,7 @@ export default function Bazi() {
 
           {/* 身体健康 */}
           {healthAnalysis && (
-            <CollapsibleCard title="💚 身体健康" summary={healthAnalysis.bodyOverview} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="💚 身体健康" summary={healthAnalysis.bodyOverview}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
@@ -2333,7 +2342,7 @@ export default function Bazi() {
 
           {/* 家庭亲情 */}
           {familyAnalysis && (
-            <CollapsibleCard title="🏠 家庭亲情" summary={familyAnalysis.parentRelation} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="🏠 家庭亲情" summary={familyAnalysis.parentRelation}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
@@ -2347,7 +2356,7 @@ export default function Bazi() {
 
           {/* 社交朋友 */}
           {socialAnalysis && (
-            <CollapsibleCard title="🤝 社交朋友" summary={socialAnalysis.socialTrait} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="🤝 社交朋友" summary={socialAnalysis.socialTrait}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
@@ -2361,7 +2370,7 @@ export default function Bazi() {
 
           {/* 综合运势总览 */}
           {fortuneOverview && (
-            <CollapsibleCard title="🌟 运势总览" summary={fortuneOverview.keywords?.join('、') || '人生综合运势'} accordionGroup="bazi-analysis">
+            <CollapsibleCard title="🌟 运势总览" summary={fortuneOverview.keywords?.join('、') || '人生综合运势'}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
