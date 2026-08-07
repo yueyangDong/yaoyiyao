@@ -6,7 +6,7 @@ import {
 import { MapPin, Sun, Wind, Sunrise, Sunset, RefreshCw } from 'lucide-react';
 import { Lunar } from 'lunar-typescript';
 import { motion } from 'framer-motion';
-import { getWeather, getWeatherIcon, getWeatherDesc, getUserPosition, type WeatherData, type GeoPosition } from '../utils/weatherApi';
+import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, type WeatherData, type GeoPosition } from '../utils/weatherApi';
 import {
   getLuckyGuide, getDailyLotIndex, getTravelAdvice, type LuckyGuide, type TravelAdvice,
 } from '../utils/dailyFortuneUtils';
@@ -85,13 +85,15 @@ export default function DailyFortune() {
   const handleGetLocation = async () => {
     try {
       message.loading({ content: '获取位置中...', key: 'geo' });
-      const pos = await getUserPosition();
+      const pos = await getPositionWithCity();
       message.success({ content: `已定位到 ${pos.city || '当前位置'}`, key: 'geo' });
       await loadWeather(pos.lat, pos.lng, pos.city);
     } catch (e: any) {
-      message.error({ content: e.message === 'Geolocation not supported'
-        ? '浏览器不支持定位'
-        : '定位失败，请检查浏览器位置权限', key: 'geo' });
+      message.error({
+        content: '定位失败。请在系统设置中允许「爻一爻」使用定位权限后重试。',
+        key: 'geo',
+        duration: 4,
+      });
     }
   };
 
