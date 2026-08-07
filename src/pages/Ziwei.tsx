@@ -275,6 +275,12 @@ function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarD
 export default function Ziwei() {
   const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [form] = Form.useForm();
   const [ziweiData, setZiweiData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -851,7 +857,7 @@ export default function Ziwei() {
               return (
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr',
                   gridTemplateRows: 'auto auto auto auto',
                   gap: 8,
                 }}>
@@ -931,6 +937,8 @@ export default function Ziwei() {
                           background: isMing ? style.bg : 'var(--bg-card-solid)',
                           padding: '10px 12px',
                           position: 'relative',
+                          minWidth: 0,
+                          overflow: 'hidden',
                         }}
                       >
                             {/* 标题栏 */}
@@ -961,12 +969,12 @@ export default function Ziwei() {
                             {/* 星曜 */}
                             <div style={{ marginBottom: 4 }}>
                               {majorStars.length > 0 ? majorStars.map((s: any, i: number) => (
-                                <Tag key={`ms-${i}`} color={getStarColor(s)} style={{ fontSize: 10, marginBottom: 2, padding: '0 4px' }}>
+                                <Tag key={`ms-${i}`} color={getStarColor(s)} style={{ fontSize: isMobile ? 11 : 10, marginBottom: 2, padding: '0 4px' }}>
                                   {s.name}{s.sihua ? `化${s.sihua}` : ''}
                                 </Tag>
-                              )) : <Tag style={{ fontSize: 10, padding: '0 4px' }}>空宫</Tag>}
+                              )) : <Tag style={{ fontSize: isMobile ? 11 : 10, padding: '0 4px' }}>空宫</Tag>}
                               {minorStars.filter((s: string) => JI_STARS.has(s) || XIONG_STARS.has(s)).slice(0, 2).map((s: string, i: number) => (
-                                <Tag key={`ns-${i}`} color={JI_STARS.has(s) ? 'green' : 'red'} style={{ fontSize: 10, marginBottom: 2, padding: '0 4px' }}>
+                                <Tag key={`ns-${i}`} color={JI_STARS.has(s) ? 'green' : 'red'} style={{ fontSize: isMobile ? 11 : 10, marginBottom: 2, padding: '0 4px' }}>
                                   {s}
                                 </Tag>
                               ))}
