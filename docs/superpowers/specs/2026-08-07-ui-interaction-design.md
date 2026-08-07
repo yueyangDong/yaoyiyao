@@ -54,6 +54,16 @@
 - 逐项修复走测试/构建验证；`npm run build:android` 重新打包 `爻一爻-debug.apk`
 - 桌面端（GitHub Pages）不受影响（改动为移动端优先增量）
 
+### 第 5 节｜定位天气（用户补充需求）
+
+现状：天气 API（open-meteo）与每日运势页定位逻辑已存在，但 Android APK 的 AndroidManifest 只有 INTERNET 权限，`navigator.geolocation` 在 WebView 中因缺运行时权限必然失败 → 回退北京，等于无定位天气。
+
+方案（用户已确认：每日运势页自动定位 + 系统定位）：
+1. 安装 `@capacitor/geolocation` 官方插件（自动合并 ACCESS_COARSE/FINE_LOCATION 清单权限，调用时自动弹 Android 运行时权限请求）
+2. `src/utils/weatherApi.ts` 新增 `getPositionNative()`：`Capacitor.isNativePlatform()` 时优先用插件 `Geolocation.getCurrentPosition()`，否则回退现有 `navigator.geolocation` 逻辑；两者都失败时抛出，由页面回退默认城市
+3. `src/pages/DailyFortune.tsx`：`loadWeather` 定位链路改用新函数；定位失败/权限拒绝时保留现有回退（默认北京 + message 提示）
+4. 权限拒绝时的提示文案优化（引导用户在系统设置开启定位）
+
 ## 验收标准
 1. 375px 宽度下八字页无横向滚动（四柱竖表隐藏、流日 7 列）
 2. 紫微十二宫在 375px 下 2 列可读、无溢出
@@ -63,3 +73,4 @@
 6. 紫微切换公历/农历保留月日；折叠重开解读文案不变
 7. 神煞解释在移动端可点击查看
 8. `爻一爻-debug.apk` 重新打包成功
+9. APK 内每日运势页首次打开弹出定位权限请求；授权后天气显示当前位置（城市名 + 温度 + 天气）；拒绝时回退北京并提示
