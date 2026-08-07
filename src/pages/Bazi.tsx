@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
   Typography, Space, Tag, message, Radio, Row, Col,
-  Progress, Alert, Divider, Cascader, Tooltip,
+  Progress, Alert, Divider, Cascader, Tooltip, Select,
 } from 'antd';
 import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
@@ -13,6 +13,7 @@ import CollapsibleCard from '../components/CollapsibleCard';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
+import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth } from '../utils/dateValidation';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -969,6 +970,7 @@ export default function Bazi() {
     ziZuo: { text: string; sub: string; judgment: string }[];
   } | null>(null);
   const [inputMode, setInputMode] = useState<'solar' | 'lunar'>('solar');
+  const [leapMonth, setLeapMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [liunianResult, setLiunianResult] = useState<string>('');
   const [activeRow, setActiveRow] = useState<string | null>(null);
@@ -1014,6 +1016,14 @@ export default function Bazi() {
       return;
     }
 
+    const dateOk = inputMode === 'lunar'
+      ? isValidLunarDate(year, month, day, leapMonth === month)
+      : isValidSolarDate(year, month, day);
+    if (!dateOk) {
+      message.warning(inputMode === 'lunar' ? '农历日期无效，请检查月份与闰月' : '日期无效，请检查');
+      return;
+    }
+
     try {
       // 真太阳时校正
       let calcHour = hour;
@@ -1033,7 +1043,7 @@ export default function Bazi() {
         const solar = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
         lunar = solar.getLunar();
       } else {
-        lunar = Lunar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
+        lunar = Lunar.fromYmdHms(year, leapMonth === month ? -month : month, day, calcHour, calcMinute, 0);
       }
 
       const eightChar = lunar.getEightChar();
@@ -1487,11 +1497,25 @@ export default function Bazi() {
           }}
         >
           <Form.Item label="输入方式">
-            <Radio.Group value={inputMode} onChange={(e) => setInputMode(e.target.value)}>
+            <Radio.Group value={inputMode} onChange={(e) => { setInputMode(e.target.value); setLeapMonth(null); }}>
               <Radio.Button value="solar">公历输入</Radio.Button>
               <Radio.Button value="lunar">农历输入</Radio.Button>
             </Radio.Group>
           </Form.Item>
+          {inputMode === 'lunar' && (
+            <Form.Item label="闰月" style={{ marginBottom: 12 }}>
+              <Select
+                allowClear
+                placeholder="如有闰月请选择"
+                style={{ width: 160 }}
+                value={leapMonth ?? undefined}
+                onChange={(v) => setLeapMonth(v ?? null)}
+                options={getLunarLeapMonth(form.getFieldValue('year'))
+                  ? [{ value: getLunarLeapMonth(form.getFieldValue('year')), label: `闰${getLunarLeapMonth(form.getFieldValue('year'))}月` }]
+                  : []}
+              />
+            </Form.Item>
+          )}
           <Row gutter={16}>
             <Col xs={12} sm={6}>
               <Form.Item name="gender" label="性别（决定大运顺逆）" rules={[{ required: true, message: '性别影响大运排法' }]}>
@@ -1503,7 +1527,7 @@ export default function Bazi() {
             </Col>
             <Col xs={12} sm={6}>
               <Form.Item name="year" label="年" rules={[{ required: true }]}>
-                <InputNumber min={1900} max={2100} placeholder="1990" style={{ width: '100%' }} />
+                <InputNumber min={1900} max={2100} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
               </Form.Item>
             </Col>
             <Col xs={6} sm={3}>
@@ -1512,7 +1536,24 @@ export default function Bazi() {
               </Form.Item>
             </Col>
             <Col xs={6} sm={3}>
-              <Form.Item name="day" label="日" rules={[{ required: true }]}>
+              <Form.Item
+                name="day"
+                label="日"
+                rules={[
+                  { required: true },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      const y = getFieldValue('year');
+                      const m = getFieldValue('month');
+                      const ok = inputMode === 'lunar'
+                        ? isValidLunarDate(y, m, value, leapMonth === m)
+                        : isValidSolarDate(y, m, value);
+                      return ok ? Promise.resolve() : Promise.reject(new Error(inputMode === 'lunar' ? '农历日期无效（注意闰月）' : '该月没有这一天'));
+                    },
+                  }),
+                ]}
+              >
                 <InputNumber min={1} max={31} placeholder="1" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
