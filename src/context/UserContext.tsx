@@ -213,6 +213,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // 登录后从 Supabase 拉取档案
   useEffect(() => {
     if (!authUser) { setSynced(false); return; }
+    if (!supabase) { setSynced(true); setSyncing(false); return; }
     let cancelled = false;
     (async () => {
       setSyncing(true);
@@ -288,7 +289,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     saveUsers(updated);
 
     // 同步到 Supabase
-    if (authUser && id === authUser.id) {
+    if (authUser && id === authUser.id && supabase) {
       const u = updated.find(x => x.id === id);
       if (u) {
         supabase.from('profiles').upsert({
@@ -339,7 +340,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     saveHistoryLocal(updated);
 
     // 同步到 Supabase
-    if (authUser) {
+    if (authUser && supabase) {
       supabase.from('query_history').insert({
         user_id: authUser.id,
         module: entry.module,
