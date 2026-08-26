@@ -11,11 +11,36 @@
     <meta name="apple-mobile-web-app-title" content="爻一爻" />
     <title>爻一爻 - 仅供娱乐</title>
     <script src="/yaoyiyao/yao-sync.js"></script>
-    <script type="module" crossorigin src="/yaoyiyao/assets/index-CoKSl6-Q.js"></script>
-    <link rel="stylesheet" crossorigin href="/yaoyiyao/assets/index-CT-Z2JOV.css">
+    <script type="module" crossorigin src="/yaoyiyao/assets/index-BA4Dl82D.js"></script>
+    <link rel="stylesheet" crossorigin href="/yaoyiyao/assets/index-C8P8GcRW.css">
   <link rel="manifest" href="/yaoyiyao/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
+    <script>
+      // ===== 启动诊断（APK 白屏排查用，正常运行时 5 秒后自动隐藏）=====
+      (function () {
+        var boot = document.createElement('div');
+        boot.id = 'boot-status';
+        boot.style.cssText = 'position:fixed;left:0;right:0;top:0;padding:12px 14px;background:#FFE8E8;color:#B00020;font-size:13px;line-height:1.6;z-index:99999;white-space:pre-wrap;word-break:break-all;display:none;font-family:sans-serif;';
+        document.body.appendChild(boot);
+        function showBoot(msg) { boot.style.display = 'block'; boot.textContent = '[诊断] ' + msg; }
+        window.addEventListener('error', function (e) {
+          showBoot('window.onerror: ' + e.message + '\n' + (e.filename || '') + ':' + (e.lineno || 0) + (e.error && e.error.stack ? '\n' + e.error.stack.split('\n').slice(0, 3).join('\n') : ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason;
+          showBoot('unhandledrejection: ' + (r && r.message ? r.message : String(r)));
+        });
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (root && root.childElementCount > 0) {
+            boot.style.display = 'none';
+          } else {
+            showBoot('5 秒后页面仍为空——JavaScript 未执行。\n可能原因：模块脚本加载被拦（CORS/MIME）、脚本语法错误，或 WebView 未正确加载。');
+          }
+        }, 5000);
+      })();
+    </script>
     <script>
       // 清理旧 Service Worker 防止缓存白屏
       if ('serviceWorker' in navigator) {
@@ -34,6 +59,6 @@
           history.replaceState(null, '', '/yaoyiyao' + path);
         }
       })();
-    </script>
+    </script>
   </body>
 </html>
