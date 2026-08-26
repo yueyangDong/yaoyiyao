@@ -1,4 +1,5 @@
 import { Geolocation } from '@capacitor/geolocation';
+import { COUNTY_GEO } from '../data/countyGeo';
 // 天气 API：open-meteo，无需 API Key
 const CACHE_KEY = 'weather_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30分钟
@@ -107,11 +108,8 @@ export function getUserPosition(): Promise<GeoPosition> {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
-        // 反查城市名
+        // 反查城市名（县区级，open-meteo geocoding 不支持反向，用内置坐标库）
         try {
-          const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=&count=1&language=zh&format=json&latitude=${result.lat}&longitude=${result.lng}`;
-          // open-meteo geocoding 不支持反向，用简单的数字判断
-          // 使用中国主要城市近似判断
           result.city = await reverseGeocode(result.lat, result.lng);
         } catch {
           result.city = '未知';
@@ -143,24 +141,45 @@ export async function getPositionWithCity(): Promise<GeoPosition> {
   return { ...pos, city };
 }
 
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  // 中国主要城市坐标近似判断
-  const cities: [string, number, number][] = [
-    ['北京', 39.9, 116.4], ['上海', 31.2, 121.5], ['广州', 23.1, 113.3],
-    ['深圳', 22.5, 114.1], ['杭州', 30.3, 120.2], ['南京', 32.1, 118.8],
-    ['成都', 30.6, 104.1], ['武汉', 30.6, 114.3], ['重庆', 29.6, 106.5],
-    ['西安', 34.3, 108.9], ['天津', 39.1, 117.2], ['苏州', 31.3, 120.6],
-    ['长沙', 28.2, 113.0], ['郑州', 34.8, 113.7], ['济南', 36.7, 117.0],
-    ['青岛', 36.1, 120.4], ['大连', 38.9, 121.6], ['厦门', 24.5, 118.1],
-    ['福州', 26.1, 119.3], ['昆明', 25.0, 102.7], ['哈尔滨', 45.8, 126.5],
-    ['沈阳', 41.8, 123.4], ['长春', 43.9, 125.3],
-  ];
+/** Haversine 球面距离（km） */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(lat2 - lat1);
+  const dLng = rad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
-  let closest = '北京';
-  let minDist = Infinity;
-  for (const [name, clat, clng] of cities) {
-    const dist = Math.abs(lat - clat) + Math.abs(lng - clng);
-    if (dist < minDist) { minDist = dist; closest = name; }
+// 模块级缓存 entries，避免每次反查重复 Object.entries
+const COUNTY_ENTRIES: [string, number, number][] = Object.entries(COUNTY_GEO).map(([k, [lng, lat]]) => [k, lng, lat]);
+const MAX_MATCH_KM = 30;
+
+/** 经纬度 → 区县（最近邻，30km 阈值）。返回 '省,市,区县' 或 '未知'。 */
+export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  let bestKey: string | null = null;
+  let bestDist = Infinity;
+  for (const [key, clng, clat] of COUNTY_ENTRIES) {
+    const d = haversineKm(lat, lng, clat, clng);
+    if (d < bestDist) { bestDist = d; bestKey = key; }
   }
-  return minDist < 3 ? closest : '未知';
+  return bestKey && bestDist <= MAX_MATCH_KM ? bestKey : '未知';
+}
+
+const CITY_SUFFIX = /(市|自治州|地区|盟)$/;
+const COUNTY_SUFFIX = /(市辖区|自治县|自治旗|县|区|旗|市)$/;
+
+function stripSuffix(name: string, suffix: RegExp): string {
+  const cleaned = name.replace(suffix, '');
+  return cleaned || name;
+}
+
+/** '省,市,区县' → '市·区县' 紧凑显示名；'未知' 与非法输入原样返回。 */
+export function formatCountyName(key: string): string {
+  if (!key || key === '未知') return key;
+  const parts = key.split(',');
+  if (parts.length !== 3) return key;
+  return `${stripSuffix(parts[1], CITY_SUFFIX)}·${stripSuffix(parts[2], COUNTY_SUFFIX)}`;
 }
