@@ -342,7 +342,7 @@ export default function Dream() {
             <Text strong style={{ fontSize: 18, color: 'var(--text-primary)' }}>{selectedDream.title}</Text>
             <Tag style={{
               background: 'rgba(155,155,155,0.08)',
-              color: 'var(--wx-metal)',
+              color: '#9B9B9B',
               border: '1px solid rgba(155,155,155,0.12)',
             }}>
               {DREAM_CATEGORIES[selectedDream.category]?.name}

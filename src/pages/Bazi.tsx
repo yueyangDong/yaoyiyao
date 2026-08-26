@@ -19,7 +19,7 @@ const { Title, Text, Paragraph } = Typography;
 
 // 五行配色 (使用设计系统 CSS 变量)
 const WX_COLORS: Record<string, string> = { '木': 'var(--wx-wood)', '火': 'var(--wx-fire)', '土': 'var(--wx-earth)', '金': 'var(--wx-metal)', '水': 'var(--wx-water)' };
-const WX_BG: Record<string, string> = { '木': 'rgba(91,140,90,0.08)', '火': 'rgba(199,91,91,0.08)', '土': 'rgba(196,164,90,0.08)', '金': 'rgba(155,155,155,0.08)', '水': 'rgba(74,91,107,0.08)' };
+const WX_BG: Record<string, string> = { '木': 'rgba(91,140,90,0.08)', '火': 'rgba(199,91,91,0.08)', '土': 'rgba(192,103,75,0.08)', '金': 'rgba(201,168,106,0.08)', '水': 'rgba(74,91,107,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
 // 十神白话解释

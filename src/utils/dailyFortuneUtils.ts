@@ -7,11 +7,11 @@ const GAN_WUXING: Record<string, string> = {
 };
 
 const WUXING_COLORS: Record<string, string[]> = {
-  '金': ['哑光银', '暖白'],
+  '金': ['香槟金', '暖白'],
   '木': ['苔绿', '嫩绿'],
   '水': ['灰蓝', '墨黑'],
   '火': ['赭红', '暖橙'],
-  '土': ['枯金黄', '棕色'],
+  '土': ['陶土色', '棕色'],
 };
 
 const WUXING_NUMBERS: Record<string, number[]> = {

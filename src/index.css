@@ -19,8 +19,8 @@
   /* === 点缀色（五行 · 极其克制） === */
   --wx-wood: #5B8C5A;
   --wx-fire: #C75B5B;
-  --wx-earth: #C4A45A;
-  --wx-metal: #9B9B9B;
+  --wx-earth: #C0674B; /* 陶土色 */
+  --wx-metal: #C9A86A; /* 香槟金 */
   --wx-water: #4A5B6B;
 
   --color-ji: #5B8C5A;
@@ -552,8 +552,8 @@ p {
 /* ========== 五行色标签 ========== */
 .tag-wood { background: rgba(91,140,90,0.08) !important; color: var(--wx-wood) !important; }
 .tag-fire { background: rgba(199,91,91,0.08) !important; color: var(--wx-fire) !important; }
-.tag-earth { background: rgba(196,164,90,0.08) !important; color: var(--wx-earth) !important; }
-.tag-metal { background: rgba(155,155,155,0.08) !important; color: var(--wx-metal) !important; }
+.tag-earth { background: rgba(192,103,75,0.08) !important; color: var(--wx-earth) !important; }
+.tag-metal { background: rgba(201,168,106,0.08) !important; color: var(--wx-metal) !important; }
 .tag-water { background: rgba(74,91,107,0.08) !important; color: var(--wx-water) !important; }
 
 /* ========== 术语标签与结论卡 ========== */

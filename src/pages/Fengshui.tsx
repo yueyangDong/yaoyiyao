@@ -202,7 +202,7 @@ export default function Fengshui() {
             <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
               <Descriptions.Item label="住宅坐向">{result.house.name}</Descriptions.Item>
               <Descriptions.Item label="宅卦">
-                <Tag style={{ background: 'rgba(155,155,155,0.06)', color: 'var(--wx-metal)', border: 'none' }}>
+                <Tag style={{ background: 'rgba(155,155,155,0.06)', color: '#9B9B9B', border: 'none' }}>
                   {result.house.gua}宅
                 </Tag>
               </Descriptions.Item>
