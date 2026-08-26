@@ -642,19 +642,24 @@ p {
 /* ========== 手机端全局适配 ========== */
 @media (max-width: 768px) {
   :root {
-    --text-3xl: 22px;
-    --text-2xl: 20px;
-    --text-xl: 18px;
-    --text-lg: 16px;
-    --text-base: 15px;
-    --text-ganzhi: 22px;
-    --text-ganzhi-lg: 36px;
-    --sp-2xl: 32px;
-    --sp-3xl: 40px;
+    /* 手机端紧凑化：字号整体降档、间距压缩（通用安卓/iOS） */
+    --text-3xl: 20px;
+    --text-2xl: 18px;
+    --text-xl: 16px;
+    --text-lg: 15px;
+    --text-base: 14px;
+    --text-ganzhi: 20px;
+    --text-ganzhi-lg: 32px;
+    --sp-sm: 6px;
+    --sp-md: 12px;
+    --sp-lg: 16px;
+    --sp-xl: 24px;
+    --sp-2xl: 28px;
+    --sp-3xl: 36px;
   }
 
   body {
-    font-size: 15px;
+    font-size: 14px;
     -webkit-tap-highlight-color: transparent;
   }
 

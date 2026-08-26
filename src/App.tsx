@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import { ToastProvider } from './components/Toast';
+import IosInstallHint from './components/IosInstallHint';
 import AppLayout from './components/Layout';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
@@ -26,6 +27,7 @@ export default function App() {
     <AuthProvider>
       <UserProvider>
         <ToastProvider>
+        <IosInstallHint />
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
