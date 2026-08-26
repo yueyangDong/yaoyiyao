@@ -26,6 +26,12 @@ const TG_WX: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
 };
+
+// 地支 → 五行（本气）
+const DZ_WX: Record<string, string> = {
+  '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
+  '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
+};
 const WX_BG: Record<string, string> = { '木': 'rgba(107,154,122,0.08)', '火': 'rgba(194,59,43,0.08)', '土': 'rgba(184,123,74,0.08)', '金': 'rgba(201,169,110,0.08)', '水': 'rgba(42,51,64,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
@@ -1729,10 +1735,10 @@ export default function Bazi() {
                     <div style={{
                       fontSize: 36, fontWeight: 600,
                       fontFamily: 'var(--font-display)',
-                      color: 'var(--text-primary)',
                       lineHeight: 1.2,
                     }}>
-                      {p.ganZhi}
+                      <span style={{ color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>{p.tianGan}</span>
+                      <span style={{ color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>{p.diZhi}</span>
                     </div>
                     <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
                       <Tag color="purple" style={{ fontSize: 11, margin: 0 }}>{idx === 2 ? '日主' : p.shiShen}</Tag>
@@ -1740,7 +1746,10 @@ export default function Bazi() {
                     </div>
                     {p.cangGan && p.cangGan.length > 0 && (
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        藏干: {p.cangGan.join(' ')}
+                        藏干:{' '}
+                        {p.cangGan.map((cg, ci) => (
+                          <span key={ci} style={{ color: WX_COLORS[TG_WX[cg] || ''] || 'var(--text-secondary)', fontWeight: 600, marginRight: 2 }}>{cg}</span>
+                        ))}
                       </div>
                     )}
                     {(baziData.shenSha || []).filter((s: any) => s.pillar === p.pillar).slice(0, 2).map((s: any, si: number) => (
@@ -1806,7 +1815,7 @@ export default function Bazi() {
                         <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>天干</td>
                         {baziData.pillars.map((p, idx) => (
                           <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: 'var(--text-primary)' }}>{p.tianGan}</Text>
+                            <Text strong style={{ fontSize: 20, color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>{p.tianGan}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1818,7 +1827,7 @@ export default function Bazi() {
                         <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>地支</td>
                         {baziData.pillars.map((p, idx) => (
                           <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: 'var(--text-primary)' }}>{p.diZhi}</Text>
+                            <Text strong style={{ fontSize: 20, color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>{p.diZhi}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1835,7 +1844,7 @@ export default function Bazi() {
                               {p.cangGan && p.cangGan.length > 0 ? (
                                 p.cangGan.map((cg, ci) => (
                                   <div key={ci} style={{ margin: '2px 0', fontSize: 13 }}>
-                                    <Text style={{ color: 'var(--text-body)' }}>{cg}</Text>
+                                    <Text style={{ color: WX_COLORS[TG_WX[cg] || ''] || 'var(--text-body)', fontWeight: 600 }}>{cg}</Text>
                                     <Text type="secondary" style={{ fontSize: 11, marginLeft: 2 }}>({ssArr[ci] || '?'})</Text>
                                   </div>
                                 ))

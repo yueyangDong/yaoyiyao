@@ -26,32 +26,38 @@ interface DivinationOverlayProps {
   text?: string;
 }
 
-/** 太极图 SVG（米白 + 金色渐变 + 辉光，深色遮罩下金白对比明确） */
-function TaiChi({ size = 140 }: { size?: number }) {
+/** 阴阳双鲤（黑鲤鱼 + 白鲤鱼首尾相衔，动态旋转） */
+function YinYangFish({ size = 150 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size}>
-      <defs>
-        <linearGradient id="taiChiGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#F0D488" />
-          <stop offset="55%" stopColor="#DDB55C" />
-          <stop offset="100%" stopColor="#C9A96E" />
-        </linearGradient>
-      </defs>
-      {/* 阳（米白）在右 */}
+    <svg viewBox="0 0 200 200" width={size} height={size}>
+      {/* 浅色底圆（保证黑鱼在深色遮罩上可见） */}
+      <circle cx="100" cy="100" r="99" fill="#F0ECE2" opacity="0.12" />
+      {/* 外环描边 */}
+      <circle cx="100" cy="100" r="98" fill="none" stroke="#F5F0E6" strokeWidth="1.5" opacity="0.6" />
+      {/* 白鲤鱼（阳·右半，头在上） */}
       <path
-        d="M50,0 A50,50 0 0,1 50,100 A25,25 0 0,1 50,50 A25,25 0 0,0 50,0 Z"
-        fill="#F7F3E9"
+        d="M100,2 A98,98 0 0,1 100,198 A49,49 0 0,1 100,100 A49,49 0 0,0 100,2 Z"
+        fill="#F5F0E6"
       />
-      {/* 阴（金色渐变）在左 */}
+      {/* 黑鲤鱼（阴·左半，头在下） */}
       <path
-        d="M50,0 A50,50 0 0,0 50,100 A25,25 0 0,0 50,50 A25,25 0 0,1 50,0 Z"
-        fill="url(#taiChiGold)"
-        style={{ filter: 'drop-shadow(0 0 8px rgba(240,212,136,0.55))' }}
+        d="M100,2 A98,98 0 0,0 100,198 A49,49 0 0,0 100,100 A49,49 0 0,1 100,2 Z"
+        fill="#1A1A1F"
       />
-      {/* 阴中阳点（左金区的小白点） */}
-      <circle cx="50" cy="75" r="8" fill="#F7F3E9" />
-      {/* 阳中阴点（右白区的小金点） */}
-      <circle cx="50" cy="25" r="8" fill="#E3B75C" />
+      {/* 白鲤鱼眼（黑） */}
+      <circle cx="107" cy="48" r="4.5" fill="#1A1A1F" />
+      {/* 黑鲤鱼眼（白） */}
+      <circle cx="93" cy="152" r="4.5" fill="#F5F0E6" />
+      {/* 白鲤鱼尾鳍（中心上方，深色分叉） */}
+      <path d="M96,58 L88,66 L102,64 Z" fill="#1A1A1F" />
+      {/* 黑鲤鱼尾鳍（中心下方，浅色分叉） */}
+      <path d="M104,142 L112,134 L98,136 Z" fill="#F5F0E6" />
+      {/* 白鲤鱼须（头部向上） */}
+      <path d="M99,6 Q92,-6 88,-10" stroke="#F5F0E6" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M101,6 Q108,-6 112,-10" stroke="#F5F0E6" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {/* 黑鲤鱼须（头部向下） */}
+      <path d="M99,194 Q92,206 88,210" stroke="#1A1A1F" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M101,194 Q108,206 112,210" stroke="#1A1A1F" strokeWidth="2" fill="none" strokeLinecap="round" />
     </svg>
   );
 }
@@ -119,7 +125,7 @@ export default function DivinationOverlay({ show, text = '推演中 · 天机渐
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <TaiChi size={140} />
+              <YinYangFish size={140} />
             </motion.div>
           </div>
 
