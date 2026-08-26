@@ -197,6 +197,7 @@ body {
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.01em;
+  touch-action: manipulation; /* 消除双击缩放延迟（iOS 旧版） */
 }
 
 /* ========== 排版 ========== */
@@ -827,4 +828,9 @@ p {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* iOS Safari 输入控件聚焦自动放大修复：antd 默认 14px < 16px 会触发整页缩放 */
+input, textarea, select {
+  font-size: 16px !important;
 }
