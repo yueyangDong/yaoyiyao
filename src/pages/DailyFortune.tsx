@@ -519,13 +519,13 @@ export default function DailyFortune() {
         <Card size="small" style={{ borderColor: 'var(--border-light)', marginBottom: 16 }}>
           <Row gutter={8}>
             <Col xs={8}>
-              <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>日纳音：{lunar.getDayNaYin()}</Text>
+              <Text style={{ fontSize: 13, color: 'var(--text-secondary)' }}>日纳音：{lunar.getDayNaYin()}</Text>
             </Col>
             <Col xs={8}>
-              <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>天神：{lunar.getDayTianShen() || '—'}</Text>
+              <Text style={{ fontSize: 13, color: 'var(--text-secondary)' }}>天神：{lunar.getDayTianShen() || '—'}</Text>
             </Col>
             <Col xs={8}>
-              <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>
+              <Text style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                 冲：{lunar.getDayChong() || '—'}｜煞：{lunar.getDaySha() || '—'}
               </Text>
             </Col>

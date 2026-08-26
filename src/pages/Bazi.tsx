@@ -922,6 +922,50 @@ function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge:
   });
 }
 
+// 流年（单年）计算：干支 + 五行 + 与日主生克简述
+interface LiuNianItem {
+  year: number;
+  ganZhi: string;
+  wx: string;
+  desc: string;
+}
+
+function calcLiuNianItem(year: number, dayGan: string, dayWx: string): LiuNianItem {
+  const tiangan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const dizhi = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const tgWx: Record<string, string> = {
+    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
+    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+  };
+  const tgIdx = (((year - 4) % 10) + 10) % 10;
+  const dzIdx = (((year - 4) % 12) + 12) % 12;
+  const yearGan = tiangan[tgIdx];
+  const yearZhi = dizhi[dzIdx];
+  const yearWx = tgWx[yearGan];
+
+  let desc = '';
+  if (dayWx === yearWx) {
+    desc = `与日主同属${dayWx}，比和之年，运势平稳，适合巩固成果。`;
+  } else {
+    const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
+    const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
+    if (wxSheng[dayWx] === yearWx) {
+      desc = `流年「${yearGan}(${yearWx})」生日主——印绶之年！利学业考证、贵人相助，适合进修深造。`;
+    } else if (wxSheng[yearWx] === dayWx) {
+      desc = `日主生流年「${yearGan}(${yearWx})」——食伤之年！利创意发挥、技术提升，勿想多做少。`;
+    } else if (wxKe[dayWx] === yearWx) {
+      desc = `日主克流年「${yearGan}(${yearWx})」——财运之年！利求财，需付出努力。`;
+    } else if (wxKe[yearWx] === dayWx) {
+      desc = `流年「${yearGan}(${yearWx})」克日主——官杀之年！有压力有挑战，也是上升机会。`;
+    }
+  }
+  return { year, ganZhi: yearGan + yearZhi, wx: yearWx, desc };
+}
+
+function buildLiuNianList(startYear: number, dayGan: string, dayWx: string): LiuNianItem[] {
+  return Array.from({ length: 10 }, (_, i) => calcLiuNianItem(startYear + i, dayGan, dayWx));
+}
+
 export interface PillarData {
   pillar: string;
   ganZhi: string;
@@ -948,6 +992,7 @@ export default function Bazi() {
     pillars: PillarData[];
     dayun: {
       startAge: number;
+      startDate: string;
       direction: string;
       steps: Array<{
         ganZhi: string;
@@ -975,10 +1020,8 @@ export default function Bazi() {
   const [inputMode, setInputMode] = useState<'solar' | 'lunar'>('solar');
   const [leapMonth, setLeapMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [liunianResult, setLiunianResult] = useState<string>('');
+  const [liunianYears, setLiunianYears] = useState<LiuNianItem[] | null>(null);
   const [activeRow, setActiveRow] = useState<string | null>(null);
-  const [liuYueYear, setLiuYueYear] = useState<number | null>(null);
   const [liuYueMonths, setLiuYueMonths] = useState<Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> | null>(null);
   const [liuRiYear, setLiuRiYear] = useState<number | null>(null);
   const [liuRiMonth, setLiuRiMonth] = useState<number | null>(null);
@@ -1080,8 +1123,10 @@ export default function Bazi() {
 
       const yun = eightChar.getYun(yunParam);
       yunRef.current = yun;
-      const dayunRaw = yun.getDaYun();
+      // 排 11 步大运（每步十年，覆盖到 100 岁内）
+      const dayunRaw = yun.getDaYun(11);
       const startAge = yun.getStartYear(); // getStartYear() 实际返回起运年龄
+      const startDate = yun.getStartSolar()?.toYmd?.() || ''; // 起运公历日期 YYYY-MM-DD
       const isForward = yun.isForward();
       const directionText = isForward ? '顺排' : '逆排';
 
@@ -1163,7 +1208,7 @@ export default function Bazi() {
 
       setBaziData({
         pillars,
-        dayun: { startAge, direction: directionText, steps: dayunSteps },
+        dayun: { startAge, startDate, direction: directionText, steps: dayunSteps },
         lunarInfo: `${lunarInfo}（大运${directionText}）`,
         dayGan,
         dayWx,
@@ -1181,6 +1226,9 @@ export default function Bazi() {
       });
 
       message.success('排盘完成');
+      // 十年流年（今年起）+ 未来一年流月（自动展示）
+      setLiunianYears(buildLiuNianList(currentYear, dayGan, dayWx));
+      buildFutureMonths(dayGan, dayWx);
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
@@ -1194,48 +1242,9 @@ export default function Bazi() {
     }
   };
 
-  const handleLiunian = () => {
-    if (!selectedYear || !baziData) return;
-    const dayGan = baziData.dayGan;
-    const dayWx = baziData.dayWx;
-    const tiangan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-    const tgWx: Record<string, string> = {
-      '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-      '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-    };
-    const tgIdx = (selectedYear - 4) % 10;
-    const yearGan = tiangan[tgIdx >= 0 ? tgIdx : tgIdx + 10];
-    const yearWx = tgWx[yearGan];
-
-    let desc = '';
-    if (dayWx === yearWx) {
-      desc = `流年「${yearGan}」与日主「${dayGan}」同属${dayWx}，这一年是同五行比和之年，运势平稳，适合维持现状、巩固已有成果。`;
-    } else {
-      const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-      const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-      if (wxSheng[dayWx] === yearWx) {
-        desc = `流年「${yearGan}(${yearWx})」生你的日主「${dayGan}(${dayWx})」——这是印绶之年！利学业、考证、有贵人相助，长辈缘好，适合进修深造。`;
-      } else if (wxSheng[yearWx] === dayWx) {
-        desc = `你的日主「${dayGan}(${dayWx})」生流年「${yearGan}(${yearWx})」——这是食伤之年！利创意发挥、技术提升，但要注意别想太多做太少。`;
-      } else if (wxKe[dayWx] === yearWx) {
-        desc = `你的日主「${dayGan}(${dayWx})」克流年「${yearGan}(${yearWx})」——这是财运之年！适合求财赚钱，但要付出努力，天上不会掉馅饼。`;
-      } else if (wxKe[yearWx] === dayWx) {
-        desc = `流年「${yearGan}(${yearWx})」克你的日主「${dayGan}(${dayWx})」——这是官杀之年！有压力有挑战，但也是锻炼自己的机会，适合承担更多责任。`;
-      }
-    }
-
-    setLiunianResult(`${selectedYear}年（农历${yearGan}年）：${desc}`);
-  };
-
   // 流月推算
-  const handleLiuYue = (year: number) => {
-    setLiuYueYear(year);
-    if (!baziData || !yunRef.current) return;
-
-    const yun = yunRef.current;
-    const dayunSteps = yun.getDaYun();
-    const dayGan = baziData.dayGan;
-    const dayWx = baziData.dayWx;
+  // 流月：当前月起未来 12 个自然月逐月运势（自动计算，跨年）
+  const buildFutureMonths = (dayGan: string, dayWx: string) => {
     const tgWx: Record<string, string> = {
       '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
       '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
@@ -1243,71 +1252,29 @@ export default function Bazi() {
     const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
     const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
 
-    // 找到该年所在的 dayun step
-    let liuNianArr: any[] = [];
-    for (const step of dayunSteps) {
-      const startY = (step as any).getStartYear?.() ?? 0;
-      const endY = (step as any).getEndYear?.() ?? 0;
-      if (year >= startY && year <= endY) {
-        const lnArr = (step as any).getLiuNian?.() || [];
-        liuNianArr = lnArr;
-        break;
+    const now = new Date();
+    const result: Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 15);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      let gz = '';
+      try {
+        // 月中农历月柱（近似节气月，跨年自动正确）
+        gz = Lunar.fromYmdHms(y, m, 15, 12, 0, 0).getMonthInGanZhi();
+      } catch {
+        gz = '--';
       }
-    }
-
-    // 从 liunian 中找到对应的年份数据
-    let tarNian: any = null;
-    for (const ln of liuNianArr) {
-      if ((ln as any).getYear?.() === year) {
-        tarNian = ln;
-        break;
-      }
-    }
-
-    if (!tarNian) {
-      const months = ['寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', '子', '丑'];
-      const monthNames = ['正月(寅)', '二月(卯)', '三月(辰)', '四月(巳)', '五月(午)', '六月(未)', '七月(申)', '八月(酉)', '九月(戌)', '十月(亥)', '十一月(子)', '十二月(丑)'];
-      const yearGanIdx = (year - 4) % 10;
-      const tiangan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-      const yearGan = tiangan[yearGanIdx >= 0 ? yearGanIdx : yearGanIdx + 10];
-      const monthStarts: Record<string, string> = {
-        '甲': '丙', '乙': '戊', '丙': '庚', '丁': '壬', '戊': '甲',
-        '己': '丙', '庚': '戊', '辛': '庚', '壬': '壬', '癸': '甲',
-      };
-      const startGan = monthStarts[yearGan] || '甲';
-      const ganOrder = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-      const startIdx = ganOrder.indexOf(startGan);
-
-      const result = months.map((zhi, i) => {
-        const gan = ganOrder[(startIdx + i) % 10];
-        const gz = gan + zhi;
-        const wx = tgWx[gan] || '';
-        let desc = '';
-        if (dayWx === wx) desc = '比和之月，运势平稳';
-        else if (wxSheng[dayWx] === wx) desc = '印星之月，利学业贵人';
-        else if (wxSheng[wx] === dayWx) desc = '食伤之月，利创意发挥';
-        else if (wxKe[dayWx] === wx) desc = '官杀之月，有压力挑战';
-        else if (wxKe[wx] === dayWx) desc = '财运之月，利求财';
-        return { monthName: monthNames[i], ganZhi: gz, wx, desc };
-      });
-      setLiuYueMonths(result);
-      return;
-    }
-
-    const liuYueArr = (tarNian as any).getLiuYue?.() || [];
-    const result = liuYueArr.map((ly: any) => {
-      const gz = ly.getGanZhi?.() || '';
       const gan = gz.charAt(0);
       const wx = tgWx[gan] || '';
-      const monthInCn = ly.getMonthInChinese?.() || '';
       let desc = '';
       if (dayWx === wx) desc = '比和之月，运势平稳';
       else if (wxSheng[dayWx] === wx) desc = '印星之月，利学业贵人';
       else if (wxSheng[wx] === dayWx) desc = '食伤之月，利创意发挥';
       else if (wxKe[dayWx] === wx) desc = '官杀之月，有压力挑战';
       else if (wxKe[wx] === dayWx) desc = '财运之月，利求财';
-      return { monthName: monthInCn, ganZhi: gz, wx, desc };
-    });
+      result.push({ monthName: `${y}年${m}月`, ganZhi: gz, wx, desc });
+    }
     setLiuYueMonths(result);
   };
 
@@ -2174,9 +2141,9 @@ export default function Bazi() {
           )}
 
           {/* 大运 */}
-          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · ${baziData.dayun.direction}`} defaultOpen>
+          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · 十年一运 · 至${baziData.dayun.steps[baziData.dayun.steps.length - 1]?.endAge ?? 100}岁`} defaultOpen>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Alert message={`起运年龄：${baziData.dayun.startAge}岁 | 排法：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排`} type="info" showIcon style={{ marginBottom: 12 }} />
+            <Alert message={`起运年龄：${baziData.dayun.startAge}岁（${baziData.dayun.startDate || '日期不详'}） | 排法：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运`} type="info" showIcon style={{ marginBottom: 12 }} />
             <Row gutter={[8, 8]}>
               {baziData.dayun.steps.map((step, i) => {
                 const isCurrent = baziData.dayun.startAge + i * 10 <= currentYear - baziData.birthYear
@@ -2202,37 +2169,35 @@ export default function Bazi() {
           </Card>
             </CollapsibleCard>
 
-          {/* 流年 */}
-          <CollapsibleCard title="流年分析" summary={selectedYear ? `${selectedYear}年流年运势` : '查看特定年份流年运势'}>
+          {/* 流年：今年起连续十年 */}
+          <CollapsibleCard title="流年分析" summary={liunianYears ? `今年起连续十年流年运势` : '排盘后自动展示未来十年流年'}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Space>
-              <InputNumber
-                min={1900} max={2100} placeholder={String(currentYear)}
-                value={selectedYear} onChange={(v) => setSelectedYear(v || null)}
-                style={{ width: 120 }}
-              />
-              <Button onClick={handleLiunian}>查询流年</Button>
-            </Space>
-            {liunianResult && (
-              <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
-                <Text>{liunianResult}</Text>
-              </div>
+            {liunianYears ? (
+              <Row gutter={[8, 8]}>
+                {liunianYears.map((y) => (
+                  <Col xs={12} sm={8} md={6} key={y.year}>
+                    <Card size="small" style={{ height: '100%', borderColor: 'var(--border-light)' }}>
+                      <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                        <Space>
+                          <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
+                          <Tag color={WX_COLORS[y.wx]} style={{ fontSize: 12 }}>{y.ganZhi}</Tag>
+                        </Space>
+                        <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
+                      </Space>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示今年起连续十年的流年运势。</Text>
             )}
           </Card>
             </CollapsibleCard>
 
-          {/* 流月 */}
-          <CollapsibleCard title="流月推算" summary={liuYueYear ? `${liuYueYear}年逐月运势` : '查看逐月运势变化'}>
+          {/* 流月：未来一年 12 个月 */}
+          <CollapsibleCard title="流月推算" summary={liuYueMonths ? '未来一年逐月运势' : '排盘后自动展示未来一年逐月运势'}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Space style={{ marginBottom: 12 }}>
-              <Text strong>选择年份：</Text>
-              <InputNumber
-                min={1900} max={2100} placeholder={String(currentYear)}
-                value={liuYueYear} onChange={(v) => { if (v) handleLiuYue(v); else { setLiuYueYear(null); setLiuYueMonths(null); } }}
-                style={{ width: 120 }}
-              />
-            </Space>
-            {liuYueMonths && (
+            {liuYueMonths ? (
               <Row gutter={[6, 6]}>
                 {liuYueMonths.map((m, i) => {
                   const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
@@ -2251,6 +2216,8 @@ export default function Bazi() {
                   );
                 })}
               </Row>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示当前月起未来一年的逐月运势。</Text>
             )}
           </Card>
             </CollapsibleCard>
