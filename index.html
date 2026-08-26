@@ -38,12 +38,13 @@
             boot.style.display = 'none';
           } else if (!sessionStorage.getItem('yyy_boot_retried')) {
             // 偶发加载失败自动恢复：仅重试一次，避免死循环
+            // 15 秒覆盖首次访问慢网下载（主包+字体合计数 MB）
             sessionStorage.setItem('yyy_boot_retried', '1');
             location.reload();
           } else {
-            showBoot('5 秒后页面仍为空——JavaScript 未执行。\n可能原因：模块脚本加载被拦（CORS/MIME）、脚本语法错误，或 WebView 未正确加载。');
+            showBoot('页面加载超时——JavaScript 未执行。\n可能原因：网络较慢（首次加载资源较大）、模块脚本加载被拦（CORS/MIME），或 WebView 未正确加载。请检查网络后刷新重试。');
           }
-        }, 5000);
+        }, 15000);
       })();
     </script>
     <script>
