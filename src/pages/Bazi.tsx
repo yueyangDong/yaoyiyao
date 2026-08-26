@@ -1722,48 +1722,61 @@ export default function Bazi() {
               />
             )}
 
-            {/* 手机端 2x2 四柱卡片 */}
+            {/* 手机端 4 列竖排四柱卡片（十神→天干→地支→纳音→藏干） */}
             {isMobile && (
-              <div className="bazi-grid-2x2" style={{ marginBottom: 12 }}>
-                {baziData.pillars.map((p, idx) => (
-                  <div key={idx} className="bazi-pillar" style={{
-                    borderColor: idx === 2 ? 'rgba(196,164,90,0.3)' : 'var(--border-light)',
-                  }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                      {p.pillar}{idx === 2 ? ' ★' : ''}
-                    </div>
-                    <div style={{
-                      fontSize: 36, fontWeight: 600,
-                      fontFamily: 'var(--font-display)',
-                      lineHeight: 1.2,
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 12 }}>
+                {baziData.pillars.map((p, idx) => {
+                  const isDay = idx === 2;
+                  return (
+                    <div key={idx} style={{
+                      border: `1px solid ${isDay ? 'rgba(196,164,90,0.6)' : 'var(--border-light)'}`,
+                      borderRadius: 10,
+                      background: isDay ? 'rgba(196,164,90,0.06)' : '#fff',
+                      padding: '8px 2px',
+                      textAlign: 'center',
                     }}>
-                      <span style={{ color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>{p.tianGan}</span>
-                      <span style={{ color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>{p.diZhi}</span>
-                    </div>
-                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
-                      <Tag color="purple" style={{ fontSize: 11, margin: 0 }}>{idx === 2 ? '日主' : p.shiShen}</Tag>
-                      {p.nayin && <Tag color="gold" style={{ fontSize: 11, margin: 0 }}>{p.nayin}</Tag>}
-                    </div>
-                    {p.cangGan && p.cangGan.length > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        藏干:{' '}
-                        {p.cangGan.map((cg, ci) => (
-                          <span key={ci} style={{ color: WX_COLORS[TG_WX[cg] || ''] || 'var(--text-secondary)', fontWeight: 600, marginRight: 2 }}>{cg}</span>
-                        ))}
+                      {/* 柱名（日主列高亮） */}
+                      <div style={{ fontSize: 10, color: isDay ? 'var(--wx-fire)' : 'var(--text-secondary)', fontWeight: isDay ? 700 : 500, marginBottom: 1 }}>
+                        {p.pillar}{isDay ? '★' : ''}
                       </div>
-                    )}
-                    {(baziData.shenSha || []).filter((s: any) => s.pillar === p.pillar).slice(0, 2).map((s: any, si: number) => (
-                      <Tag key={si} style={{ fontSize: 10, marginTop: 4, marginRight: 2 }}
-                        color={s.type === '吉' ? 'green' : s.type === '凶' ? 'red' : 'default'}>
-                        {s.name}
-                      </Tag>
-                    ))}
-                  </div>
-                ))}
+                      {/* 十神 */}
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isDay ? '日主' : p.shiShen}
+                      </div>
+                      {/* 天干（大字五行色） */}
+                      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--font-display)', lineHeight: 1.15, color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>
+                        {p.tianGan}
+                      </div>
+                      {/* 地支（大字五行色） */}
+                      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--font-display)', lineHeight: 1.15, color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>
+                        {p.diZhi}
+                      </div>
+                      {/* 纳音 */}
+                      <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p.nayin}
+                      </div>
+                      {/* 藏干（五行色） */}
+                      {p.cangGan && p.cangGan.length > 0 && (
+                        <div style={{ fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>
+                          {p.cangGan.map((cg, ci) => (
+                            <span key={ci} style={{ color: WX_COLORS[TG_WX[cg] || ''] || 'var(--text-secondary)', fontWeight: 600, marginRight: 2 }}>{cg}</span>
+                          ))}
+                        </div>
+                      )}
+                      {/* 神煞 */}
+                      {(baziData.shenSha || []).filter((s: any) => s.pillar === p.pillar).slice(0, 2).map((s: any, si: number) => (
+                        <Tag key={si} style={{ fontSize: 9, marginTop: 3, marginRight: 0, padding: '0 3px', lineHeight: '14px' }}
+                          color={s.type === '吉' ? 'green' : s.type === '凶' ? 'red' : 'default'}>
+                          {s.name}
+                        </Tag>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* 竖向表格（仅桌面端；移动端使用上方 2×2 卡片） */}
+            {/* 竖向表格（仅桌面端；移动端使用上方 4 列竖排卡片） */}
             {!isMobile && (
             <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
               <table style={{
