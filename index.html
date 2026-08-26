@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/yaoyiyao/logo-192.png" />
     <link rel="apple-touch-icon" href="/yaoyiyao/logo-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0" />
     <meta name="theme-color" content="#F7F5F0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -11,8 +14,11 @@
     <meta name="apple-mobile-web-app-title" content="爻一爻" />
     <title>爻一爻 - 仅供娱乐</title>
     <script src="/yaoyiyao/yao-sync.js"></script>
-    <script type="module" crossorigin src="/yaoyiyao/assets/index-BA4Dl82D.js"></script>
-    <link rel="stylesheet" crossorigin href="/yaoyiyao/assets/index-C8P8GcRW.css">
+    <script type="module" crossorigin src="/yaoyiyao/assets/index-C0QFYM1y.js"></script>
+    <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/react-vendor-DDz3i_m9.js">
+    <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/calendar-vendor-Cl62XOrS.js">
+    <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/antd-vendor-CTXJ7Iu-.js">
+    <link rel="stylesheet" crossorigin href="/yaoyiyao/assets/index-C3c5UmZf.css">
   <link rel="manifest" href="/yaoyiyao/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
@@ -35,6 +41,10 @@
           var root = document.getElementById('root');
           if (root && root.childElementCount > 0) {
             boot.style.display = 'none';
+          } else if (!sessionStorage.getItem('yyy_boot_retried')) {
+            // 偶发加载失败自动恢复：仅重试一次，避免死循环
+            sessionStorage.setItem('yyy_boot_retried', '1');
+            location.reload();
           } else {
             showBoot('5 秒后页面仍为空——JavaScript 未执行。\n可能原因：模块脚本加载被拦（CORS/MIME）、脚本语法错误，或 WebView 未正确加载。');
           }
