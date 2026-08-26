@@ -17,14 +17,14 @@
   --text-inverse: #FFFFFF;
 
   /* === 点缀色（五行 · 极其克制） === */
-  --wx-wood: #5B8C5A;
-  --wx-fire: #C75B5B;
-  --wx-earth: #C0674B; /* 陶土色 */
-  --wx-metal: #C9A86A; /* 香槟金 */
-  --wx-water: #4A5B6B;
+  --wx-wood: #6B9A7A; /* 竹月青 */
+  --wx-fire: #C23B2B; /* 丹砂赤 */
+  --wx-earth: #B87B4A; /* 琥珀赭石 */
+  --wx-metal: #C9A96E; /* 香槟金 */
+  --wx-water: #2A3340; /* 星灰蓝 */
 
-  --color-ji: #5B8C5A;
-  --color-xiong: #C75B5B;
+  --color-ji: #6B9A7A;
+  --color-xiong: #C23B2B;
   --color-warn: #D4943A;
   --color-info: #4A5B6B;
 
@@ -81,10 +81,10 @@
 
   /* === 模块色 === */
   --module-gold: #C4A45A;
-  --module-green: #5B8C5A;
+  --module-green: #6B9A7A;
   --module-blue: #4A5B6B;
   --module-gray: #9B9B9B;
-  --module-red: #C75B5B;
+  --module-red: #C23B2B;
   --module-brown: #8B7355;
   --module-purple: #7B6BA8;
   --module-teal: #5A9E96;
@@ -550,11 +550,11 @@ p {
 .ant-progress-bg { background: var(--text-primary) !important; }
 
 /* ========== 五行色标签 ========== */
-.tag-wood { background: rgba(91,140,90,0.08) !important; color: var(--wx-wood) !important; }
-.tag-fire { background: rgba(199,91,91,0.08) !important; color: var(--wx-fire) !important; }
-.tag-earth { background: rgba(192,103,75,0.08) !important; color: var(--wx-earth) !important; }
-.tag-metal { background: rgba(201,168,106,0.08) !important; color: var(--wx-metal) !important; }
-.tag-water { background: rgba(74,91,107,0.08) !important; color: var(--wx-water) !important; }
+.tag-wood { background: rgba(107,154,122,0.08) !important; color: var(--wx-wood) !important; }
+.tag-fire { background: rgba(194,59,43,0.08) !important; color: var(--wx-fire) !important; }
+.tag-earth { background: rgba(184,123,74,0.08) !important; color: var(--wx-earth) !important; }
+.tag-metal { background: rgba(201,169,110,0.08) !important; color: var(--wx-metal) !important; }
+.tag-water { background: rgba(42,51,64,0.08) !important; color: var(--wx-water) !important; }
 
 /* ========== 术语标签与结论卡 ========== */
 .term-tag {
@@ -813,8 +813,8 @@ p {
 
 /* ========== 命宫脉冲动画 ========== */
 @keyframes mingPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(199,91,91,0.15); }
-  50% { box-shadow: 0 0 0 6px rgba(199,91,91,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(194,59,43,0.15); }
+  50% { box-shadow: 0 0 0 6px rgba(194,59,43,0); }
 }
 .ming-pulse {
   animation: mingPulse 3s ease-in-out infinite;

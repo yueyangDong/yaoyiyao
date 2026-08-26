@@ -34,7 +34,7 @@ function TaiChi({ size = 140 }: { size?: number }) {
         <linearGradient id="taiChiGold" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#F0D488" />
           <stop offset="55%" stopColor="#DDB55C" />
-          <stop offset="100%" stopColor="#C9A86A" />
+          <stop offset="100%" stopColor="#C9A96E" />
         </linearGradient>
       </defs>
       {/* 阳（米白）在右 */}
@@ -100,13 +100,13 @@ export default function DivinationOverlay({ show, text = '推演中 · 天机渐
               transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
               style={{
                 position: 'absolute', inset: 8, borderRadius: '50%',
-                border: '1px solid rgba(201,168,106,0.25)',
+                border: '1px solid rgba(201,169,110,0.25)',
               }}
             >
               <span style={{
                 position: 'absolute', top: -3, left: '50%', width: 6, height: 6,
-                borderRadius: '50%', background: '#C9A86A',
-                boxShadow: '0 0 12px 2px rgba(201,168,106,0.8)',
+                borderRadius: '50%', background: '#C9A96E',
+                boxShadow: '0 0 12px 2px rgba(201,169,110,0.8)',
               }} />
             </motion.div>
 
@@ -135,8 +135,8 @@ export default function DivinationOverlay({ show, text = '推演中 · 天机渐
                 transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.28, ease: 'easeInOut' }}
                 style={{
                   padding: '5px 10px', borderRadius: 6,
-                  background: 'rgba(201,168,106,0.08)',
-                  border: '1px solid rgba(201,168,106,0.18)',
+                  background: 'rgba(201,169,110,0.08)',
+                  border: '1px solid rgba(201,169,110,0.18)',
                   color: '#D9C08F', fontSize: 14,
                   fontFamily: 'var(--font-display)', letterSpacing: '0.06em',
                 }}
@@ -153,7 +153,7 @@ export default function DivinationOverlay({ show, text = '推演中 · 天机渐
             style={{ marginTop: 18 }}
           >
             <Text style={{
-              color: '#C9A86A', fontSize: 17,
+              color: '#C9A96E', fontSize: 17,
               fontFamily: 'var(--font-title)', fontWeight: 500,
               letterSpacing: '0.1em',
             }}>

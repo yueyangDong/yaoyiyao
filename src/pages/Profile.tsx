@@ -238,7 +238,7 @@ export default function Profile() {
                 }
                 extra={
                   u.id === currentUser?.id && (
-                    <Tag icon={<CheckCircleOutlined />} style={{ background: 'rgba(91,140,90,0.08)', color: '#5B8C5A', border: 'none' }}>当前使用</Tag>
+                    <Tag icon={<CheckCircleOutlined />} style={{ background: 'rgba(107,154,122,0.08)', color: '#6B9A7A', border: 'none' }}>当前使用</Tag>
                   )
                 }
                 actions={[

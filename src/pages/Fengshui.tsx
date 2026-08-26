@@ -106,7 +106,7 @@ export default function Fengshui() {
     if (!star) return {};
     return star.ji === '吉'
       ? { background: 'var(--bg-card-solid)', color: 'var(--wx-wood)', borderColor: 'var(--border-light)' }
-      : { background: 'rgba(199,91,91,0.03)', color: 'var(--wx-fire)', borderColor: 'rgba(199,91,91,0.08)' };
+      : { background: 'rgba(194,59,43,0.03)', color: 'var(--wx-fire)', borderColor: 'rgba(194,59,43,0.08)' };
   };
 
   return (
@@ -131,7 +131,7 @@ export default function Fengshui() {
           </Radio.Group>
           {ownerMingGua && (
             <Tag style={{
-              background: ownerMingGua.type === '东四命' ? 'rgba(91,140,90,0.06)' : 'rgba(196,164,90,0.06)',
+              background: ownerMingGua.type === '东四命' ? 'rgba(107,154,122,0.06)' : 'rgba(201,169,110,0.06)',
               color: ownerMingGua.type === '东四命' ? 'var(--wx-wood)' : 'var(--wx-earth)',
               border: 'none',
             }}>
@@ -208,7 +208,7 @@ export default function Fengshui() {
               </Descriptions.Item>
               <Descriptions.Item label="宅型">
                 <Tag style={{
-                  background: result.house.type === '东四宅' ? 'rgba(91,140,90,0.06)' : 'rgba(196,164,90,0.06)',
+                  background: result.house.type === '东四宅' ? 'rgba(107,154,122,0.06)' : 'rgba(201,169,110,0.06)',
                   color: result.house.type === '东四宅' ? 'var(--wx-wood)' : 'var(--wx-earth)',
                   border: 'none',
                 }}>
@@ -276,7 +276,7 @@ export default function Fengshui() {
                         {/* 扇区背景 */}
                         <path
                           d={`M${x1o},${y1o} A${outerR},${outerR} 0 0,1 ${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR} 0 0,0 ${x1i},${y1i} Z`}
-                          fill={isSitting ? 'rgba(0,0,0,0.06)' : isJi ? 'rgba(91,140,90,0.03)' : 'rgba(199,91,91,0.03)'}
+                          fill={isSitting ? 'rgba(0,0,0,0.06)' : isJi ? 'rgba(107,154,122,0.03)' : 'rgba(194,59,43,0.03)'}
                           stroke="var(--border-light)" strokeWidth={0.8}
                         />
 
@@ -358,15 +358,15 @@ export default function Fengshui() {
               return (
                 <div key={dir} style={{
                   marginBottom: 12, padding: '10px 14px', borderRadius: 8,
-                  background: isJi ? 'var(--text-inverse)' : 'rgba(199,91,91,0.03)',
-                  border: `1px solid ${isJi ? 'var(--border-light)' : 'rgba(199,91,91,0.08)'}`,
+                  background: isJi ? 'var(--text-inverse)' : 'rgba(194,59,43,0.03)',
+                  border: `1px solid ${isJi ? 'var(--border-light)' : 'rgba(194,59,43,0.08)'}`,
                 }}>
                   <Text strong style={{ color: isJi ? 'var(--text-primary)' : 'var(--text-body)' }}>
                     {dir}方 — {starName}（{STAR_NAMES[starName]?.ji}）
                   </Text>
-                  {hasDoor && <Tag style={{ marginLeft: 8, background: 'rgba(74,91,107,0.06)', color: 'var(--wx-water)', border: 'none' }}>大门在此</Tag>}
-                  {hasBed && <Tag style={{ marginLeft: 4, background: 'rgba(91,140,90,0.06)', color: 'var(--wx-wood)', border: 'none' }}>卧室在此</Tag>}
-                  {hasKitchen && <Tag style={{ marginLeft: 4, background: 'rgba(196,164,90,0.06)', color: 'var(--wx-earth)', border: 'none' }}>厨房在此</Tag>}
+                  {hasDoor && <Tag style={{ marginLeft: 8, background: 'rgba(42,51,64,0.06)', color: 'var(--wx-water)', border: 'none' }}>大门在此</Tag>}
+                  {hasBed && <Tag style={{ marginLeft: 4, background: 'rgba(107,154,122,0.06)', color: 'var(--wx-wood)', border: 'none' }}>卧室在此</Tag>}
+                  {hasKitchen && <Tag style={{ marginLeft: 4, background: 'rgba(201,169,110,0.06)', color: 'var(--wx-earth)', border: 'none' }}>厨房在此</Tag>}
                   <Paragraph style={{ fontSize: 13, marginTop: 4, marginBottom: 2, color: 'var(--text-body)' }}>{detail.desc}</Paragraph>
                   <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>适合用途：{detail.suitable}</Text>
                 </div>

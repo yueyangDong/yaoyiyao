@@ -296,7 +296,7 @@ export default function AncientBooks() {
               {/* 白话 */}
               <div style={{
                 padding: '14px 16px',
-                background: 'rgba(91,140,90,0.03)',
+                background: 'rgba(107,154,122,0.03)',
                 borderRadius: 8,
                 borderLeft: '3px solid var(--wx-wood)',
               }}>
@@ -409,7 +409,7 @@ export default function AncientBooks() {
               style={{
                 marginBottom: 16, borderColor: 'var(--border-light)',
                 borderLeft: '3px solid var(--wx-wood)',
-                background: 'rgba(91,140,90,0.03)',
+                background: 'rgba(107,154,122,0.03)',
               }}
             >
               <Text style={{ fontSize: 12, color: 'var(--wx-wood)', display: 'block', marginBottom: 8 }}>

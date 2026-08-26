@@ -277,9 +277,9 @@ export default function Dream() {
                     marginBottom: 4,
                     width: '100%',
                     textAlign: 'center',
-                    background: 'rgba(74,91,107,0.08)',
+                    background: 'rgba(42,51,64,0.08)',
                     color: 'var(--wx-water)',
-                    border: '1px solid rgba(74,91,107,0.12)',
+                    border: '1px solid rgba(42,51,64,0.12)',
                   }}
                   onClick={() => handleOpenDream(entry)}
                 >
@@ -410,9 +410,9 @@ export default function Dream() {
                       <Tag
                         style={{
                           cursor: 'pointer',
-                          background: 'rgba(74,91,107,0.08)',
+                          background: 'rgba(42,51,64,0.08)',
                           color: 'var(--wx-water)',
-                          border: '1px solid rgba(74,91,107,0.12)',
+                          border: '1px solid rgba(42,51,64,0.12)',
                         }}
                         onClick={() => setSelectedDream(d)}
                       >

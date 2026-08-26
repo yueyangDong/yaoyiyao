@@ -52,9 +52,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   };
 
   const bgColors: Record<ToastType, string> = {
-    success: 'rgba(91,140,90,0.06)',
-    error: 'rgba(199,91,91,0.06)',
-    info: 'rgba(74,91,107,0.06)',
+    success: 'rgba(107,154,122,0.06)',
+    error: 'rgba(194,59,43,0.06)',
+    info: 'rgba(42,51,64,0.06)',
   };
 
   return (

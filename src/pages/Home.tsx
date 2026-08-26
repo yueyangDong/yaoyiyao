@@ -137,7 +137,7 @@ export default function Home() {
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px',
-              background: 'linear-gradient(135deg, rgba(91,140,90,0.05) 0%, rgba(255,255,255,0.9) 100%)',
+              background: 'linear-gradient(135deg, rgba(107,154,122,0.05) 0%, rgba(255,255,255,0.9) 100%)',
               border: '1px solid var(--border-light)',
               borderRadius: 16,
               cursor: 'pointer',
@@ -168,7 +168,7 @@ export default function Home() {
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px',
-              background: 'linear-gradient(135deg, rgba(74,91,107,0.04) 0%, rgba(255,255,255,0.9) 100%)',
+              background: 'linear-gradient(135deg, rgba(42,51,64,0.04) 0%, rgba(255,255,255,0.9) 100%)',
               border: '1px solid var(--border-light)',
               borderRadius: 16,
               cursor: 'pointer',

@@ -538,7 +538,7 @@ export default function Lingqian() {
                 title={<span style={{ color: 'var(--wx-fire)' }}>🪷 化解建议</span>}
                 style={{
                   marginBottom: 12,
-                  background: 'rgba(199,91,91,0.03)',
+                  background: 'rgba(194,59,43,0.03)',
                   borderColor: 'var(--border-light)',
                   borderLeft: '3px solid var(--wx-fire)',
                 }}

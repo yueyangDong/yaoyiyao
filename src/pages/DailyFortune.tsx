@@ -207,7 +207,7 @@ export default function DailyFortune() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {lunar.getDayYi().slice(0, 10).map((item: string) => (
                   <Tag key={item} style={{
-                    background: 'rgba(91,140,90,0.06)',
+                    background: 'rgba(107,154,122,0.06)',
                     color: 'var(--wx-wood)', border: 'none', fontSize: 13,
                   }}>{item}</Tag>
                 ))}
@@ -230,7 +230,7 @@ export default function DailyFortune() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {lunar.getDayJi().slice(0, 10).map((item: string) => (
                   <Tag key={item} style={{
-                    background: 'rgba(199,91,91,0.06)',
+                    background: 'rgba(194,59,43,0.06)',
                     color: 'var(--wx-fire)', border: 'none', fontSize: 13,
                   }}>{item}</Tag>
                 ))}
@@ -251,7 +251,7 @@ export default function DailyFortune() {
               <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>吉神：</Text>
               {luckyGuide.jiShen.length > 0
                 ? luckyGuide.jiShen.slice(0, 5).map(s => (
-                  <Tag key={s} style={{ marginRight: 4, fontSize: 11, background: 'rgba(91,140,90,0.06)', color: 'var(--wx-wood)', border: 'none' }}>{s}</Tag>
+                  <Tag key={s} style={{ marginRight: 4, fontSize: 11, background: 'rgba(107,154,122,0.06)', color: 'var(--wx-wood)', border: 'none' }}>{s}</Tag>
                 ))
                 : <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>—</Text>
               }
@@ -260,7 +260,7 @@ export default function DailyFortune() {
               <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>凶煞：</Text>
               {luckyGuide.xiongSha.length > 0
                 ? luckyGuide.xiongSha.slice(0, 5).map(s => (
-                  <Tag key={s} style={{ fontSize: 11, background: 'rgba(199,91,91,0.06)', color: 'var(--wx-fire)', border: 'none' }}>{s}</Tag>
+                  <Tag key={s} style={{ fontSize: 11, background: 'rgba(194,59,43,0.06)', color: 'var(--wx-fire)', border: 'none' }}>{s}</Tag>
                 ))
                 : <Text style={{ fontSize: 12, color: 'var(--text-disabled)' }}>—</Text>
               }
@@ -349,7 +349,7 @@ export default function DailyFortune() {
 
             {/* 白话详解 */}
             <div style={{
-              padding: '12px 16px', background: 'rgba(91,140,90,0.04)',
+              padding: '12px 16px', background: 'rgba(107,154,122,0.04)',
               borderRadius: 10, marginBottom: 12,
               borderLeft: '3px solid var(--wx-wood)',
             }}>
@@ -574,7 +574,7 @@ export default function DailyFortune() {
                         <span style={{
                           display: 'inline-block', width: 28, height: 18, lineHeight: '18px',
                           textAlign: 'center', borderRadius: 4, fontSize: 10, fontWeight: 600,
-                          background: isJi ? 'rgba(91,140,90,0.1)' : 'rgba(199,91,91,0.08)',
+                          background: isJi ? 'rgba(107,154,122,0.1)' : 'rgba(194,59,43,0.08)',
                           color: isJi ? 'var(--wx-wood)' : 'var(--wx-fire)',
                         }}>
                           {isJi ? '吉' : '凶'}
@@ -589,7 +589,7 @@ export default function DailyFortune() {
                             ? yi.slice(0, 5).map((item) => (
                               <Tag key={item} style={{
                                 margin: 0, fontSize: 10, lineHeight: '16px',
-                                background: 'rgba(91,140,90,0.04)', color: 'var(--wx-wood)', border: 'none',
+                                background: 'rgba(107,154,122,0.04)', color: 'var(--wx-wood)', border: 'none',
                               }}>{item}</Tag>
                             ))
                             : <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>—</Text>
@@ -602,7 +602,7 @@ export default function DailyFortune() {
                             ? ji.slice(0, 5).map((item) => (
                               <Tag key={item} style={{
                                 margin: 0, fontSize: 10, lineHeight: '16px',
-                                background: 'rgba(199,91,91,0.04)', color: 'var(--wx-fire)', border: 'none',
+                                background: 'rgba(194,59,43,0.04)', color: 'var(--wx-fire)', border: 'none',
                               }}>{item}</Tag>
                             ))
                             : <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>—</Text>

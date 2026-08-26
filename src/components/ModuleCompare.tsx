@@ -29,7 +29,7 @@ export default function ModuleCompare() {
       <Card size="small" style={{
         borderRadius: 16,
         border: '1px solid var(--border-light)',
-        background: 'linear-gradient(135deg, rgba(74,91,107,0.03) 0%, rgba(255,255,255,0.8) 100%)',
+        background: 'linear-gradient(135deg, rgba(42,51,64,0.03) 0%, rgba(255,255,255,0.8) 100%)',
       }}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text strong style={{ fontSize: 14 }}>八字 · 紫微 交叉验证</Text>
@@ -47,7 +47,7 @@ export default function ModuleCompare() {
     <Card size="small" style={{
       borderRadius: 16,
       border: '1px solid var(--border-light)',
-      background: 'linear-gradient(135deg, rgba(91,140,90,0.04) 0%, rgba(74,91,107,0.04) 100%)',
+      background: 'linear-gradient(135deg, rgba(107,154,122,0.04) 0%, rgba(42,51,64,0.04) 100%)',
     }}>
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -58,8 +58,8 @@ export default function ModuleCompare() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'start' }}>
           {/* 八字 */}
           <Card size="small" hoverable onClick={() => navigate('/bazi')} style={{
-            borderColor: 'rgba(91,140,90,0.2)',
-            background: 'rgba(91,140,90,0.04)',
+            borderColor: 'rgba(107,154,122,0.2)',
+            background: 'rgba(107,154,122,0.04)',
             borderRadius: 12,
           }}>
             <Space>
@@ -78,8 +78,8 @@ export default function ModuleCompare() {
 
           {/* 紫微 */}
           <Card size="small" hoverable onClick={() => navigate('/ziwei')} style={{
-            borderColor: 'rgba(74,91,107,0.2)',
-            background: 'rgba(74,91,107,0.04)',
+            borderColor: 'rgba(42,51,64,0.2)',
+            background: 'rgba(42,51,64,0.04)',
             borderRadius: 12,
           }}>
             <Space>

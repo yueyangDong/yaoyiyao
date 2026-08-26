@@ -36,7 +36,7 @@ export default function TermPopover({ entry, children }: Props) {
           padding: '0 1px',
         }}
       >
-        {children}⁇
+        {children}
       </span>
     </Popover>
   );

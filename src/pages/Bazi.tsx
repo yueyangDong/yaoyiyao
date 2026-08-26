@@ -20,7 +20,7 @@ const { Title, Text, Paragraph } = Typography;
 
 // 五行配色 (使用设计系统 CSS 变量)
 const WX_COLORS: Record<string, string> = { '木': 'var(--wx-wood)', '火': 'var(--wx-fire)', '土': 'var(--wx-earth)', '金': 'var(--wx-metal)', '水': 'var(--wx-water)' };
-const WX_BG: Record<string, string> = { '木': 'rgba(91,140,90,0.08)', '火': 'rgba(199,91,91,0.08)', '土': 'rgba(192,103,75,0.08)', '金': 'rgba(201,168,106,0.08)', '水': 'rgba(74,91,107,0.08)' };
+const WX_BG: Record<string, string> = { '木': 'rgba(107,154,122,0.08)', '火': 'rgba(194,59,43,0.08)', '土': 'rgba(184,123,74,0.08)', '金': 'rgba(201,169,110,0.08)', '水': 'rgba(42,51,64,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
 // 十神白话解释
@@ -1132,7 +1132,7 @@ export default function Bazi() {
 
       const dayunSteps = Array.isArray(dayunRaw)
         ? dayunRaw.map((d: any) => ({
-            ganZhi: d.getGanZhi?.() || String(d),
+            ganZhi: (d.getGanZhi?.() as string) || '—', // 起运前的小运无干支，显示 —
             startAge: d.getStartAge?.() ?? 0,
             endAge: d.getEndAge?.() ?? 0,
             startYear: d.getStartYear?.() ?? 0,
@@ -1348,7 +1348,8 @@ export default function Bazi() {
 
   const dayunInterpretations = useMemo(() => {
     if (!baziData) return [];
-    const ganZhiList = baziData.dayun.steps.map((s) => s.ganZhi);
+    // 跳过起运前无干支的小运（显示 — 的步骤）
+    const ganZhiList = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—').map((s) => s.ganZhi);
     return getDayunInterpretation(ganZhiList, baziData.dayGan, baziData.dayun.startAge);
   }, [baziData]);
 
@@ -1358,7 +1359,8 @@ export default function Bazi() {
     const wxs = Object.entries(wxStats || {}).sort((a, b) => b[1].count - a[1].count);
     const wxStrongest = wxs[0]?.[0] || '';
     const wxWeakest = wxs[wxs.length - 1]?.[0] || '';
-    const dayunFirst = baziData.dayun.steps[0]?.ganZhi || null;
+    // 取第一个有干支的大运（起运前的小运无干支，跳过）
+    const dayunFirst = baziData.dayun.steps.find(s => s.ganZhi && s.ganZhi !== '—')?.ganZhi || null;
     // 用神与喜神可能重叠，但 xiShen（身强时比劫、身弱时财星）实为忌神，不并入结论文案
     const yongShen = yongShenRec.yongShen;
     const xiShen: string[] = [];
@@ -1604,7 +1606,7 @@ export default function Bazi() {
                   {strengthAnalysis && (
                     <Tag style={{
                       fontSize: 14,
-                      background: strengthAnalysis.level === '身强' ? 'rgba(199,91,91,0.08)' : strengthAnalysis.level === '身弱' ? 'rgba(74,91,107,0.08)' : 'rgba(91,140,90,0.08)',
+                      background: strengthAnalysis.level === '身强' ? 'rgba(194,59,43,0.08)' : strengthAnalysis.level === '身弱' ? 'rgba(42,51,64,0.08)' : 'rgba(107,154,122,0.08)',
                       color: strengthAnalysis.level === '身强' ? 'var(--wx-fire)' : strengthAnalysis.level === '身弱' ? 'var(--wx-water)' : 'var(--wx-wood)',
                       border: 'none',
                     }}>
@@ -1931,7 +1933,7 @@ export default function Bazi() {
                                       <Tag
                                         style={{
                                           fontSize: 10, margin: 0, cursor: 'pointer',
-                                          background: ss.type === '吉' ? 'rgba(91,140,90,0.08)' : ss.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
+                                          background: ss.type === '吉' ? 'rgba(107,154,122,0.08)' : ss.type === '凶' ? 'rgba(194,59,43,0.08)' : 'rgba(42,51,64,0.08)',
                                           color: ss.type === '吉' ? 'var(--wx-wood)' : ss.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
                                           border: 'none',
                                         }}
@@ -1969,12 +1971,12 @@ export default function Bazi() {
                         size="small"
                         style={{
                           borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
-                          background: sha.type === '吉' ? 'rgba(91,140,90,0.06)' : sha.type === '凶' ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)',
+                          background: sha.type === '吉' ? 'rgba(107,154,122,0.06)' : sha.type === '凶' ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)',
                         }}
                       >
                         <Space>
                           <Tag style={{
-                            background: sha.type === '吉' ? 'rgba(91,140,90,0.08)' : sha.type === '凶' ? 'rgba(199,91,91,0.08)' : 'rgba(74,91,107,0.08)',
+                            background: sha.type === '吉' ? 'rgba(107,154,122,0.08)' : sha.type === '凶' ? 'rgba(194,59,43,0.08)' : 'rgba(42,51,64,0.08)',
                             color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
                             border: 'none',
                           }}>
@@ -2150,12 +2152,12 @@ export default function Bazi() {
                   && baziData.dayun.startAge + (i + 1) * 10 >= currentYear - baziData.birthYear;
                 return (
                   <Col xs={12} sm={8} md={6} key={i}>
-                    <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(199,91,91,0.06)' : undefined }}>
+                    <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(194,59,43,0.06)' : undefined }}>
                       <Space direction="vertical" size={0}>
                         <Text strong style={{ fontSize: 16, color: isCurrent ? 'var(--wx-fire)' : 'var(--text-primary)' }}>{step.ganZhi}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{step.startAge}~{step.endAge}岁</Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}~{step.endYear}年</Text>
-                        {isCurrent && <Tag style={{ background: 'rgba(199,91,91,0.08)', color: 'var(--wx-fire)', border: 'none' }}>当前大运</Tag>}
+                        {isCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none' }}>当前大运</Tag>}
                       </Space>
                     </Card>
                   </Col>
@@ -2202,7 +2204,7 @@ export default function Bazi() {
                 {liuYueMonths.map((m, i) => {
                   const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
                   const isBad = m.desc.includes('官杀') || m.desc.includes('压力');
-                  const bgColor = isGood ? 'rgba(91,140,90,0.06)' : isBad ? 'rgba(199,91,91,0.06)' : 'rgba(0,0,0,0.02)';
+                  const bgColor = isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)';
                   return (
                     <Col xs={8} sm={6} md={4} key={i}>
                       <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
@@ -2246,7 +2248,7 @@ export default function Bazi() {
                         <Card size="small" style={{
                           textAlign: 'center',
                           padding: 2,
-                          background: isGood ? 'rgba(91,140,90,0.06)' : isBad ? 'rgba(199,91,91,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
+                          background: isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
                           borderColor: isWeekend ? '#ccc' : undefined,
                         }}>
                           <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
@@ -2275,7 +2277,7 @@ export default function Bazi() {
             >
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-fire)' }}
-              styles={{ body: { background: 'rgba(199,91,91,0.02)' } }}
+              styles={{ body: { background: 'rgba(194,59,43,0.02)' } }}
             >
               <Paragraph><Text strong>配偶特征：</Text>{loveAnalysis.spouseFeature}</Paragraph>
               <Paragraph><Text strong>婚姻质量：</Text>{loveAnalysis.marriageQuality}</Paragraph>
@@ -2290,7 +2292,7 @@ export default function Bazi() {
             <CollapsibleCard title="💼 事业财运" summary={careerAnalysis.direction}>
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
-              styles={{ body: { background: 'rgba(74,91,107,0.02)' } }}
+              styles={{ body: { background: 'rgba(42,51,64,0.02)' } }}
             >
               <Paragraph><Text strong>事业方向：</Text>{careerAnalysis.direction}</Paragraph>
               <Paragraph><Text strong>赚钱方式：</Text>{careerAnalysis.moneyMethod}</Paragraph>

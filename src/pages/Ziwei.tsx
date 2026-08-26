@@ -133,9 +133,9 @@ function getPalaceScore(gong: any): { level: '吉' | '中' | '凶'; jiCount: num
 }
 
 const PALACE_LEVEL_STYLE: Record<string, { border: string; bg: string; tag: string }> = {
-  '吉': { border: '2px solid rgba(91,140,90,0.3)', bg: 'rgba(91,140,90,0.03)', tag: '#5B8C5A' },
+  '吉': { border: '2px solid rgba(107,154,122,0.3)', bg: 'rgba(107,154,122,0.03)', tag: '#6B9A7A' },
   '中': { border: '1px solid var(--border-light)', bg: 'var(--bg-card-solid)', tag: 'var(--text-secondary)' },
-  '凶': { border: '2px solid rgba(199,91,91,0.25)', bg: 'rgba(199,91,91,0.03)', tag: '#C75B5B' },
+  '凶': { border: '2px solid rgba(194,59,43,0.25)', bg: 'rgba(194,59,43,0.03)', tag: '#C23B2B' },
 };
 
 // SVG星图组件 — 圆形十二宫命盘
@@ -797,19 +797,19 @@ export default function Ziwei() {
 
             let grade: string; let gradeColor: string; let gradeBg: string; let summary: string;
             if (jiCount >= 6) {
-              grade = '上等'; gradeColor = '#5B8C5A'; gradeBg = 'rgba(91,140,90,0.08)';
+              grade = '上等'; gradeColor = '#6B9A7A'; gradeBg = 'rgba(107,154,122,0.08)';
               summary = '命盘整体格局优良，多宫吉星汇聚。你天生底子好，在多个领域都有不错的运势。吉星是天赋，善加利用可成大器。';
             } else if (jiCount >= 4 && xiongCount <= 3) {
-              grade = '中上'; gradeColor = '#5B8C5A'; gradeBg = 'rgba(91,140,90,0.06)';
+              grade = '中上'; gradeColor = '#6B9A7A'; gradeBg = 'rgba(107,154,122,0.06)';
               summary = '命盘中等偏上，吉多于凶。大部分领域较为顺利，少数领域需要多下功夫。整体来说是一副不错的牌。';
             } else if (jiCount >= 2 && xiongCount <= 4) {
-              grade = '中等'; gradeColor = '#C4A45A'; gradeBg = 'rgba(196,164,90,0.06)';
+              grade = '中等'; gradeColor = '#B87B4A'; gradeBg = 'rgba(184,123,74,0.06)';
               summary = '命盘吉凶参半，有好有坏。不算一帆风顺，但也不是寸步难行。吉星是你的筹码，煞星是你的老师——这副牌怎么打，看你自己。';
             } else if (xiongCount >= 5) {
-              grade = '中下'; gradeColor = '#C75B5B'; gradeBg = 'rgba(199,91,91,0.06)';
+              grade = '中下'; gradeColor = '#C23B2B'; gradeBg = 'rgba(194,59,43,0.06)';
               summary = '命盘煞星偏多，人生磨砺较多。但请记住——历史上成就大业者，往往命盘煞重。煞星不是诅咒，是逼你变强的磨刀石。宝剑锋从磨砺出。';
             } else {
-              grade = '中等'; gradeColor = '#C4A45A'; gradeBg = 'rgba(196,164,90,0.06)';
+              grade = '中等'; gradeColor = '#B87B4A'; gradeBg = 'rgba(184,123,74,0.06)';
               summary = '命盘中规中矩，平稳是最大的福气。不求大富大贵，但求岁岁平安。知足常乐，平安是福。';
             }
 
@@ -846,7 +846,7 @@ export default function Ziwei() {
                   {jiNames.length > 0 && (
                     <Col span={12}>
                       <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '8px 12px' }}>
-                        <Text strong style={{ color: '#5B8C5A', fontSize: 12 }}>优势领域：</Text>
+                        <Text strong style={{ color: '#6B9A7A', fontSize: 12 }}>优势领域：</Text>
                         <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{jiNames.join('、')}</Text>
                       </div>
                     </Col>
@@ -854,7 +854,7 @@ export default function Ziwei() {
                   {xiongNames.length > 0 && (
                     <Col span={12}>
                       <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '8px 12px' }}>
-                        <Text strong style={{ color: '#C75B5B', fontSize: 12 }}>需注意的领域：</Text>
+                        <Text strong style={{ color: '#C23B2B', fontSize: 12 }}>需注意的领域：</Text>
                         <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{xiongNames.join('、')}</Text>
                       </div>
                     </Col>
@@ -1007,11 +1007,11 @@ export default function Ziwei() {
                                 {gong.name}
                               </Text>
                               <Space size={2}>
-                                {isMing && <Tag style={{ fontSize: 10, background: 'rgba(199,91,91,0.1)', color: 'var(--wx-fire)', border: 'none', padding: '0 4px', lineHeight: '16px' }}>命</Tag>}
+                                {isMing && <Tag style={{ fontSize: 10, background: 'rgba(194,59,43,0.1)', color: 'var(--wx-fire)', border: 'none', padding: '0 4px', lineHeight: '16px' }}>命</Tag>}
                                 {isShen && <Tag style={{ fontSize: 10, background: 'rgba(196,164,90,0.1)', color: 'var(--wx-earth)', border: 'none', padding: '0 4px', lineHeight: '16px' }}>身</Tag>}
                                 <Tag style={{
                                   fontSize: 10, padding: '0 4px', lineHeight: '16px',
-                                  background: score.level === '吉' ? 'rgba(91,140,90,0.1)' : score.level === '凶' ? 'rgba(199,91,91,0.1)' : 'rgba(0,0,0,0.04)',
+                                  background: score.level === '吉' ? 'rgba(107,154,122,0.1)' : score.level === '凶' ? 'rgba(194,59,43,0.1)' : 'rgba(0,0,0,0.04)',
                                   color: style.tag, border: 'none',
                                 }}>
                                   {score.level}
@@ -1072,7 +1072,7 @@ export default function Ziwei() {
                     <Text strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{gong.name}宫</Text>
                     <Tag style={{
                       fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 6,
-                      background: score.level === '吉' ? '#5B8C5A' : score.level === '凶' ? '#C75B5B' : '#C4A45A',
+                      background: score.level === '吉' ? '#6B9A7A' : score.level === '凶' ? '#C23B2B' : '#B87B4A',
                       color: '#fff', border: 'none',
                     }}>
                       {score.level === '吉' ? '好' : score.level === '凶' ? '注意' : '平稳'}
@@ -1098,7 +1098,7 @@ export default function Ziwei() {
           <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'rgba(91,140,90,0.03)', border: '1px solid rgba(91,140,90,0.15)' }}>
+                <Card size="small" title={<span><Star size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />命盘亮点</span>} style={{ background: 'rgba(107,154,122,0.03)', border: '1px solid rgba(107,154,122,0.15)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.highlights.map((h: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{h}</li>
@@ -1107,7 +1107,7 @@ export default function Ziwei() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: 'rgba(199,91,91,0.03)', border: '1px solid rgba(199,91,91,0.15)' }}>
+                <Card size="small" title={<span><AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />需要注意</span>} style={{ background: 'rgba(194,59,43,0.03)', border: '1px solid rgba(194,59,43,0.15)' }}>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {ziweiData.warnings.map((w: string, i: number) => (
                       <li key={i} style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-body)' }}>{w}</li>
