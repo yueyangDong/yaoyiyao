@@ -6,7 +6,7 @@ import {
 import { MapPin, Sun, Wind, Sunrise, Sunset, RefreshCw } from 'lucide-react';
 import { Lunar } from 'lunar-typescript';
 import { motion } from 'framer-motion';
-import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, type WeatherData, type GeoPosition } from '../utils/weatherApi';
+import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, formatCountyName, type WeatherData, type GeoPosition } from '../utils/weatherApi';
 import {
   getLuckyGuide, getDailyLotIndex, getTravelAdvice, type LuckyGuide, type TravelAdvice,
 } from '../utils/dailyFortuneUtils';
@@ -56,7 +56,7 @@ export default function DailyFortune() {
     try {
       const data = await getWeather(lat, lng);
       setWeather(data);
-      if (cityName) setCity(cityName);
+      if (cityName) setCity(formatCountyName(cityName));
     } catch (e) {
       toast('info', '天气数据获取失败，使用默认信息');
     } finally {
@@ -86,7 +86,7 @@ export default function DailyFortune() {
     try {
       message.loading({ content: '获取位置中...', key: 'geo' });
       const pos = await getPositionWithCity();
-      message.success({ content: `已定位到 ${pos.city || '当前位置'}`, key: 'geo' });
+      message.success({ content: `已定位到 ${pos.city ? formatCountyName(pos.city) : '当前位置'}`, key: 'geo' });
       await loadWeather(pos.lat, pos.lng, pos.city);
     } catch (e: any) {
       message.error({
