@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Card, Form, InputNumber, Button, Typography, Row, Col,
+  Card, Form, Button, Typography, Row, Col,
   Tag, Space, message, Radio, Alert, Divider, Select, Checkbox, Cascader,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -690,7 +690,9 @@ export default function Ziwei() {
             </Col>
             <Col xs={12} sm={4}>
               <Form.Item name="minute" label="分">
-                <InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} />
+                <Select placeholder="选择分钟"
+                  options={Array.from({ length: 60 }, (_, i) => ({ value: i, label: `${i}分` }))}
+                />
               </Form.Item>
             </Col>
           </Row>
