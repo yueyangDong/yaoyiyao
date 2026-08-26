@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
@@ -8,7 +9,6 @@ import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
-import { useNavigate } from 'react-router-dom';
 import CollapsibleCard from '../components/CollapsibleCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
