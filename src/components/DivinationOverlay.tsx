@@ -26,24 +26,32 @@ interface DivinationOverlayProps {
   text?: string;
 }
 
-/** 太极图 SVG（白 + 香槟金） */
+/** 太极图 SVG（米白 + 金色渐变 + 辉光，深色遮罩下金白对比明确） */
 function TaiChi({ size = 140 }: { size?: number }) {
   return (
     <svg viewBox="0 0 100 100" width={size} height={size}>
-      {/* 阳（白）在右 */}
+      <defs>
+        <linearGradient id="taiChiGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F0D488" />
+          <stop offset="55%" stopColor="#DDB55C" />
+          <stop offset="100%" stopColor="#C9A86A" />
+        </linearGradient>
+      </defs>
+      {/* 阳（米白）在右 */}
       <path
         d="M50,0 A50,50 0 0,1 50,100 A25,25 0 0,1 50,50 A25,25 0 0,0 50,0 Z"
-        fill="#F5F0E6"
+        fill="#F7F3E9"
       />
-      {/* 阴（金）在左 */}
+      {/* 阴（金色渐变）在左 */}
       <path
         d="M50,0 A50,50 0 0,0 50,100 A25,25 0 0,0 50,50 A25,25 0 0,1 50,0 Z"
-        fill="#C9A86A"
+        fill="url(#taiChiGold)"
+        style={{ filter: 'drop-shadow(0 0 8px rgba(240,212,136,0.55))' }}
       />
-      {/* 阴中阳点（左黑区的小白点） */}
-      <circle cx="50" cy="75" r="8" fill="#F5F0E6" />
+      {/* 阴中阳点（左金区的小白点） */}
+      <circle cx="50" cy="75" r="8" fill="#F7F3E9" />
       {/* 阳中阴点（右白区的小金点） */}
-      <circle cx="50" cy="25" r="8" fill="#C9A86A" />
+      <circle cx="50" cy="25" r="8" fill="#E3B75C" />
     </svg>
   );
 }
