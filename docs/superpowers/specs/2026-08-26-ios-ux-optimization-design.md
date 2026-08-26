@@ -54,18 +54,43 @@ input, textarea, select {
   - 非 iOS：保持现有 `link.download` 下载
 - `catch` 分支：提示「导出失败，iOS 建议使用系统截图」
 
-### 2.4 字体预连接（B3）
+### 2.4 字体预连接 + 非阻塞化（B3）
 
-`index.html` `<head>` 增加：
+**现状问题：** `src/index.css` 第 2 行 `@import url('https://fonts.googleapis.com/...')` 是 CSS 内联 @import——浏览器必须下载字体 CSS 才能继续应用后续全部规则（**串行阻塞**）。国内/微信环境下 fonts.googleapis.com 超时会阻塞整份样式表应用，出现"页面无样式"。
+
+**方案：**
+1. 移除 `index.css` 中的 `@import` 字体行
+2. `index.html` `<head>` 增加（`display=swap` 保证文本先用 fallback 字体立即可见）：
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 ```
 
-中文字体请求提前建立连接，缩短首屏渲染阻塞。
+3. 保留原字体族变量（`--font-display` / `--font-title` / 默认字体），字体晚到不影响布局（fallback 字体替换）。
 
-### 2.5 触摸细节（B4）
+### 2.5 偶发白屏自动恢复（B5）
+
+**根因：** 生产主包 index JS 约 2.0MB，iOS / 微信 WebView 弱网下偶发模块脚本下载失败 → `#root` 为空 → boot-status 显示「JS 未执行」诊断但**无自动恢复**。
+
+**方案：** 增强 `index.html` 启动诊断逻辑：
+
+```js
+// 首次检测到空 → 自动刷新一次（sessionStorage 标记防死循环）；仍空才显示诊断
+if (root && root.childElementCount > 0) {
+  boot.style.display = 'none';
+} else if (!sessionStorage.getItem('yyy_boot_retried')) {
+  sessionStorage.setItem('yyy_boot_retried', '1');
+  location.reload();
+} else {
+  showBoot('...'); // 保留原诊断文案
+}
+```
+
+配合 2.1 拆包（主包显著变小），双保险：加载失败概率降低 + 偶发失败自动重试。
+
+### 2.6 触摸细节（B4）
 
 `src/index.css` body：
 
@@ -94,5 +119,7 @@ touch-action: manipulation; /* 消除双击缩放延迟（iOS 旧版） */
 - [ ] 构建后主包（index chunk）体积较 2.0MB 明显下降，vendor chunk 分离
 - [ ] iOS 输入框聚焦不再整页放大
 - [ ] iOS 下保存对比图：新窗口打开图片可长按保存；失败有引导提示
+- [ ] Google Fonts 不再以 `@import` 串行阻塞样式表（index.html link + preconnect）
+- [ ] 偶发白屏自动恢复：5 秒空 → 自动 reload 一次（有防死循环标记），仍空才显示诊断
 - [ ] 52/52 测试通过、tsc 零错误
 - [ ] gh-pages 部署成功，线上可用
