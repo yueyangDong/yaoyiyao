@@ -8,13 +8,14 @@ import {
   UserAddOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
-import { UserCircle, Plus } from 'lucide-react';
+import { UserCircle, Plus, Bug } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
 import ModuleCompare from '../components/ModuleCompare';
 import ShareButton from '../components/ShareButton';
+import LogModal from '../components/LogModal';
 import { pcaCode } from 'cn-division';
 import { LunarYear } from 'lunar-typescript';
 
@@ -47,6 +48,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const compareRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const [form] = Form.useForm();
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
   const [lunarYear, setLunarYear] = useState<number>(2000);
@@ -424,6 +426,14 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* 系统日志入口 */}
+      <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <Button icon={<Bug size={14} strokeWidth={1.5} />} onClick={() => setLogOpen(true)}>
+          系统日志
+        </Button>
+      </div>
+      <LogModal open={logOpen} onClose={() => setLogOpen(false)} />
     </div>
   );
 }

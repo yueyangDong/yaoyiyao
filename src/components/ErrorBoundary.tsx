@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Alert, Button } from 'antd';
+import { logError } from '../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,10 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[ErrorBoundary${this.props.moduleName ? `-${this.props.moduleName}` : ''}]`, error, info);
+    logError(error.message || String(error), {
+      module: this.props.moduleName ? `ErrorBoundary-${this.props.moduleName}` : 'ErrorBoundary',
+      stack: error.stack,
+    });
   }
 
   render() {
