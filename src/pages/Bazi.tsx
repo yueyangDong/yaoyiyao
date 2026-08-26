@@ -20,6 +20,12 @@ const { Title, Text, Paragraph } = Typography;
 
 // 五行配色 (使用设计系统 CSS 变量)
 const WX_COLORS: Record<string, string> = { '木': 'var(--wx-wood)', '火': 'var(--wx-fire)', '土': 'var(--wx-earth)', '金': 'var(--wx-metal)', '水': 'var(--wx-water)' };
+
+// 天干 → 五行（模块级，供干支五行着色）
+const TG_WX: Record<string, string> = {
+  '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
+  '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+};
 const WX_BG: Record<string, string> = { '木': 'rgba(107,154,122,0.08)', '火': 'rgba(194,59,43,0.08)', '土': 'rgba(184,123,74,0.08)', '金': 'rgba(201,169,110,0.08)', '水': 'rgba(42,51,64,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
@@ -2154,7 +2160,7 @@ export default function Bazi() {
                   <Col xs={12} sm={8} md={6} key={i}>
                     <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(194,59,43,0.06)' : undefined }}>
                       <Space direction="vertical" size={0}>
-                        <Text strong style={{ fontSize: 16, color: isCurrent ? 'var(--wx-fire)' : 'var(--text-primary)' }}>{step.ganZhi}</Text>
+                        <Text strong style={{ fontSize: 16, color: isCurrent ? 'var(--wx-fire)' : (WX_COLORS[TG_WX[step.ganZhi.charAt(0)] || ''] || 'var(--text-primary)') }}>{step.ganZhi}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{step.startAge}~{step.endAge}岁</Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}~{step.endYear}年</Text>
                         {isCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none' }}>当前大运</Tag>}
@@ -2182,7 +2188,7 @@ export default function Bazi() {
                       <Space direction="vertical" size={2} style={{ width: '100%' }}>
                         <Space>
                           <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
-                          <Tag color={WX_COLORS[y.wx]} style={{ fontSize: 12 }}>{y.ganZhi}</Tag>
+                          <Tag style={{ background: WX_BG[y.wx], color: WX_COLORS[y.wx], border: 'none', fontSize: 12, margin: 0 }}>{y.ganZhi}</Tag>
                         </Space>
                         <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
                       </Space>
@@ -2210,7 +2216,7 @@ export default function Bazi() {
                       <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
                         <Text style={{ fontSize: 14 }}>{m.monthName}</Text>
                         <br />
-                        <Tag color={WX_COLORS[m.wx]} style={{ fontSize: 13 }}>{m.ganZhi}</Tag>
+                        <Tag style={{ background: WX_BG[m.wx], color: WX_COLORS[m.wx], border: 'none', fontSize: 13, margin: 0 }}>{m.ganZhi}</Tag>
                         <br />
                         <Text style={{ fontSize: 11, color: isGood ? 'var(--wx-wood)' : isBad ? 'var(--wx-fire)' : 'var(--text-secondary)' }}>{m.desc}</Text>
                       </Card>
