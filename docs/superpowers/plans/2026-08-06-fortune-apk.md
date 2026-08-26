@@ -1,6 +1,6 @@
 # 爻一爻 APK 化改造实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将「爻一爻」命理应用完成解读通俗化、界面美化、性能优化与登录本地化改造，并打包为可安装的 Android debug APK。
 
@@ -31,13 +31,13 @@
 **Interfaces:**
 - Produces: `npm test` 命令（`vitest run`）
 
-- [ ] **Step 1: 安装 vitest**
+- [x] **Step 1: 安装 vitest**
 
 ```bash
 npm install -D vitest
 ```
 
-- [ ] **Step 2: 创建 vitest.config.ts**
+- [x] **Step 2: 创建 vitest.config.ts**
 
 ```ts
 import { defineConfig } from 'vitest/config';
@@ -50,7 +50,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: 冒烟测试** `src/utils/__tests__/smoke.test.ts`
+- [x] **Step 3: 冒烟测试** `src/utils/__tests__/smoke.test.ts`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -62,18 +62,18 @@ describe('smoke', () => {
 });
 ```
 
-- [ ] **Step 4: package.json scripts 添加**
+- [x] **Step 4: package.json scripts 添加**
 
 ```json
 "test": "vitest run"
 ```
 
-- [ ] **Step 5: 运行验证**
+- [x] **Step 5: 运行验证**
 
 Run: `npm test`
 Expected: `1 passed`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add package.json vitest.config.ts src/utils/__tests__/smoke.test.ts
@@ -94,7 +94,7 @@ git commit -m "test: 接入 vitest 测试框架"
   - `export const TERM_DICTIONARY: TermEntry[]`（≥60 条）
   - `export function findTermsInText(text: string): TermEntry[]` — 按术语长度降序匹配文本中的术语，去重，返回命中的词典条目（顺序按词典序）
 
-- [ ] **Step 1: 先写测试** `src/utils/__tests__/termDictionary.test.ts`
+- [x] **Step 1: 先写测试** `src/utils/__tests__/termDictionary.test.ts`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -130,12 +130,12 @@ describe('termDictionary', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run src/utils/__tests__/termDictionary.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现 termDictionary.ts**
+- [x] **Step 3: 实现 termDictionary.ts**
 
 ```ts
 export interface TermEntry {
@@ -266,12 +266,12 @@ export function findTermsInText(text: string): TermEntry[] {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run src/utils/__tests__/termDictionary.test.ts`
 Expected: `4 passed`（词典条数 ≥60 已由测试断言，若不足需补足）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/utils/termDictionary.ts src/utils/__tests__/termDictionary.test.ts
@@ -294,7 +294,7 @@ git commit -m "feat: 命理术语词典（100+条）+ findTermsInText 匹配函�
   - `TermTag` 内部组件（不导出）
   - 样式类名：`.term-tag`（点线底 + 问号），由 Task 10 统一在 `src/index.css` 定义，本任务内联兜底样式亦可
 
-- [ ] **Step 1: 先写测试** `src/utils/__tests__/renderWithTerms.test.tsx`
+- [x] **Step 1: 先写测试** `src/utils/__tests__/renderWithTerms.test.tsx`
 
 ```tsx
 import { describe, it, expect } from 'vitest';
@@ -322,13 +322,13 @@ describe('renderWithTerms', () => {
 });
 ```
 
-- [ ] **Step 2: 安装 @testing-library/react + jsdom**
+- [x] **Step 2: 安装 @testing-library/react + jsdom**
 
 ```bash
 npm install -D @testing-library/react @testing-library/jest-dom jsdom
 ```
 
-- [ ] **Step 3: 修改 vitest.config.ts 支持 jsdom**
+- [x] **Step 3: 修改 vitest.config.ts 支持 jsdom**
 
 ```ts
 import { defineConfig } from 'vitest/config';
@@ -342,12 +342,12 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 4: 运行测试确认失败**
+- [x] **Step 4: 运行测试确认失败**
 
 Run: `npx vitest run src/utils/__tests__/renderWithTerms.test.tsx`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 5: 实现 renderWithTerms.tsx**
+- [x] **Step 5: 实现 renderWithTerms.tsx**
 
 ```tsx
 import React from 'react';
@@ -397,7 +397,7 @@ export function renderWithTerms(text: string): React.ReactNode {
 }
 ```
 
-- [ ] **Step 6: 实现 TermPopover.tsx**
+- [x] **Step 6: 实现 TermPopover.tsx**
 
 ```tsx
 import React from 'react';
@@ -445,18 +445,18 @@ export default function TermPopover({ entry, children }: Props) {
 }
 ```
 
-- [ ] **Step 7: 运行测试确认通过**
+- [x] **Step 7: 运行测试确认通过**
 
 Run: `npx vitest run src/utils/__tests__/renderWithTerms.test.tsx`
 Expected: `3 passed`
 
-- [ ] **Step 8: 手动验证**（可选，快速 dev server 目测高亮与气泡）
+- [x] **Step 8: 手动验证**（可选，快速 dev server 目测高亮与气泡）
 
 ```bash
 npm run dev
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/utils/renderWithTerms.tsx src/components/TermPopover.tsx src/utils/__tests__/renderWithTerms.test.tsx vitest.config.ts package.json
@@ -480,7 +480,7 @@ git commit -m "feat: 术语高亮渲染 + TermPopover 人话解释气泡"
   - `export function generateLiuyaoPlainConclusion(guaName: string, dongYaoCount: number, hasZhiGua: boolean): LiuyaoConclusion`
   - `export function generateDailyPlainConclusion(jiShen: string[], xiongSha: string[], weatherDesc: string | null, temp: number | null): string`
 
-- [ ] **Step 1: 先写测试** `src/utils/__tests__/plainConclusion.test.ts`
+- [x] **Step 1: 先写测试** `src/utils/__tests__/plainConclusion.test.ts`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -541,12 +541,12 @@ describe('plainConclusion', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run src/utils/__tests__/plainConclusion.test.ts`
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 实现 plainConclusion.ts**
+- [x] **Step 3: 实现 plainConclusion.ts**
 
 ```ts
 // ========== 白话结论生成器 ==========
@@ -632,12 +632,12 @@ export function generateDailyPlainConclusion(
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run src/utils/__tests__/plainConclusion.test.ts`
 Expected: `6 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/utils/plainConclusion.ts src/utils/__tests__/plainConclusion.test.ts
@@ -657,7 +657,7 @@ git commit -m "feat: 八字/紫微/六爻/每日运势白话结论生成器"
   - `export default function PlainConclusionCard(props: { title?: string; icon?: React.ReactNode; children: React.ReactNode; tone?: 'default' | 'good' | 'warn' }): JSX.Element`
   - 渲染：渐变底卡片 + 标题（默认「一句话结论」）+ 正文（children 原样传入；调用方决定是否包 renderWithTerms）
 
-- [ ] **Step 1: 实现组件**
+- [x] **Step 1: 实现组件**
 
 ```tsx
 import React from 'react';
@@ -699,7 +699,7 @@ export default function PlainConclusionCard({ title = '一句话结论', icon, c
 }
 ```
 
-- [ ] **Step 2: 手动验证**
+- [x] **Step 2: 手动验证**
 
 ```bash
 npm run dev
@@ -707,7 +707,7 @@ npm run dev
 
 临时在任意页面渲染 `<PlainConclusionCard>测试</PlainConclusionCard>` 目测样式，验证后移除临时代码。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/PlainConclusionCard.tsx
@@ -725,7 +725,7 @@ git commit -m "feat: PlainConclusionCard 通用白话结论卡组件"
 - Consumes: `generateBaziPlainConclusion`（Task 4）、`PlainConclusionCard`（Task 5）、`renderWithTerms`（Task 3）
 - 现有数据（已确认存在）：`baziData.dayGan`、`baziData.dayWx`、`strengthAnalysis.level`、`yongShenRec.yongShen: string[]`、`yongShenRec.xiShen: string[]`、`wxStats`（`Record<string, {count:number; level:string; desc:string}>`）、`baziData.dayun.steps[0].ganZhi`
 
-- [ ] **Step 1: 添加结论生成 useMemo**
+- [x] **Step 1: 添加结论生成 useMemo**
 
 在 `Bazi.tsx` 的 `dayunInterpretations` useMemo 之后添加：
 
@@ -749,7 +749,7 @@ const plainConclusion = useMemo(() => {
 }, [baziData, strengthAnalysis, yongShenRec, wxStats]);
 ```
 
-- [ ] **Step 2: 在排盘结果区顶部渲染结论卡**
+- [x] **Step 2: 在排盘结果区顶部渲染结论卡**
 
 在 `Bazi.tsx` 排盘结果（`{baziData && (...)}` 区块）最顶部（四柱卡片之前）插入：
 
@@ -763,7 +763,7 @@ const plainConclusion = useMemo(() => {
 
 同时确保 `import { generateBaziPlainConclusion } from '../utils/plainConclusion';`、`import PlainConclusionCard from '../components/PlainConclusionCard';`、`import { renderWithTerms } from '../utils/renderWithTerms';` 三个 import 已添加。
 
-- [ ] **Step 3: 文案润色（克制）**
+- [x] **Step 3: 文案润色（克制）**
 
 定位 `Bazi.tsx` 中 `getShiShenComboAnalysis` 返回的十神组合解释文案（约第 507-534 行），把每条解释的句式统一为「**先给结论**，再补充理由」：
 - 原句式「代表X，主Y」改为「**主Y**：代表X。……（保留原说明）」
@@ -771,12 +771,12 @@ const plainConclusion = useMemo(() => {
 
 示例：将 `'代表聪明叛逆、表达欲强，也主才华外露'` 这类文案调整为先说结论。
 
-- [ ] **Step 4: 构建验证**
+- [x] **Step 4: 构建验证**
 
 Run: `npm run build`
 Expected: `tsc` 无类型错误，构建成功
 
-- [ ] **Step 5: 手动验证**
+- [x] **Step 5: 手动验证**
 
 ```bash
 npm run dev
@@ -784,7 +784,7 @@ npm run dev
 
 输入出生信息排盘，确认结论卡出现在结果顶部、术语（身强/用神等）有下划线、点击弹解释。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/pages/Bazi.tsx
@@ -802,7 +802,7 @@ git commit -m "feat: 八字页一句话结论卡 + 十神文案结论先行润�
 - Consumes: `generateZiweiPlainConclusion`（Task 4）、`PlainConclusionCard`（Task 5）、`renderWithTerms`（Task 3）、`generateSummarizedReport`（`src/utils/ziweiAnalysis.ts`，已存在）
 - 现有数据（已确认）：`ziweiData.mingGongName`、`ziweiData.shenGongName`、紫微排盘结果 `gongData`（`PalaceData[]`，含 `name`/`majorStars`）
 
-- [ ] **Step 1: 生成总评与结论**
+- [x] **Step 1: 生成总评与结论**
 
 在 `Ziwei.tsx` 中排盘成功后（设置 `ziweiData` 的地方附近），新增：
 
@@ -821,7 +821,7 @@ const plainConclusion = useMemo(() => {
 
 > 注意：若 `ziweiData` 中盘面数据字段名与 `generateSummarizedReport` 入参 `PalaceData[]` 不一致，以 `normalizeAstrolabeData(astrolabe)` 的输出为准（该函数已存在，`src/utils/ziweiAnalysis.ts:988`）；实现时先确认 `gongData` 的来源与类型，必要时使用 `normalizeAstrolabeData`。
 
-- [ ] **Step 2: 渲染结论卡**
+- [x] **Step 2: 渲染结论卡**
 
 在 `Ziwei.tsx` 命盘总评区域（`summarized.overall` 展示处）上方插入：
 
@@ -833,16 +833,16 @@ const plainConclusion = useMemo(() => {
 )}
 ```
 
-- [ ] **Step 3: 总评文案润色（克制）**
+- [x] **Step 3: 总评文案润色（克制）**
 
 若 `generateSummarizedReport` 的 `overall` 首句不是结论句（以「整体」或「命主」开头），在页面展示处用 `summarized.overall.split(/[。！!]/)[0]` 加粗显示为首句结论，其余照旧展示。**不改 `ziweiAnalysis.ts` 导出函数签名**。
 
-- [ ] **Step 4: 构建验证**
+- [x] **Step 4: 构建验证**
 
 Run: `npm run build`
 Expected: 无类型错误
 
-- [ ] **Step 5: 手动验证**
+- [x] **Step 5: 手动验证**
 
 ```bash
 npm run dev
@@ -850,7 +850,7 @@ npm run dev
 
 排盘后确认结论卡在总评上方、术语可点击。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/pages/Ziwei.tsx
@@ -868,7 +868,7 @@ git commit -m "feat: 紫微页一句话结论卡 + 总评首句结论化"
 - Consumes: `generateLiuyaoPlainConclusion`（Task 4）、`PlainConclusionCard`（Task 5）、`renderWithTerms`（Task 3）
 - 现有数据（已确认）：`pan.benGua.guaName`、`pan.dongYaoCount`、`pan.zhiGua?.guaName`（可为 undefined）
 
-- [ ] **Step 1: 在起卦结果区顶部插入断卦卡**
+- [x] **Step 1: 在起卦结果区顶部插入断卦卡**
 
 在 `Liuyao.tsx` 中 `pan && (...)` 结果区块顶部（本卦卡片之前）插入：
 
@@ -894,12 +894,12 @@ git commit -m "feat: 紫微页一句话结论卡 + 总评首句结论化"
 
 同时添加三个 import（`generateLiuyaoPlainConclusion`、`PlainConclusionCard`、`renderWithTerms`）。
 
-- [ ] **Step 2: 构建验证**
+- [x] **Step 2: 构建验证**
 
 Run: `npm run build`
 Expected: 无类型错误
 
-- [ ] **Step 3: 手动验证**
+- [x] **Step 3: 手动验证**
 
 ```bash
 npm run dev
@@ -907,7 +907,7 @@ npm run dev
 
 分别用「无动爻 / 1-2 动爻 / 3+ 动爻」起卦，确认断卦卡标题与文案随动爻数变化。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/pages/Liuyao.tsx
@@ -925,7 +925,7 @@ git commit -m "feat: 六爻白话断卦卡（宜守/有变/大动）"
 - Consumes: `generateDailyPlainConclusion`（Task 4）、`PlainConclusionCard`（Task 5）、`renderWithTerms`（Task 3）
 - 现有数据（已确认）：`luckyGuide.jiShen: string[]`、`luckyGuide.xiongSha: string[]`、`weather?.weatherDesc`（经 `getWeatherDesc(weather.weatherCode)` 得到中文描述）、`weather?.temp: number | null`
 
-- [ ] **Step 1: 计算结论句**
+- [x] **Step 1: 计算结论句**
 
 在 `DailyFortune.tsx` 组件内（`travelAdvice` state 附近）新增：
 
@@ -940,7 +940,7 @@ const dailyConclusion = useMemo(() => {
 
 > 若 `getWeatherDesc` 返回非中文或为空，`generateDailyPlainConclusion` 已有 `weatherDesc ? ... : '天气平稳'` 兜底，无需额外处理。
 
-- [ ] **Step 2: 渲染结论卡**
+- [x] **Step 2: 渲染结论卡**
 
 在页面顶部（天气卡片之后、幸运指南之前）插入：
 
@@ -954,11 +954,11 @@ const dailyConclusion = useMemo(() => {
 
 同时添加三个 import。
 
-- [ ] **Step 3: 构建验证 + 手动验证**
+- [x] **Step 3: 构建验证 + 手动验证**
 
 Run: `npm run build`（无类型错误）→ `npm run dev`（打开 /daily 确认结论卡在天气下方）
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/pages/DailyFortune.tsx
@@ -978,7 +978,7 @@ git commit -m "feat: 每日运势一句话结论卡"
 - Consumes: 无（纯样式与结构）
 - Produces: 全局 CSS 变量与类名：`.term-tag`、`.plain-conclusion-card`、`.home-module-card`（Home.tsx 已有类名，仅增强样式）
 
-- [ ] **Step 1: 检查并统一设计令牌**
+- [x] **Step 1: 检查并统一设计令牌**
 
 确认 `src/index.css` 已有的 `:root` 变量（`--module-gold`、`--text-primary`、`--border-light` 等已被页面使用）。**只做增量补充**，不重命名现有变量：
 
@@ -993,7 +993,7 @@ git commit -m "feat: 每日运势一句话结论卡"
 }
 ```
 
-- [ ] **Step 2: 术语标签与结论卡样式**
+- [x] **Step 2: 术语标签与结论卡样式**
 
 ```css
 .term-tag {
@@ -1013,14 +1013,14 @@ git commit -m "feat: 每日运势一句话结论卡"
 }
 ```
 
-- [ ] **Step 3: 首页模块卡片增强**
+- [x] **Step 3: 首页模块卡片增强**
 
 `src/pages/Home.tsx` 模块网格中 `className="home-module-card"` 的元素：
 - 加 hover 上浮：`transition: transform 0.25s, box-shadow 0.25s;` + `:hover { transform: translateY(-3px); box-shadow: var(--card-shadow); }`
 - 卡片圆角统一 `var(--card-radius)`
 - 每张卡片副标题一行模块简介（如「八字排盘 — 看你天生的底牌」），从 `modules` 数组增加 `subtitle` 字段（数组在 Home.tsx 第 16-26 行附近）
 
-- [ ] **Step 4: 页面过渡动效（Layout.tsx）**
+- [x] **Step 4: 页面过渡动效（Layout.tsx）**
 
 在 `Layout.tsx` 的路由出口处（`<Outlet />` 所在位置）包裹轻量淡入（framer-motion 已是依赖）：
 
@@ -1034,11 +1034,11 @@ import { motion } from 'framer-motion';
 
 > 若 Layout 内部已有类似动效实现，跳过本步，避免重复。
 
-- [ ] **Step 5: 构建验证 + 目测**
+- [x] **Step 5: 构建验证 + 目测**
 
 Run: `npm run build` → `npm run dev`，检查首页卡片、结论卡、术语标签、页面切换动效在移动端宽度（375px）下无错乱。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/index.css src/pages/Home.tsx src/components/Layout.tsx
@@ -1057,7 +1057,7 @@ git commit -m "style: 设计令牌统一 + 首页卡片升级 + 术语/结论卡
 **Interfaces:**
 - Produces: `npm run build:android` = `tsc && vite build --base=./ && npx cap sync android`（Capacitor 用相对路径，资源在 file:// 下可正常加载）
 
-- [ ] **Step 1: 确认未使用依赖**
+- [x] **Step 1: 确认未使用依赖**
 
 Run: `npx vite build --mode=production` 前先静态确认：
 
@@ -1073,7 +1073,7 @@ npm uninstall three @react-three/fiber @react-three/drei @tsparticles/react @tsp
 
 > ⚠️ 若 Step 1 的 grep 意外发现 `three` 等被引用（例如 Dream.tsx 动态 import），则**跳过卸载**并在 commit 信息中注明原因。
 
-- [ ] **Step 2: 修改 build:android 脚本**
+- [x] **Step 2: 修改 build:android 脚本**
 
 `package.json` scripts：
 
@@ -1083,7 +1083,7 @@ npm uninstall three @react-three/fiber @react-three/drei @tsparticles/react @tsp
 
 > `--base=./` 使 dist/index.html 的资源路径为相对路径（`./assets/...`），Capacitor WebView 以 `https://localhost` 或 `file://` 加载时均可正确解析。现有 `build`（gh-pages 用 `/yaoyiyao/`）与 `build:gh` 保持不变。
 
-- [ ] **Step 3: 构建并验证资源路径**
+- [x] **Step 3: 构建并验证资源路径**
 
 Run: `npm run build:android`
 Expected:
@@ -1091,12 +1091,12 @@ Expected:
 - `dist/index.html` 中 `<link>` / `<script>` 路径以 `./` 开头（不是 `/yaoyiyao/`）
 - `android/app/src/main/assets/public/index.html` 同步更新
 
-- [ ] **Step 4: 验证未使用 chunk 消失**
+- [x] **Step 4: 验证未使用 chunk 消失**
 
 Run: `ls dist/assets/`
 Expected: 无 `three` 相关 chunk（卸载后）；主包 `index-*.js` 体积相比改造前下降
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json package-lock.json
@@ -1116,23 +1116,23 @@ git commit -m "perf: 移除未使用重依赖 + Capacitor 构建 base 修复（�
 - Consumes: 无新接口；`useAuth`（已存在）
 - Produces: 游客可无障碍使用全部功能；登录入口明确标注为「可选云同步」
 
-- [ ] **Step 1: 检查是否存在强制登录跳转**
+- [x] **Step 1: 检查是否存在强制登录跳转**
 
 Run: `grep -rn "navigate('/auth'\|<Navigate\|RequireAuth\|redirect.*auth" src/`
 Expected: 无路由守卫 / 强制跳转（此前确认仅 Layout 与 Profile 的「去登录」按钮入口）。若有守卫，改为不拦截。
 
-- [ ] **Step 2: 文案调整**
+- [x] **Step 2: 文案调整**
 
 - `Layout.tsx:241`：`onClick={() => navigate('/auth')}` 的入口文案改为「登录云同步」（若原为「去登录」）
 - `Profile.tsx:193`：按钮文案 `去登录` → `登录以云同步`，并在按钮旁加小字说明：`不登录也能用，数据存在本机；登录后自动备份到云端`
 - `ProfileDrawer.tsx` 若有「请先登录」类提示，改为「游客模式 · 数据保存在本机」
 
-- [ ] **Step 3: 验证游客数据流**
+- [x] **Step 3: 验证游客数据流**
 
 Run: `npm run dev`
 手动验证：不登录 → 排盘（八字）→ 结果写入 `localStorage`（DevTools Application 面板可见 `fortune_app_history`）→ 刷新页面历史仍在。此行为依赖 Task 6 已接入的排盘流程（`addHistory` 在无 authUser 时仅本地保存，`UserContext.tsx:334-351` 已确认）。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/Layout.tsx src/pages/Profile.tsx src/components/ProfileDrawer.tsx
@@ -1150,7 +1150,7 @@ git commit -m "feat: 游客模式收尾——登录改为可选云同步，不�
 **Interfaces:**
 - Consumes: Task 11 的 `npm run build:android` 与已同步的 `android/` 工程
 
-- [ ] **Step 1: 安装 JDK 17**
+- [x] **Step 1: 安装 JDK 17**
 
 优先 winget（用户级安装）：
 
@@ -1169,17 +1169,17 @@ export JAVA_HOME="/c/tools/$(ls /c/tools | grep jdk-17 | head -1)"
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-- [ ] **Step 2: 验证 Java**
+- [x] **Step 2: 验证 Java**
 
 Run: `java -version`
 Expected: `openjdk version "17.x.x"`（若用 winget 安装，新开 shell 后通常自动可用；否则按上一步 export）
 
-- [ ] **Step 3: 构建并同步**
+- [x] **Step 3: 构建并同步**
 
 Run: `npm run build:android`
 Expected: 构建成功，`android/app/src/main/assets/public/` 更新为最新产物
 
-- [ ] **Step 4: 配置 Android SDK 环境变量并打包**
+- [x] **Step 4: 配置 Android SDK 环境变量并打包**
 
 ```bash
 export ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"
@@ -1191,7 +1191,7 @@ Expected: `BUILD SUCCESSFUL`，产物 `android/app/build/outputs/apk/debug/app-d
 
 > 若 gradle 下载依赖缓慢或失败，重试一次；`gradle-wrapper.properties` 已存在无需改动。
 
-- [ ] **Step 5: 复制 APK 到项目根目录并验证**
+- [x] **Step 5: 复制 APK 到项目根目录并验证**
 
 ```bash
 cd /e/算命小程序
@@ -1201,7 +1201,7 @@ ls -lh 爻一爻-debug.apk
 
 Expected: 文件存在，大小约 10-30MB
 
-- [ ] **Step 6: 记录安装说明**
+- [x] **Step 6: 记录安装说明**
 
 在项目根目录创建 `APK安装说明.md`：
 
@@ -1215,7 +1215,7 @@ Expected: 文件存在，大小约 10-30MB
 5. 登录后自动云同步（可选）
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add APK安装说明.md
