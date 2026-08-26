@@ -12,6 +12,16 @@ export default defineConfig(({ command, mode }) => ({
   build: {
     // 保守目标：兼容较旧系统 WebView（Android 8/9 及未更新的 WebView）
     target: 'es2018',
+    rollupOptions: {
+      output: {
+        // 拆 vendor：框架/UI/日历数据分离，浏览器并行下载 + 长期缓存
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
+          'antd-vendor': ['antd', '@ant-design/icons'],
+          'calendar-vendor': ['lunar-typescript', '@ziweijs/core', 'cn-division'],
+        },
+      },
+    },
   },
   plugins: [
     react(),
