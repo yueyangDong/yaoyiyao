@@ -95,6 +95,18 @@ export function getDayLuckyTime(lunar: Lunar): string {
   return '辰时(7-9)';
 }
 
+/**
+ * 吉时地支列表（黄道吉时，去重——getTimes 可能含早/晚两个子时）。
+ * 注意：用 getTianShenLuck()（'吉'/'凶'）判断，不能用 getTianShenType()（返回'黄道'/'黑道'）。
+ */
+export function getJiShiZhiList(lunar: Lunar): string[] {
+  return [...new Set(
+    lunar.getTimes()
+      .filter(t => t.getTianShenLuck() === '吉')
+      .map(t => t.getZhi()),
+  )];
+}
+
 // 每日签：基于日干支+月干支+日期种子，限定在前10签（真实数据）
 export function getDailyLotIndex(): number {
   const lunar = Lunar.fromDate(new Date());

@@ -8,7 +8,7 @@ import { Lunar } from 'lunar-typescript';
 import { motion } from 'framer-motion';
 import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, formatCountyName, type WeatherData, type GeoPosition } from '../utils/weatherApi';
 import {
-  getLuckyGuide, getDailyLotIndex, getTravelAdvice, type LuckyGuide, type TravelAdvice,
+  getLuckyGuide, getDailyLotIndex, getTravelAdvice, getJiShiZhiList, type LuckyGuide, type TravelAdvice,
 } from '../utils/dailyFortuneUtils';
 import { guanyinLots } from '../data/guanyinLots';
 import { useToast } from '../components/Toast';
@@ -462,7 +462,7 @@ export default function DailyFortune() {
                 <br />
                 <Text strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>
                   {(() => {
-                    const jiTimes = lunar.getTimes().filter(t => t.getTianShenType() === '吉').map(t => t.getZhi());
+                    const jiTimes = getJiShiZhiList(lunar);
                     return jiTimes.length > 0 ? jiTimes.join('、') + '时' : '详见时辰表';
                   })()}
                 </Text>
@@ -555,7 +555,7 @@ export default function DailyFortune() {
                 {lunar.getTimes().map((t, i) => {
                   const zhi = t.getZhi();
                   const label = SHICHEN_NAMES[zhi] || `${zhi}时`;
-                  const isJi = t.getTianShenType() === '吉';
+                  const isJi = t.getTianShenLuck() === '吉';
                   const yi = t.getYi();
                   const ji = t.getJi();
 
