@@ -15,6 +15,7 @@ import {
 import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
 import PlainConclusionCard from '../components/PlainConclusionCard';
+import DivinationOverlay from '../components/DivinationOverlay';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth } from '../utils/dateValidation';
@@ -313,7 +314,7 @@ export default function Ziwei() {
     return options;
   };
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
     const values = form.getFieldsValue();
     const { year, month, day, hour, minute, gender, birthplace } = values;
 
@@ -332,6 +333,8 @@ export default function Ziwei() {
 
     setLoading(true);
     try {
+      // 推演动画（模拟推演过程，营造仪式感）
+      await new Promise(r => setTimeout(r, 2500));
       // 真太阳时校正（仿八字页 handleCalc）
       let calcHour = hour;
       let calcMinute = minute || 0;
@@ -574,6 +577,7 @@ export default function Ziwei() {
 
   return (
     <div style={{ padding: '16px 0' }}>
+      <DivinationOverlay show={loading} text="紫微排盘 · 星移斗转" />
       <Title level={3} style={{ textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-2xl)' }}>紫微斗数</Title>
 
       {currentUser ? (

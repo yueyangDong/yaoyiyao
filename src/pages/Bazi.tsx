@@ -10,6 +10,7 @@ import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
 import { useNavigate } from 'react-router-dom';
 import CollapsibleCard from '../components/CollapsibleCard';
+import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
@@ -971,6 +972,7 @@ export default function Bazi() {
   } | null>(null);
   const [inputMode, setInputMode] = useState<'solar' | 'lunar'>('solar');
   const [leapMonth, setLeapMonth] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [liunianResult, setLiunianResult] = useState<string>('');
   const [activeRow, setActiveRow] = useState<string | null>(null);
@@ -1003,7 +1005,7 @@ export default function Bazi() {
     }
   }, [currentUser]);
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
     const values = form.getFieldsValue();
     const { year, month, day, hour, minute, gender, birthplace } = values;
 
@@ -1024,7 +1026,10 @@ export default function Bazi() {
       return;
     }
 
+    setLoading(true);
     try {
+      // 推演动画（模拟推演过程，营造仪式感）
+      await new Promise(r => setTimeout(r, 2500));
       // 真太阳时校正
       let calcHour = hour;
       let calcMinute = minute || 0;
@@ -1182,6 +1187,8 @@ export default function Bazi() {
       });
     } catch (e: any) {
       message.error('计算失败，请检查输入的日期是否有效：' + (e.message || ''));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1449,6 +1456,7 @@ export default function Bazi() {
 
   return (
     <div style={{ padding: '16px 0' }}>
+      <DivinationOverlay show={loading} text="八字推演 · 天人合一" />
       <Title level={3} style={{ textAlign: 'center', color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontWeight: 600 }}>八字排盘</Title>
 
       {/* 档案提示 */}
