@@ -19,6 +19,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
+import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport } from '../utils/ziweiAnalysis';
 
 const { Title, Text, Paragraph } = Typography;
@@ -467,8 +468,10 @@ export default function Ziwei() {
 
       if (warnings.length === 0) warnings.push('各宫整体格局较好，无特别需要警惕之处');
 
+      const ge = analyzeZiweiGe(gongData);
       setZiweiData({
         gongData,
+        mingGe: ge,
         solarDate: solarDateStr,
         lunisolarDate: lunisolarDateStr,
         fiveElementName: result.fiveElementName,
@@ -878,6 +881,30 @@ export default function Ziwei() {
               </Card>
             );
           })()}
+
+          {/* 格局分析 */}
+          {ziweiData?.mingGe && (
+            <CollapsibleCard title="格局分析" summary={ziweiData.mingGe.geNames.length > 0 ? ziweiData.mingGe.geNames.join('、') : '未构成特殊格局'} defaultOpen>
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+                {ziweiData.mingGe.geNames.length > 0 ? (
+                  <>
+                    {ziweiData.mingGe.geNames.map((g: string, i: number) => (
+                      <Alert key={i} type="success" showIcon message={g} description={ziweiData.mingGe.reasons[i] || ''} style={{ marginBottom: 8 }} />
+                    ))}
+                  </>
+                ) : (
+                  <Alert type="info" showIcon message="未构成特殊格局" description="命盘以常规星曜组合论命，无需拘泥于格局名称。" />
+                )}
+                {ziweiData.mingGe.breakReasons.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {ziweiData.mingGe.breakReasons.map((r: string, i: number) => (
+                      <Text key={i} type="secondary" style={{ display: 'block', fontSize: 12 }}>⚠️ {r}</Text>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </CollapsibleCard>
+          )}
 
           {/* 十二宫详解 — 传统四列布局 */}
           <Card
