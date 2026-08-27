@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Layout, Typography, Space, Form, Tag, message,
+  Layout, Button, Typography, Space, Form, Tag, message,
 } from 'antd';
+import { ChevronLeft } from 'lucide-react';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
@@ -11,7 +12,6 @@ import ProfileDrawer from './ProfileDrawer';
 import UserModal from './UserModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import ScrollTop from './ScrollTop';
-import MobileBottomNav from './MobileBottomNav';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
@@ -146,6 +146,40 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh', background: 'var(--bg-warm)' }}>
+      {/* 顶部导航：返回按钮（非首页）+ 品牌标题 */}
+      <Header style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '0 16px', height: 52,
+        background: 'rgba(247,245,240,0.92)',
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        position: 'sticky', top: 0, zIndex: 100,
+      }}>
+        {!isHome && (
+          <Button
+            type="text"
+            icon={<ChevronLeft size={20} strokeWidth={1.5} />}
+            onClick={() => navigate(-1)}
+            style={{ color: 'var(--text-body)', padding: 0, width: 36, height: 36, marginRight: 4 }}
+            aria-label="返回"
+          />
+        )}
+        <Text
+          strong
+          onClick={() => !isHome && navigate('/')}
+          style={{
+            fontSize: 18,
+            fontFamily: 'var(--font-display)',
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            letterSpacing: '0.04em',
+            cursor: isHome ? 'default' : 'pointer',
+          }}
+        >
+          爻一爻
+        </Text>
+      </Header>
 
       {/* 当前用户信息条 */}
       {currentUser && !isHome && (
@@ -183,7 +217,7 @@ export default function AppLayout() {
       )}
 
       <Content style={{
-        padding: isHome ? 0 : (isMobile ? '16px 8px 110px' : '20px'),
+        padding: isHome ? 0 : (isMobile ? '16px 8px 24px' : '20px'),
         maxWidth: isMobile ? 480 : 800,
         margin: '0 auto',
         width: '100%',
@@ -208,13 +242,12 @@ export default function AppLayout() {
         textAlign: 'center',
         background: 'transparent',
         color: 'var(--text-disabled)',
-        padding: '16px 16px 110px',
+        padding: '16px 16px 24px',
         fontSize: 12,
       }}>
         仅供娱乐 · 不具科学依据
       </Footer>
       <ScrollTop />
-      <MobileBottomNav />
 
       {/* 档案设置 Drawer */}
       <ProfileDrawer
