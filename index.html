@@ -6,7 +6,8 @@
     <link rel="apple-touch-icon" href="/yaoyiyao/logo-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0" />
     <meta name="theme-color" content="#F7F5F0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -14,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="爻一爻" />
     <title>爻一爻 - 仅供娱乐</title>
     <script src="/yaoyiyao/yao-sync.js"></script>
-    <script type="module" crossorigin src="/yaoyiyao/assets/index-obKb_f1X.js"></script>
+    <script type="module" crossorigin src="/yaoyiyao/assets/index-BNwB7faJ.js"></script>
     <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/react-vendor-DDz3i_m9.js">
     <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/calendar-vendor-Cl62XOrS.js">
     <link rel="modulepreload" crossorigin href="/yaoyiyao/assets/antd-vendor-5EkX6t8W.js">
@@ -23,31 +24,14 @@
   <body>
     <div id="root"></div>
     <script>
-      // ===== 启动诊断（APK 白屏排查用，正常运行时 5 秒后自动隐藏）=====
+      // ===== 启动自愈（静默）：首次 15 秒内未挂载则自动刷新一次（诊断日志已关闭）=====
       (function () {
-        var boot = document.createElement('div');
-        boot.id = 'boot-status';
-        boot.style.cssText = 'position:fixed;left:0;right:0;top:0;padding:12px 14px;background:#FFE8E8;color:#B00020;font-size:13px;line-height:1.6;z-index:99999;white-space:pre-wrap;word-break:break-all;display:none;font-family:sans-serif;';
-        document.body.appendChild(boot);
-        function showBoot(msg) { boot.style.display = 'block'; boot.textContent = '[诊断] ' + msg; }
-        window.addEventListener('error', function (e) {
-          showBoot('window.onerror: ' + e.message + '\n' + (e.filename || '') + ':' + (e.lineno || 0) + (e.error && e.error.stack ? '\n' + e.error.stack.split('\n').slice(0, 3).join('\n') : ''));
-        });
-        window.addEventListener('unhandledrejection', function (e) {
-          var r = e.reason;
-          showBoot('unhandledrejection: ' + (r && r.message ? r.message : String(r)));
-        });
         setTimeout(function () {
           var root = document.getElementById('root');
-          if (root && root.childElementCount > 0) {
-            boot.style.display = 'none';
-          } else if (!sessionStorage.getItem('yyy_boot_retried')) {
-            // 偶发加载失败自动恢复：仅重试一次，避免死循环
-            // 15 秒覆盖首次访问慢网下载（主包+字体合计数 MB）
+          if (root && root.childElementCount > 0) return;
+          if (!sessionStorage.getItem('yyy_boot_retried')) {
             sessionStorage.setItem('yyy_boot_retried', '1');
             location.reload();
-          } else {
-            showBoot('页面加载超时——JavaScript 未执行。\n可能原因：网络较慢（首次加载资源较大）、模块脚本加载被拦（CORS/MIME），或 WebView 未正确加载。请检查网络后刷新重试。');
           }
         }, 15000);
       })();
