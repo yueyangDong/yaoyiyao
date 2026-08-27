@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Layout, Button, Typography, Space, Form, Tag, message, Dropdown,
+  Layout, Typography, Space, Form, Tag, message,
 } from 'antd';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,32 +10,11 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import ProfileDrawer from './ProfileDrawer';
 import UserModal from './UserModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  UserCircle, History, ChevronLeft, Home,
-  Compass, Star, Moon, Sparkles, Waves, Flower2,
-  ScrollText, Binary, House, BookOpen, Sun,
-} from 'lucide-react';
 import ScrollTop from './ScrollTop';
 import MobileBottomNav from './MobileBottomNav';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
-
-const MODULE_NAMES: Record<string, { title: string; icon: React.ReactNode }> = {
-  '/': { title: '爻一爻', icon: null },
-  '/daily': { title: '每日一爻', icon: <Sun size={18} strokeWidth={1.5} /> },
-  '/bazi': { title: '八字排盘', icon: <Binary size={18} strokeWidth={1.5} /> },
-  '/ziwei': { title: '紫微斗数', icon: <Star size={18} strokeWidth={1.5} /> },
-  '/nayin': { title: '纳音查询', icon: <Waves size={18} strokeWidth={1.5} /> },
-  '/liuyao': { title: '六爻占卜', icon: <Sparkles size={18} strokeWidth={1.5} /> },
-  '/meihua': { title: '梅花易数', icon: <Flower2 size={18} strokeWidth={1.5} /> },
-  '/fengshui': { title: '风水相宅', icon: <Compass size={18} strokeWidth={1.5} /> },
-  '/ancient': { title: '古籍经典', icon: <BookOpen size={18} strokeWidth={1.5} /> },
-  '/dream': { title: '周公解梦', icon: <Moon size={18} strokeWidth={1.5} /> },
-  '/lingqian': { title: '灵签抽签', icon: <ScrollText size={18} strokeWidth={1.5} /> },
-  '/history': { title: '查询历史', icon: <History size={18} strokeWidth={1.5} /> },
-  '/profile': { title: '个人档案', icon: <UserCircle size={18} strokeWidth={1.5} /> },
-};
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -48,7 +27,7 @@ export default function AppLayout() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser } = useAuth();
   const {
     profile, setProfile, hasProfile, currentUser,
     users, addUser, updateUser, deleteUser, switchUser,
@@ -59,15 +38,6 @@ export default function AppLayout() {
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<StoredUser | null>(null);
   const [userForm] = Form.useForm();
-  const [scrolled, setScrolled] = useState(false);
-
-  const currentModule = MODULE_NAMES[location.pathname];
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const handleSaveProfile = () => {
     const values = form.getFieldsValue();
@@ -176,129 +146,6 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh', background: 'var(--bg-warm)' }}>
-      <Header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 20px',
-          height: 56,
-          background: scrolled
-            ? 'rgba(247,245,240,0.92)'
-            : 'rgba(247,245,240,0.75)',
-          backdropFilter: 'blur(12px) saturate(180%)',
-          borderBottom: '1px solid rgba(0,0,0,0.06)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          transition: 'background 0.25s var(--ease-out)',
-        }}
-      >
-        {/* 左侧 */}
-        <Space style={{ minWidth: 100 }}>
-          {isHome ? (
-            <Text strong style={{
-              fontSize: 20,
-              fontFamily: 'var(--font-display)',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              letterSpacing: '0.04em',
-            }}>
-              爻一爻
-            </Text>
-          ) : (
-            <>
-              <Button
-                type="text"
-                icon={<ChevronLeft size={20} strokeWidth={1.5} />}
-                onClick={() => navigate(-1)}
-                style={{ color: 'var(--text-body)', padding: 0, width: 36, height: 36 }}
-              />
-              {currentModule && (
-                <Space size={6}>
-                  <span style={{ color: 'var(--text-secondary)' }}>{currentModule.icon}</span>
-                  <Text style={{
-                    color: 'var(--text-primary)',
-                    fontSize: 16,
-                    fontFamily: 'var(--font-title)',
-                    fontWeight: 500,
-                    letterSpacing: '0.03em',
-                  }}>
-                    {currentModule.title}
-                  </Text>
-                </Space>
-              )}
-            </>
-          )}
-        </Space>
-
-        {/* 右侧 */}
-        <Space style={{ minWidth: 100, justifyContent: 'flex-end' }}>
-          {authUser && (
-            <Dropdown
-              menu={{
-                items: [
-                  { key: 'profile', label: '个人档案', onClick: () => navigate('/profile') },
-                  { type: 'divider' },
-                  {
-                    key: 'logout', label: '退出登录', danger: true,
-                    onClick: async () => {
-                      await signOut();
-                      message.success('已退出登录');
-                      navigate('/');
-                    },
-                  },
-                ],
-              }}
-              placement="bottomRight"
-            >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  background: 'var(--text-primary)',
-                  color: 'var(--text-inverse)',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  opacity: syncing ? 0.5 : 1,
-                  transition: 'opacity 0.3s',
-                }}
-                title={syncing ? '同步中...' : synced ? '已同步' : currentUser?.name || ''}
-              >
-                {currentUser?.name?.charAt(0) || authUser.email?.charAt(0)?.toUpperCase()}
-              </span>
-            </Dropdown>
-          )}
-
-          {!authUser && currentUser && (
-            <span
-              onClick={() => navigate('/profile')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, borderRadius: '50%',
-                background: 'var(--text-primary)', color: 'var(--text-inverse)',
-                fontWeight: 600, fontSize: 14, cursor: 'pointer',
-              }}
-            >
-              {currentUser.name.charAt(0)}
-            </span>
-          )}
-
-          {!isHome && (
-            <Button
-              type="text"
-              icon={<Home size={20} strokeWidth={1.5} />}
-              onClick={() => navigate('/')}
-              style={{ color: 'var(--text-secondary)' }}
-            />
-          )}
-        </Space>
-      </Header>
 
       {/* 当前用户信息条 */}
       {currentUser && !isHome && (
@@ -336,7 +183,7 @@ export default function AppLayout() {
       )}
 
       <Content style={{
-        padding: isHome ? 0 : (isMobile ? '12px 8px 110px' : '20px'),
+        padding: isHome ? 0 : (isMobile ? '16px 8px 110px' : '20px'),
         maxWidth: isMobile ? 480 : 800,
         margin: '0 auto',
         width: '100%',
