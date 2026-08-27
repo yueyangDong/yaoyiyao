@@ -15,6 +15,7 @@ import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
+import { analyzeMingGeDetailed, analyzeTouGan } from '../utils/mingGe';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -1174,7 +1175,12 @@ export default function Bazi() {
       const dayGan = eightChar.getDayGan();
       const dayWx = tgWx[dayGan] || '';
 
-      const mingGe = analyzeMingGe(pillars, dayGan, '中和');
+      // 命格详细判定（真实强弱 + 五行统计 + 用神忌神透干）
+      const strengthLevelGe = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;
+      const wxStatsCalc = calcWuxingStats(pillars);
+      const mingGe = analyzeMingGeDetailed(pillars, dayGan, strengthLevelGe, wxStatsCalc);
+      const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc);
+      mingGe.details = [...mingGe.details, ...analyzeTouGan(pillars, yongRec.yongShen, yongRec.xiShen)];
 
       // 空亡
       const xunKong = [
