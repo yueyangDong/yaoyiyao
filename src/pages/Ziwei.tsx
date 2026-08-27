@@ -305,6 +305,10 @@ export default function Ziwei() {
         day: currentUser.birthDay,
         hour: currentUser.birthHour,
         minute: currentUser.birthMinute,
+        // 档案出生地保留（与八字页一致，自动带入）
+        birthplace: currentUser.birthplace?.province
+          ? [currentUser.birthplace.province, currentUser.birthplace.city, currentUser.birthplace.district].filter(Boolean)
+          : undefined,
       });
     }
   }, [currentUser]);
