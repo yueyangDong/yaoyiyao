@@ -28,6 +28,21 @@ const YANG_REN: Record<string, string> = {
   '己': '巳', '庚': '酉', '辛': '申', '壬': '子', '癸': '亥',
 };
 
+// 地支成局表：三会局 + 三合局（土用辰戌丑未取三）
+const HUI: Record<string, string[]> = { '木': ['寅', '卯', '辰'], '火': ['巳', '午', '未'], '金': ['申', '酉', '戌'], '水': ['亥', '子', '丑'] };
+const HE: Record<string, string[]> = { '木': ['亥', '卯', '未'], '火': ['寅', '午', '戌'], '金': ['巳', '酉', '丑'], '水': ['申', '子', '辰'] };
+
+/** 四柱地支是否成某五行的三会/三合局（土取辰戌丑未 ≥3） */
+function hasJu(dzList: string[], wx: string): boolean {
+  if (wx === '土') {
+    const tuCount = ['辰', '戌', '丑', '未'].filter(z => dzList.includes(z)).length;
+    return tuCount >= 3;
+  }
+  const hui = (HUI[wx] || []).every(z => dzList.includes(z));
+  const he = (HE[wx] || []).every(z => dzList.includes(z));
+  return hui || he;
+}
+
 /** 特殊外格判定：返回格名/类型/解释或 null */
 function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string): { name: string; type: string; desc: string } | null {
   const tgs = pillars.map(p => p.tianGan);
@@ -51,7 +66,7 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
   if (['癸酉', '己巳', '乙丑'].includes(timePillar.ganZhi)) {
     return { name: '金神格', type: '外格', desc: `时柱${timePillar.ganZhi}为金神。金神主刚毅果决、才华外露，适合技术或军警类职业。` };
   }
-  // 专旺格：日主强 + 月令当令 + 月令与日主同气
+  // 专旺格：日主强 + 月令当令 + 地支成三会/三合局 + 天干无克星破格
   if (strengthLevel === '身极强' || strengthLevel === '身强') {
     const monthWx = DZ_WX[monthZhi] || '';
     const dayWx = TG_WX[dayGan] || '';
@@ -60,9 +75,15 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
       || (dayWx === '土' && ['辰', '戌', '丑', '未'].includes(monthZhi))
       || (dayWx === '金' && ['申', '酉', '戌'].includes(monthZhi))
       || (dayWx === '水' && ['亥', '子', '丑'].includes(monthZhi));
-    if (seasonOk && monthWx === dayWx) {
+    // 地支成局：三会或三合（土取辰戌丑未 ≥3）
+    const dzList = pillars.map(p => p.diZhi);
+    const juOk = hasJu(dzList, dayWx);
+    // 破格：天干透出克星（如润下格见戊己土官杀）
+    const keWx: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
+    const hasKeTou = pillars.some(p => TG_WX[p.tianGan] === keWx[dayWx]);
+    if (seasonOk && monthWx === dayWx && juOk && !hasKeTou) {
       const names: Record<string, string> = { '木': '曲直格', '火': '炎上格', '土': '稼穑格', '金': '从革格', '水': '润下格' };
-      return { name: `专旺·${names[dayWx]}`, type: '外格', desc: `${dayGan}日主${dayWx}气专旺，生于${monthZhi}月当令，全局气势专注一行，为${names[dayWx]}。这类命格心志坚定、专注力强，适合深耕单一领域。` };
+      return { name: `专旺·${names[dayWx]}`, type: '外格', desc: `${dayGan}日主${dayWx}气专旺，生于${monthZhi}月当令，地支成${dayWx}局（三会/三合），无克星破格，为${names[dayWx]}。这类命格心志坚定、专注力强，适合深耕单一领域。` };
     }
   }
   return null;
