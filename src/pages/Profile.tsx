@@ -70,7 +70,8 @@ export default function Profile() {
 
   const getLunarYearOptions = () => {
     const opts: { label: string; value: number }[] = [];
-    for (let y = 1900; y <= 2100; y++) {
+    const thisYear = new Date().getFullYear();
+    for (let y = 1900; y <= thisYear; y++) {
       const lunar = LunarYear.fromYear(y);
       opts.push({ label: `${lunar.getGanZhi()}年（${y}）`, value: y });
     }
@@ -295,7 +296,7 @@ export default function Profile() {
               <>
                 <Space wrap size="middle">
                   <Form.Item name="birthYear" label="年" rules={[{ required: true }]}>
-                    <InputNumber min={1900} max={2100} placeholder="1990" style={{ width: 90 }} />
+                    <InputNumber min={1900} max={new Date().getFullYear()} placeholder="1990" style={{ width: 90 }} />
                   </Form.Item>
                   <Form.Item name="birthMonth" label="月" rules={[{ required: true }]}>
                     <Select style={{ width: 75 }} placeholder="月" options={

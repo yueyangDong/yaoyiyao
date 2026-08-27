@@ -29,3 +29,20 @@ export function isValidLunarDate(year: number, month: number, day: number, isLea
     return false;
   }
 }
+
+/** 公历日期时间是否晚于当前时刻（排盘不允许超前时间） */
+export function isSolarFuture(year: number, month: number, day: number, hour = 0, minute = 0): boolean {
+  const input = new Date(year, month - 1, day, hour, minute, 0);
+  return input.getTime() > Date.now();
+}
+
+/** 农历日期时间是否晚于当前时刻（先转公历再比较；转换失败按非未来处理） */
+export function isLunarFuture(year: number, month: number, day: number, isLeap: boolean, hour = 0, minute = 0): boolean {
+  try {
+    const solar = Lunar.fromYmd(year, isLeap ? -month : month, day).getSolar();
+    const input = new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay(), hour, minute, 0);
+    return input.getTime() > Date.now();
+  } catch {
+    return false;
+  }
+}

@@ -14,7 +14,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
-import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth } from '../utils/dateValidation';
+import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -1083,6 +1083,15 @@ export default function Bazi() {
       return;
     }
 
+    // 排盘时间不能晚于当前时刻（不允许超前时间）
+    const isFuture = inputMode === 'lunar'
+      ? isLunarFuture(year, month, day, leapMonth === month, hour || 0, minute || 0)
+      : isSolarFuture(year, month, day, hour || 0, minute || 0);
+    if (isFuture) {
+      message.warning('排盘时间不能晚于当前时间，请检查');
+      return;
+    }
+
     setLoading(true);
     try {
       // 推演动画（模拟推演过程，营造仪式感）
@@ -1518,7 +1527,7 @@ export default function Bazi() {
             </Col>
             <Col xs={12} sm={6}>
               <Form.Item name="year" label="年" rules={[{ required: true }]}>
-                <InputNumber min={1900} max={2100} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
+                <InputNumber min={1900} max={currentYear} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
               </Form.Item>
             </Col>
             <Col xs={6} sm={3}>

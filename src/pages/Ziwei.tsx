@@ -18,7 +18,7 @@ import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
-import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth } from '../utils/dateValidation';
+import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 import { generateSummarizedReport } from '../utils/ziweiAnalysis';
 
 const { Title, Text, Paragraph } = Typography;
@@ -310,7 +310,8 @@ export default function Ziwei() {
 
   const generateYearOptions = () => {
     const options = [];
-    for (let y = 2026; y >= 1900; y--) options.push({ value: y, label: String(y) });
+    const thisYear = new Date().getFullYear();
+    for (let y = thisYear; y >= 1900; y--) options.push({ value: y, label: String(y) });
     return options;
   };
 
@@ -328,6 +329,15 @@ export default function Ziwei() {
       : isValidSolarDate(year, month, day);
     if (!dateOk) {
       message.warning('日期无效，请检查（注意闰月）');
+      return;
+    }
+
+    // 排盘时间不能晚于当前时刻（不允许超前时间）
+    const isFuture = calendarType === 'lunar'
+      ? isLunarFuture(year, month, day, isLeapMonth, hour || 0, minute || 0)
+      : isSolarFuture(year, month, day, hour || 0, minute || 0);
+    if (isFuture) {
+      message.warning('排盘时间不能晚于当前时间，请检查');
       return;
     }
 
