@@ -838,3 +838,28 @@ p {
 input, textarea, select {
   font-size: 16px !important;
 }
+
+/* 四柱竖表手机端紧凑（≤768px）：缩小字号/内边距，消除横向滚动 */
+@media (max-width: 768px) {
+  .bazi-table {
+    min-width: 0 !important;
+    font-size: 10.5px !important;
+  }
+  .bazi-table th {
+    padding: 3px 2px !important;
+    font-size: 10px !important;
+  }
+  .bazi-table td {
+    padding: 3px 2px !important;
+    font-size: 10.5px !important;
+  }
+  .bazi-table .cell-ganzhi {
+    font-size: 15px !important;
+  }
+  .bazi-table .ant-tag {
+    font-size: 9px !important;
+    line-height: 14px !important;
+    padding: 0 3px !important;
+    margin: 0 !important;
+  }
+}

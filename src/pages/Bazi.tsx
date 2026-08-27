@@ -1722,64 +1722,9 @@ export default function Bazi() {
               />
             )}
 
-            {/* 手机端 4 列竖排四柱卡片（十神→天干→地支→纳音→藏干） */}
-            {isMobile && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 12 }}>
-                {baziData.pillars.map((p, idx) => {
-                  const isDay = idx === 2;
-                  return (
-                    <div key={idx} style={{
-                      border: `1px solid ${isDay ? 'rgba(196,164,90,0.6)' : 'var(--border-light)'}`,
-                      borderRadius: 10,
-                      background: isDay ? 'rgba(196,164,90,0.06)' : '#fff',
-                      padding: '8px 2px',
-                      textAlign: 'center',
-                    }}>
-                      {/* 柱名（日主列高亮） */}
-                      <div style={{ fontSize: 10, color: isDay ? 'var(--wx-fire)' : 'var(--text-secondary)', fontWeight: isDay ? 700 : 500, marginBottom: 1 }}>
-                        {p.pillar}{isDay ? '★' : ''}
-                      </div>
-                      {/* 十神 */}
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {isDay ? '日主' : p.shiShen}
-                      </div>
-                      {/* 天干（大字五行色） */}
-                      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--font-display)', lineHeight: 1.15, color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>
-                        {p.tianGan}
-                      </div>
-                      {/* 地支（大字五行色） */}
-                      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--font-display)', lineHeight: 1.15, color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>
-                        {p.diZhi}
-                      </div>
-                      {/* 纳音 */}
-                      <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {p.nayin}
-                      </div>
-                      {/* 藏干（五行色） */}
-                      {p.cangGan && p.cangGan.length > 0 && (
-                        <div style={{ fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>
-                          {p.cangGan.map((cg, ci) => (
-                            <span key={ci} style={{ color: WX_COLORS[TG_WX[cg] || ''] || 'var(--text-secondary)', fontWeight: 600, marginRight: 2 }}>{cg}</span>
-                          ))}
-                        </div>
-                      )}
-                      {/* 神煞 */}
-                      {(baziData.shenSha || []).filter((s: any) => s.pillar === p.pillar).slice(0, 2).map((s: any, si: number) => (
-                        <Tag key={si} style={{ fontSize: 9, marginTop: 3, marginRight: 0, padding: '0 3px', lineHeight: '14px' }}
-                          color={s.type === '吉' ? 'green' : s.type === '凶' ? 'red' : 'default'}>
-                          {s.name}
-                        </Tag>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 竖向表格（仅桌面端；移动端使用上方 4 列竖排卡片） */}
-            {!isMobile && (
+            {/* 四柱竖表（桌面+手机通用，手机端紧凑样式见 index.css @media） */}
             <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
-              <table style={{
+              <table className="bazi-table" style={{
                 width: '100%', minWidth: 480, borderCollapse: 'collapse',
                 border: '1px solid var(--border-light)', borderRadius: 8, overflow: 'hidden',
                 fontSize: 13,
@@ -1828,7 +1773,7 @@ export default function Bazi() {
                         <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>天干</td>
                         {baziData.pillars.map((p, idx) => (
                           <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'tiangan' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>{p.tianGan}</Text>
+                            <Text strong className="cell-ganzhi" style={{ fontSize: 20, color: WX_COLORS[TG_WX[p.tianGan] || ''] || 'var(--text-primary)' }}>{p.tianGan}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1840,7 +1785,7 @@ export default function Bazi() {
                         <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>地支</td>
                         {baziData.pillars.map((p, idx) => (
                           <td key={idx} style={{ padding: '8px 4px', textAlign: 'center', background: activeRow === 'dizhi' ? 'rgba(196,164,90,0.04)' : hlBg(idx), borderBottom: hlBorder(idx) }}>
-                            <Text strong style={{ fontSize: 20, color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>{p.diZhi}</Text>
+                            <Text strong className="cell-ganzhi" style={{ fontSize: 20, color: WX_COLORS[DZ_WX[p.diZhi] || ''] || 'var(--text-primary)' }}>{p.diZhi}</Text>
                           </td>
                         ))}
                       </tr>
@@ -1983,7 +1928,37 @@ export default function Bazi() {
                 </tbody>
               </table>
             </div>
+
+          {/* 刑冲合害（四柱关系：子午相冲、相害、地支相合等） */}
+          <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态" style={{ marginTop: 12 }}>
+            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+            <Alert
+              message="刑冲合害反映了四柱之间的互动关系，是理解命局动态的关键。"
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+            />
+            {relationAnalysis.length === 0 ? (
+              <Alert message="✅ 此八字四柱之间无特殊刑冲合害关系" type="success" showIcon />
+            ) : (
+              relationAnalysis.map((r, i) => (
+                <Card
+                  key={i}
+                  size="small"
+                  style={{ marginBottom: 8, borderLeft: `4px solid ${r.color}` }}
+                >
+                  <Space>
+                    <Tag color={r.color}>{r.type}</Tag>
+                    <Tag color={r.color === 'var(--wx-wood)' ? 'green' : r.color === 'var(--wx-fire)' ? 'red' : r.color === 'var(--color-warn)' ? 'orange' : r.color === 'var(--wx-water)' ? 'blue' : 'purple'} style={{ fontSize: 11 }}>
+                      {r.subtype}
+                    </Tag>
+                  </Space>
+                  <Paragraph style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{r.desc}</Paragraph>
+                </Card>
+              ))
             )}
+          </Card>
+            </CollapsibleCard>
           </Card>
 
           {/* 神煞 */}
@@ -2125,37 +2100,6 @@ export default function Bazi() {
                 </ul>
               </Col>
             </Row>
-          </Card>
-            </CollapsibleCard>
-
-          {/* 刑冲合害 */}
-          <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态">
-            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Alert
-              message="刑冲合害反映了四柱之间的互动关系，是理解命局动态的关键。"
-              type="info"
-              showIcon
-              style={{ marginBottom: 12 }}
-            />
-            {relationAnalysis.length === 0 ? (
-              <Alert message="✅ 此八字四柱之间无特殊刑冲合害关系" type="success" showIcon />
-            ) : (
-              relationAnalysis.map((r, i) => (
-                <Card
-                  key={i}
-                  size="small"
-                  style={{ marginBottom: 8, borderLeft: `4px solid ${r.color}` }}
-                >
-                  <Space>
-                    <Tag color={r.color}>{r.type}</Tag>
-                    <Tag color={r.color === 'var(--wx-wood)' ? 'green' : r.color === 'var(--wx-fire)' ? 'red' : r.color === 'var(--color-warn)' ? 'orange' : r.color === 'var(--wx-water)' ? 'blue' : 'purple'} style={{ fontSize: 11 }}>
-                      {r.subtype}
-                    </Tag>
-                  </Space>
-                  <Paragraph style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{r.desc}</Paragraph>
-                </Card>
-              ))
-            )}
           </Card>
             </CollapsibleCard>
 
