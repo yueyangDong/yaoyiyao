@@ -234,20 +234,6 @@ export default function AppLayout() {
 
         {/* 右侧 */}
         <Space style={{ minWidth: 100, justifyContent: 'flex-end' }}>
-          {!authUser && (
-            <Button
-              type="text"
-              size="small"
-              onClick={() => navigate('/auth')}
-              style={{
-                color: 'var(--text-primary)', fontWeight: 500,
-                border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-btn-sm)',
-              }}
-            >
-              登录云同步
-            </Button>
-          )}
-
           {authUser && (
             <Dropdown
               menu={{

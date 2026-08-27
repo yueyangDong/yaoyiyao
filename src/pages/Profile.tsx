@@ -11,7 +11,6 @@ import {
 import { UserCircle, Plus, Bug } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, getCityLng } from '../context/UserContext';
-import { useAuth } from '../context/AuthContext';
 import type { StoredUser } from '../context/UserContext';
 import ModuleCompare from '../components/ModuleCompare';
 import ShareButton from '../components/ShareButton';
@@ -43,7 +42,6 @@ const LUNAR_DAY_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: `${i + 
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user: authUser } = useAuth();
   const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history, syncing, synced } = useUser();
   const [editing, setEditing] = useState(false);
   const compareRef = useRef<HTMLDivElement>(null);
@@ -179,30 +177,7 @@ export default function Profile() {
         <Button type="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={openNew}>新增档案</Button>
       </div>
 
-      {/* 云端同步状态 */}
-      {authUser ? (
-        <Card size="small" style={{ marginBottom: 20, borderColor: 'var(--border-light)' }}>
-          <Space>
-            <Tag color={synced ? 'green' : 'processing'}>{syncing ? '同步中...' : synced ? '已同步到云端' : '未同步'}</Tag>
-            <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-              {authUser.email}
-            </Text>
-          </Space>
-        </Card>
-      ) : (
-        <Alert
-          message="未登录"
-          description="登录后数据自动同步到云端，换设备也能找回档案和历史记录。"
-          type="warning" showIcon
-          style={{ marginBottom: 20, borderRadius: 16 }}
-          action={
-            <Space direction="vertical" align="end" size={4}>
-              <Button type="primary" size="small" onClick={() => navigate('/auth')}>登录以云同步</Button>
-              <Text type="secondary" style={{ fontSize: 12 }}>不登录也能用，数据存在本机；登录后自动备份到云端</Text>
-            </Space>
-          }
-        />
-      )}
+      {/* 云端同步状态（登录功能暂隐藏，仅保留本地档案） */}
 
       {users.length === 0 && !editing && (
         <Alert
