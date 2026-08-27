@@ -86,6 +86,28 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
       return { name: `专旺·${names[dayWx]}`, type: '外格', desc: `${dayGan}日主${dayWx}气专旺，生于${monthZhi}月当令，地支成${dayWx}局（三会/三合），无克星破格，为${names[dayWx]}。这类命格心志坚定、专注力强，适合深耕单一领域。` };
     }
   }
+  // 从格：日主极弱，顺从月令旺神（财/官杀/食伤）
+  if (strengthLevel === '身极弱') {
+    const monthSS = pillars[1].shiShen || '';
+    const fromNames: Record<string, string> = {
+      '正财': '从财格', '偏财': '从财格',
+      '正官': '从官杀格', '七杀': '从官杀格',
+      '食神': '从儿格', '伤官': '从儿格',
+    };
+    if (fromNames[monthSS]) {
+      // 假从：日主有余气根（日支同气）或比劫帮身 → 从得不纯
+      const dayZhi = pillars[2].diZhi;
+      const dayWx2 = TG_WX[dayGan] || '';
+      const hasRoot = DZ_WX[dayZhi] === dayWx2;
+      const biJieTou = pillars.some(p => ['比肩', '劫财'].includes(p.shiShen));
+      const jia = hasRoot || biJieTou;
+      return {
+        name: jia ? `假${fromNames[monthSS]}` : fromNames[monthSS],
+        type: '外格',
+        desc: `日主${dayGan}极弱，月令${monthZhi}${monthSS}成势，全局顺从旺神。${jia ? `日主有余气根（日支${dayZhi}同气）或比劫帮身，从得不纯，为假从——大运见印比易反复，宜顺势不可强扶` : '从得纯粹，为真从——大运喜顺从旺神，忌印比来犯'}。`,
+      };
+    }
+  }
   return null;
 }
 
@@ -175,9 +197,19 @@ export function analyzeMingGeDetailed(
 
   // 2) 禄刃格
   if (LU[dayGan] === monthZhi) {
-    geName = '建禄格'; geType = '禄格'; score = '中上';
-    desc = `日主${dayGan}禄位在${monthZhi}，月令建禄，自身有根基，独立自主，通常身强。`;
-    details.push(`月支${monthZhi} = ${dayGan}之禄位 → 建禄格`);
+    // 建禄格；比劫旺（天干比劫≥2 或地支与日主同气≥2）→ 建禄月劫格
+    const biJie = pillars.filter(p => ['比肩', '劫财'].includes(p.shiShen)).length;
+    const dayWx2 = TG_WX[dayGan] || '';
+    const dzTongQi = pillars.filter(p => DZ_WX[p.diZhi] === dayWx2).length;
+    const yueJie = biJie >= 2 || dzTongQi >= 2;
+    geName = yueJie ? '建禄月劫格' : '建禄格';
+    geType = '禄格'; score = '中上';
+    desc = yueJie
+      ? `日主${dayGan}禄位在${monthZhi}，月令建禄，且比劫${biJie}透干、地支${dayWx2}${dzTongQi}位，比劫成势，为建禄月劫格。身极强，独立自主，但易与人争财，需印星化劫、财官为用。`
+      : `日主${dayGan}禄位在${monthZhi}，月令建禄，自身有根基，独立自主，通常身强。`;
+    details.push(yueJie
+      ? `月支${monthZhi} = ${dayGan}之禄位，比劫${biJie}透/地支同气${dzTongQi}位 → 建禄月劫格`
+      : `月支${monthZhi} = ${dayGan}之禄位 → 建禄格`);
   } else if (YANG_REN[dayGan] === monthZhi) {
     geName = '羊刃格'; geType = '禄格'; score = '中上';
     desc = `月令${monthZhi}为日主${dayGan}之羊刃，羊刃主刚烈果决、行动力强，但需注意冲动。`;

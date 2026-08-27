@@ -51,12 +51,12 @@ describe('analyzeMingGeDetailed', () => {
     expect(r.score).toBe('上等');
   });
 
-  it('专旺不成立：壬午壬子癸酉壬戌（无三会/三合水局）→ 建禄格非润下', () => {
-    // 癸日主，月令子=癸禄；地支午子酉戌无亥子丑/申子辰水局 → 不判润下，判建禄
+  it('专旺不成立：壬午壬子癸酉壬戌（无三会/三合水局）→ 建禄（月劫）非润下', () => {
+    // 癸日主，月令子=癸禄；地支午子酉戌无亥子丑/申子辰水局 → 不判润下，判建禄/建禄月劫
     const ps = pillars(['壬', '壬', '癸', '壬'], ['午', '子', '酉', '戌'],
       [['丁'], ['癸'], ['辛'], ['戊']], ['劫财', '比肩', '偏印', '劫财']);
     const r = analyzeMingGeDetailed(ps, '癸', '身极强', {});
-    expect(r.geName).toContain('建禄格');
+    expect(r.geName).toContain('建禄');
     expect(r.geName).not.toContain('润下');
   });
 
@@ -66,6 +66,31 @@ describe('analyzeMingGeDetailed', () => {
       [['壬'], ['癸'], ['己'], ['甲']], ['劫财', '比肩', '比肩', '劫财']);
     const r = analyzeMingGeDetailed(ps, '癸', '身极强', {});
     expect(r.geName).toContain('润下');
+  });
+
+  it('建禄月劫格：建禄 + 比劫旺（天干比劫≥2）', () => {
+    // 壬午壬子癸酉壬戌：癸禄在子，天干三比劫 → 建禄月劫格
+    const ps = pillars(['壬', '壬', '癸', '壬'], ['午', '子', '酉', '戌'],
+      [['丁'], ['癸'], ['辛'], ['戊']], ['劫财', '比肩', '偏印', '劫财']);
+    const r = analyzeMingGeDetailed(ps, '癸', '身极强', {});
+    expect(r.geName).toContain('建禄月劫格');
+  });
+
+  it('假从格：身极弱 + 月令财旺 + 日支余气根 → 假从财格', () => {
+    // 庚日主身极弱，月支子（正财），日支申（庚禄余气根）→ 假从财格
+    const ps = pillars(['戊', '丙', '庚', '戊'], ['午', '子', '申', '午'],
+      [['丁'], ['癸'], ['庚'], ['丁']], ['偏印', '正财', '比肩', '偏印']);
+    const r = analyzeMingGeDetailed(ps, '庚', '身极弱', {});
+    expect(r.geName).toContain('假从财格');
+  });
+
+  it('真从格：身极弱 + 月令七杀旺 + 无根无比劫 → 从官杀格', () => {
+    // 甲日主身极弱，月支酉（正官？七杀）……用七杀：月支申（庚七杀）
+    const ps = pillars(['庚', '庚', '甲', '庚'], ['午', '申', '午', '午'],
+      [['丁'], ['庚'], ['丁'], ['丁']], ['七杀', '七杀', '伤官', '七杀']);
+    const r = analyzeMingGeDetailed(ps, '甲', '身极弱', {});
+    expect(r.geName).toContain('从官杀格');
+    expect(r.geName).not.toContain('假');
   });
 
   it('输出含类型与层次字段', () => {
