@@ -124,6 +124,30 @@ export default function Home() {
         )}
       </motion.div>
 
+      {/* 首页公告：清醒提示 */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        style={{
+          marginBottom: 16, padding: '14px 16px', borderRadius: 16,
+          background: 'linear-gradient(135deg, rgba(201,169,110,0.07) 0%, rgba(255,255,255,0.92) 100%)',
+          border: '1px solid rgba(201,169,110,0.28)',
+          position: 'relative',
+        }}
+      >
+        <Text strong style={{ color: 'var(--wx-metal)', fontSize: 13, letterSpacing: '0.04em', display: 'block', marginBottom: 6 }}>
+          📜 命运这场开卷考，答案仅供参考
+        </Text>
+        <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
+          嘿，我知道点开爻一爻的你，可能正面临某个十字路口，有点迷茫，有点孤独，甚至有点想抓住一根稻草。
+          先抱抱你。我们想做的，从来不是定义你的人生剧本，而是当你觉得看不清前路时，给你递一面镜子，让你看到自己心里本来就有的光。
+          但请务必收下这份「清醒提示」：这里的星盘、塔罗、卦象，本质是古老的数据模型与概率游戏。所有内容仅供娱乐与自我探索，不构成任何人生决策的依据。
+          你的工作、学业、感情，最终的选择权和责任，永远在你手里。别把算法当命运，别把预测当判决。你的人生，你说了算。
+          如果此刻你真的非常艰难，请记得关闭爻一爻，给现实中的朋友打个电话，或者寻求专业的心理支持。我们在这里陪你，但现实中的拥抱更暖。
+        </Text>
+      </motion.div>
+
       {/* 用户横幅 */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
