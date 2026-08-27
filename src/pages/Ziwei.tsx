@@ -359,8 +359,6 @@ export default function Ziwei() {
         calcMinute = trueSolar.minute;
       }
 
-      const birthDate = new Date(year, month - 1, day, calcHour, calcMinute, 0);
-
       // 用 lunar-typescript 获取公历/农历对照
       let sol: Solar;
       let lu: Lunar;
@@ -381,11 +379,14 @@ export default function Ziwei() {
         lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
       }
 
+      // 排盘统一用转换后的公历日期（农历输入也必须先转公历，否则排盘结果错误）
+      const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay(), calcHour, calcMinute, 0);
+
       // 使用 @ziweijs/core 排盘
       const result = ziwei.bySolar({
         name: '',
         gender: gender || 'male',
-        date: birthDate,
+        date: solarDate,
         language: 'zh-CN',
         longitude: lng,
       } as any);
