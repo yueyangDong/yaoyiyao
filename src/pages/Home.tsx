@@ -349,7 +349,7 @@ export default function Home() {
         onCancel={closeNotice}
         okText="知道了，好好生活"
         cancelButtonProps={{ style: { display: 'none' } }}
-        width={360}
+        width={Math.min(360, (typeof window !== 'undefined' ? window.innerWidth : 360) - 32)}
         styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
       >
         <Text style={{ fontSize: 13, lineHeight: 1.9, color: 'var(--text-body)' }}>
