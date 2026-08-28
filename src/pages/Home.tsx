@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Typography, Space, Button, Modal } from 'antd';
+import qrDonation from '../assets/qr-donation.png';
 import { motion } from 'framer-motion';
 import { useUser } from '../context/UserContext';
 import { Lunar } from 'lunar-typescript';
@@ -41,6 +42,8 @@ export default function Home() {
   const [lunarDate, setLunarDate] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [donationOpen, setDonationOpen] = useState(false);
+  const [donated, setDonated] = useState(false);
 
   useEffect(() => {
     // 首页公告弹窗：每次会话首次进入首页弹出一次
@@ -198,6 +201,34 @@ export default function Home() {
             <Button type="primary" size="small">创建 <ArrowRight size={14} /></Button>
           </div>
         )}
+      </motion.div>
+
+      {/* 功德箱入口 */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        style={{ marginBottom: 16, position: 'relative' }}
+      >
+        <div
+          onClick={() => { setDonated(false); setDonationOpen(true); }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', borderRadius: 16, cursor: 'pointer',
+            background: 'linear-gradient(135deg, rgba(201,169,110,0.10) 0%, rgba(255,255,255,0.92) 100%)',
+            border: '1px solid rgba(201,169,110,0.35)',
+          }}
+        >
+          <Space>
+            <span style={{ fontSize: 22 }}>📿</span>
+            <div>
+              <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>功德箱</Text>
+              <br />
+              <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>随喜功德 · 福慧双修</Text>
+            </div>
+          </Space>
+          <ArrowRight size={14} color="var(--text-disabled)" />
+        </div>
       </motion.div>
 
       {/* 最近使用 */}
@@ -363,6 +394,51 @@ export default function Home() {
           <br /><br />
           如果此刻你真的非常艰难，请记得关闭爻一爻，给现实中的朋友打个电话，或者寻求专业的心理支持。我们在这里陪你，但现实中的拥抱更暖。
         </Text>
+      </Modal>
+
+      {/* 功德箱弹窗：收款码 → 感谢支持 */}
+      <Modal
+        title={donated ? '🙏 感恩随喜' : '📿 功德箱'}
+        open={donationOpen}
+        onCancel={() => setDonationOpen(false)}
+        footer={null}
+        width={Math.min(360, (typeof window !== 'undefined' ? window.innerWidth : 360) - 32)}
+      >
+        {donated ? (
+          <div style={{ textAlign: 'center', padding: '24px 8px' }}>
+            <div style={{ fontSize: 44 }}>🙏</div>
+            <Text strong style={{ display: 'block', fontSize: 18, marginTop: 12, color: 'var(--text-primary)' }}>
+              感谢支持，平安顺遂
+            </Text>
+            <Text style={{ display: 'block', fontSize: 13, marginTop: 8, color: 'var(--text-secondary)' }}>
+              善心已至，福报随行。愿你事事顺意，岁岁安康。
+            </Text>
+            <Button type="primary" style={{ marginTop: 20 }} onClick={() => setDonationOpen(false)}>
+              关闭
+            </Button>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center' }}>
+            <Text style={{ display: 'block', fontSize: 13, color: 'var(--text-body)', marginBottom: 12 }}>
+              随喜功德，福慧双修。扫描下方收款码即可随喜。
+            </Text>
+            <img
+              src={qrDonation}
+              alt="功德箱收款码"
+              style={{ width: '100%', maxWidth: 280, borderRadius: 12, display: 'block', margin: '0 auto' }}
+            />
+            <Text style={{ display: 'block', fontSize: 12, color: 'var(--text-disabled)', marginTop: 8 }}>
+              微信 / 支付宝 扫一扫
+            </Text>
+            <Button
+              type="primary"
+              style={{ marginTop: 16, width: '100%' }}
+              onClick={() => setDonated(true)}
+            >
+              我已完成随喜
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );
