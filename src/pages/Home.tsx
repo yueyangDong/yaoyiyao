@@ -425,10 +425,10 @@ export default function Home() {
             <img
               src={qrDonation}
               alt="功德箱收款码"
-              style={{ width: '100%', maxWidth: 280, borderRadius: 12, display: 'block', margin: '0 auto' }}
+              style={{ width: '100%', maxWidth: Math.min(280, (typeof window !== 'undefined' ? window.innerWidth : 280) - 96), borderRadius: 12, display: 'block', margin: '0 auto' }}
             />
             <Text style={{ display: 'block', fontSize: 12, color: 'var(--text-disabled)', marginTop: 8 }}>
-              微信 / 支付宝 扫一扫
+              微信扫一扫
             </Text>
             <Button
               type="primary"
