@@ -921,15 +921,15 @@ function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge:
 
     let desc = '';
     if (dayWx === dayunWx) {
-      desc = '这步大运与日主同五行，是比劫运，适合交朋友、拓人脉、增强自信。';
+      desc = ['这步大运与日主同五行，是比劫运，适合交朋友、拓人脉、增强自信。', '比劫大运，同辈助力多，适合合伙共事，但注意别因朋友破财。', '比和之运，自身能量被放大，宜把冲劲用在正事上。'][i % 3];
     } else if (wxSheng[dayWx] === dayunWx) {
-      desc = '这步大运是印运，利学业、考证、得贵人相助，是比较顺遂的阶段。';
+      desc = ['这步大运是印运，利学业、考证、得贵人相助，是比较顺遂的阶段。', '印星大运，长辈缘佳、学习力强，适合进修深造，做事有靠山。', '印绶当运，内心安定，易得文凭资质，适合沉淀积累。'][i % 3];
     } else if (wxSheng[dayunWx] === dayWx) {
-      desc = '这步大运是食伤运，利创意发挥、技术提升，但也容易想得多做得少。';
+      desc = ['这步大运是食伤运，利创意发挥、技术提升，但也容易想得多做得少。', '食伤大运，才华外露、表达欲强，适合输出创作，注意别太随性。', '吐秀之运，灵感不断，作品易被认可，适合技术或艺术方向。'][i % 3];
     } else if (wxKe[dayWx] === dayunWx) {
-      desc = '这步大运是官杀运，有压力和挑战，但也是事业上升的动力，适合承担责任。';
+      desc = ['这步大运是官杀运，有压力和挑战，但也是事业上升的动力，适合承担责任。', '官杀大运，责任加身、管束增多，扛得住则职位上升，扛不住则身心俱疲。', '压力之运，外界对你要求变高，宜自律、迎难而上，转压力为成就。'][i % 3];
     } else if (wxKe[dayunWx] === dayWx) {
-      desc = '这步大运是财运，利赚钱理财，但要注意财多身弱反而为钱所累。';
+      desc = ['这步大运是财运，利赚钱理财，但要注意财多身弱反而为钱所累。', '财星大运，进账机会多，宜开源合作，但勿贪多求快。', '求财之运，行动力换来回报，记得量入为出、落袋为安。'][i % 3];
     }
     return `${age}-${age + 9}岁 大运「${gz}」：${desc}`;
   });
@@ -1295,11 +1295,11 @@ export default function Bazi() {
       const gan = gz.charAt(0);
       const wx = tgWx[gan] || '';
       let desc = '';
-      if (dayWx === wx) desc = '比和之月，运势平稳';
-      else if (wxSheng[dayWx] === wx) desc = '印星之月，利学业贵人';
-      else if (wxSheng[wx] === dayWx) desc = '食伤之月，利创意发挥';
-      else if (wxKe[dayWx] === wx) desc = '官杀之月，有压力挑战';
-      else if (wxKe[wx] === dayWx) desc = '财运之月，利求财';
+      if (dayWx === wx) desc = ['比和之月，运势平稳', '同气之月，宜稳扎稳打', '比肩当令，适合与同伴协作，共担共进'][i % 3];
+      else if (wxSheng[dayWx] === wx) desc = ['印星之月，利学业贵人', '印绶当令，宜进修充电、亲近长辈', '印星照临，学习效率高，易得提携'][i % 3];
+      else if (wxSheng[wx] === dayWx) desc = ['食伤之月，利创意发挥', '才华之月，表达欲强，作品易被看见', '食伤吐秀，灵感涌现，适合输出'][i % 3];
+      else if (wxKe[dayWx] === wx) desc = ['官杀之月，有压力挑战', '官杀当值，责任加身，宜迎难而上', '压力之月，扛过去就是成长'][i % 3];
+      else if (wxKe[wx] === dayWx) desc = ['财运之月，利求财', '财星当令，宜开源、谈合作', '财星照临，进账机会增多，注意理财'][i % 3];
       result.push({ monthName: `${y}年${m}月`, ganZhi: gz, wx, desc });
     }
     setLiuYueMonths(result);

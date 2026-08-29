@@ -535,15 +535,20 @@ export default function Ziwei() {
         `整体来看，你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
         `你的${gong.name}宫吉星汇聚，在这一方面有天然优势。`,
         `${gong.name}宫星曜清朗，在这个领域你比大多数人顺利。`,
+        `${gong.name}宫有${(gong.majorStars || []).slice(0, 2).map((s: any) => s.name).join('、')}坐守，是你天生顺手、容易出成绩的领域。`,
+        `你这${gong.name}宫底子好，${gong.name}相关的事往往事半功倍，值得重点经营。`,
       ],
       '凶': [
         `你的${gong.name}宫煞星较重，这个领域是人生中需要多花心思经营的地方。`,
         `${gong.name}宫挑战较多，但记住——煞星也是成就一个人的磨刀石。`,
         `${gong.name}宫波折较多，早经历、早成长，晚景反而更稳健。`,
+        `${gong.name}宫有${(gong.majorStars || []).slice(0, 2).map((s: any) => s.name).join('、')}把守，这一块容易操心，但也是你磨炼出真本事的地方。`,
+        `你${gong.name}宫是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
       ],
       '中': [
         `你的${gong.name}宫吉凶参半，有好有坏，整体还算平稳。`,
         `${gong.name}宫中规中矩，不算突出也不算差，知足常乐。`,
+        `${gong.name}宫星曜平和，没有大起大落，稳中求进就是上策。`,
       ],
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
