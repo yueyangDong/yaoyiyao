@@ -21,6 +21,7 @@ const AncientBooks = React.lazy(() => import('./pages/AncientBooks'));
 const History = React.lazy(() => import('./pages/History'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const DailyFortune = React.lazy(() => import('./pages/DailyFortune'));
+const HePan = React.lazy(() => import('./pages/HePan'));
 
 export default function App() {
   return (
@@ -39,6 +40,9 @@ export default function App() {
             } />
             <Route path="/ziwei" element={
               <Suspense fallback={<PageSkeleton />}><Ziwei /></Suspense>
+            } />
+            <Route path="/hepan" element={
+              <Suspense fallback={<PageSkeleton />}><HePan /></Suspense>
             } />
             <Route path="/nayin" element={
               <Suspense fallback={<PageSkeleton />}><Nayin /></Suspense>

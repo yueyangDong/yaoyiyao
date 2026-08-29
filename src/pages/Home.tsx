@@ -8,7 +8,7 @@ import { Lunar } from 'lunar-typescript';
 import {
   Binary, Star, Sparkles, Flower2, Waves, Compass,
   Moon, ScrollText, UserCircle, History, ArrowRight, BookOpen,
-  Sun,
+  Sun, Heart,
 } from 'lucide-react';
 
 const { Title, Text } = Typography;
@@ -17,6 +17,7 @@ const MODULES = [
   { key: 'daily', path: '/daily', title: '每日一爻', subtitle: '每天摇一卦，看看今日运势', color: 'var(--module-gold)', icon: <Sun size={22} strokeWidth={1.5} /> },
   { key: 'bazi', path: '/bazi', title: '八字排盘', subtitle: '八字排盘 — 看你天生的底牌', color: 'var(--module-green)', icon: <Binary size={22} strokeWidth={1.5} /> },
   { key: 'ziwei', path: '/ziwei', title: '紫微斗数', subtitle: '十二宫位，照见一生的格局', color: 'var(--module-blue)', icon: <Star size={22} strokeWidth={1.5} /> },
+  { key: 'hepan', path: '/hepan', title: '情侣合盘', subtitle: '八字紫微双盘合看，缘起三生', color: 'var(--module-gray)', icon: <Heart size={22} strokeWidth={1.5} /> },
   { key: 'liuyao', path: '/liuyao', title: '六爻占卜', subtitle: '三枚铜钱，问个明白', color: 'var(--module-gold)', icon: <Sparkles size={22} strokeWidth={1.5} /> },
   { key: 'lingqian', path: '/lingqian', title: '灵签抽签', subtitle: '摇一支签，听听签文怎么说', color: 'var(--module-gray)', icon: <ScrollText size={22} strokeWidth={1.5} /> },
   { key: 'meihua', path: '/meihua', title: '梅花易数', subtitle: '观物起卦，处处皆可问', color: 'var(--module-red)', icon: <Flower2 size={22} strokeWidth={1.5} /> },

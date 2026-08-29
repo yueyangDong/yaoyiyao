@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Typography } from 'antd';
 import divinationArt from '../assets/divination-art.png';
-
 const { Text } = Typography;
 
 const BAGUA = ['☰', '☱', '☲', '☳', '☴', '☵', '☶', '☷'];
@@ -25,9 +24,10 @@ const pickGanZhi = (count: number): string[] => {
 interface DivinationOverlayProps {
   show: boolean;
   text?: string;
+  artSrc?: string;
 }
 
-export default function DivinationOverlay({ show, text = '推演中 · 天机渐显' }: DivinationOverlayProps) {
+export default function DivinationOverlay({ show, text = '推演中 · 天机渐显', artSrc }: DivinationOverlayProps) {
   const gz = pickGanZhi(5);
 
   return (
@@ -92,7 +92,7 @@ export default function DivinationOverlay({ show, text = '推演中 · 天机渐
               }}
             >
               <img
-                src={divinationArt}
+                src={artSrc || divinationArt}
                 alt=""
                 draggable={false}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
