@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space,
 } from 'antd';
 import { Lunar, Solar } from 'lunar-typescript';
 import { useUser } from '../context/UserContext';
 import DivinationOverlay from '../components/DivinationOverlay';
+import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan } from '../utils/hepan';
 import { isValidSolarDate, isSolarFuture } from '../utils/dateValidation';
@@ -44,10 +45,11 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
 }
 
 export default function HePan() {
-  const { currentUser } = useUser();
+  const { currentUser, addHistory } = useUser();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof analyzeHePan> | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const mine = (() => {
     if (!currentUser) return null;
@@ -99,6 +101,13 @@ export default function HePan() {
       const partner = buildPerson(year, month, day, hour, minute || 0, gender || 'female');
       const r = analyzeHePan({ mine, partner });
       setResult(r);
+      // 保存合盘记录
+      addHistory({
+        userId: currentUser?.id || '',
+        module: 'hepan',
+        queryParams: { year, month, day, hour, minute, gender },
+        resultSummary: `情侣合盘：${r.totalScore}分（${r.level}）`,
+      });
     } catch (e: any) {
       message.error('合盘失败：' + (e.message || '未知错误'));
     } finally {
@@ -137,7 +146,8 @@ export default function HePan() {
 
       {/* 结果 */}
       {result && (
-        <Card title="合盘结果" size="small">
+        <div ref={resultRef}>
+          <Card title="合盘结果" size="small">
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
             <Progress type="circle" percent={result.totalScore} format={(p) => `${p}分`} strokeColor="var(--wx-metal)" />
             <Tag style={{ marginLeft: 12, fontSize: 14, padding: '4px 14px' }}>{result.level}</Tag>
@@ -157,7 +167,15 @@ export default function HePan() {
             </div>
           ))}
           <Alert style={{ marginTop: 8 }} type="info" showIcon message="合盘结果仅供娱乐参考。真正的缘分，靠两个人共同经营。" />
-        </Card>
+          </Card>
+          <div style={{ textAlign: 'center', marginTop: 10 }}>
+            <ShareButton
+              targetRef={resultRef}
+              fileName="爻一爻-情侣合盘"
+              buttonText="保存合盘图"
+            />
+          </div>
+        </div>
       )}
     </div>
   );
