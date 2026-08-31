@@ -904,33 +904,75 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   return results;
 }
 
-// 大运白话解读
+// 大运白话解读 — 在原 [i%3] 基础上扩展为 5+ 模板池，按 i 索引递增避免重复
 function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge: number): string[] {
+  // 与日主关系的 6 种模板池（比劫/印/食伤/官杀/财 各 5 条左右 + 共用建议）
+  const TEMPLATES: Record<string, string[]> = {
+    bijian: [
+      '这步大运与日主同五行，是比劫运。你会感到社交运走高，适合交朋友、组团队、拓展人脉，自身能量也会被放大。',
+      '比劫大运，身边会出现几个关键的同辈伙伴，事业上有"一起扛事"的同行者。提醒一句：借钱给朋友前三思，合伙的账目要白纸黑字。',
+      '比和之运，自身能量充沛，适合把冲劲用在事业开荒、新赛道切入。这种"被看见"的感觉会让你自信倍增。',
+      '比劫当令，同辈助力多但竞争也多——你会遇到贵人，也会有对手。专注自身升级，别被旁人的节奏带着跑。',
+      '这步大运比劫齐聚，朋友圈活跃，也有"被人拖后腿"的风险。主动筛选、敢于拒绝，是你这段时期的功课。',
+    ],
+    yin: [
+      '这步大运是印运，是相对顺遂的十年。利学业、考证、得长辈贵人相助，做事有"靠山"的感觉。',
+      '印星大运，长辈缘、学习力都强，适合进修深造、读研读博、考专业资格。把时间投在学习上回报率最高。',
+      '印绶当运，内心安定，思考周全，容易获得文凭、资质、口碑。这是一段适合"静下来积累"的时期。',
+      '印星护体，你会被动得到资源——好的导师、好的项目、好的推荐。学会把"被给予"转化为"自我升级"，而不是停留在舒适区。',
+      '印运十年里你容易"想得多"——这是优势也是负担。决策别拖太久，否则会被"分析瘫痪"拖累行动力。',
+    ],
+    shishang: [
+      '这步大运是食伤运，利创意发挥、技术提升、表达输出。你的想法会比平时更值钱、更容易被看见。',
+      '食伤当令，才华外露、表达欲强，适合做创作、写作品、推产品。把心里的"灵感清单"主动落到作品上。',
+      '吐秀之运，灵感涌现，适合技术输出、艺术创作、自媒体/课程开发等"靠自己输出变现"的方向。',
+      '食伤大运也意味着你可能和体制的冲突变多——如果你是上班族，会觉得"规矩"压抑；如果你是创业者，会觉得"流程"麻烦。这是一种成长的征兆。',
+      '才华外露期，记得克制"伤官见官"的冲动——技术/创意可以输出，但不要用表达的快感去顶撞权威。',
+    ],
+    guansha: [
+      '这步大运是官杀运，有压力和挑战，但也是事业上升的十年。扛得住规则的人，能在这段时间拿到结果。',
+      '官杀当令，责任加身、管束增多。工作岗位、岗位职责、外部期待都会拉高——你需要在压力下成长，而不是被压力碾碎。',
+      '压力之运，外界对你的要求变高，自律会让你受益。规律作息、保持学习、按时交付，是这段时期最稳的护身符。',
+      '官杀大运里你容易遇到"挑剔的上司"或"严格的合作方"。把对方当成磨刀石，你在和高手过招中会进步飞快。',
+      '如果你是女性，这步大运官杀齐聚可能意味着工作强度变大、异性缘变复杂。建议先把主业稳住，再考虑感情拓展。',
+    ],
+    cai: [
+      '这步大运是财运，是赚钱窗口期。但记住：财多身弱反而为钱所累，量力而行。',
+      '财星大运，进账机会多，宜开源合作、把能力变现。记住先稳定主业现金流，再去博副业和投资。',
+      '求财之运，行动力能换来回报。这段时期多做"复利"的事——储蓄、投资理财、买房置产，让钱生钱。',
+      '财运期是双刃剑：赚得多花得也多。建议强制储蓄(收入的30%)，不然十年一晃，钱没攒下多少。',
+      '财星当令，利求财但也容易"为利忘义"。合伙前明确账目，借钱前评估风险，别让赚钱损了健康和人脉。',
+    ],
+  };
+  const FALLBACK = [
+    '这步大运五行与日主形成有情之合，整体氛围稳中有升。',
+    '大运所行之五行，恰好与你日柱形成推动力，是顺势而为的十年。',
+    '这步大运整体趋稳，没有大起大落。把精力集中在自身的"长板"上，比追逐风口更有回报。',
+  ];
+
+  const tgWx: Record<string, string> = {
+    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
+    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+  };
+  const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
+  const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
+
   return dayunGanZhi.map((gz, i) => {
     const age = startAge + i * 10;
     const gan = gz.charAt(0);
-    const zhi = gz.charAt(1);
-    const tgWx: Record<string, string> = {
-      '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-      '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-    };
     const dayWx = tgWx[dayGan] || '';
     const dayunWx = tgWx[gan] || '';
-    const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-    const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
 
-    let desc = '';
-    if (dayWx === dayunWx) {
-      desc = ['这步大运与日主同五行，是比劫运，适合交朋友、拓人脉、增强自信。', '比劫大运，同辈助力多，适合合伙共事，但注意别因朋友破财。', '比和之运，自身能量被放大，宜把冲劲用在正事上。'][i % 3];
-    } else if (wxSheng[dayWx] === dayunWx) {
-      desc = ['这步大运是印运，利学业、考证、得贵人相助，是比较顺遂的阶段。', '印星大运，长辈缘佳、学习力强，适合进修深造，做事有靠山。', '印绶当运，内心安定，易得文凭资质，适合沉淀积累。'][i % 3];
-    } else if (wxSheng[dayunWx] === dayWx) {
-      desc = ['这步大运是食伤运，利创意发挥、技术提升，但也容易想得多做得少。', '食伤大运，才华外露、表达欲强，适合输出创作，注意别太随性。', '吐秀之运，灵感不断，作品易被认可，适合技术或艺术方向。'][i % 3];
-    } else if (wxKe[dayWx] === dayunWx) {
-      desc = ['这步大运是官杀运，有压力和挑战，但也是事业上升的动力，适合承担责任。', '官杀大运，责任加身、管束增多，扛得住则职位上升，扛不住则身心俱疲。', '压力之运，外界对你要求变高，宜自律、迎难而上，转压力为成就。'][i % 3];
-    } else if (wxKe[dayunWx] === dayWx) {
-      desc = ['这步大运是财运，利赚钱理财，但要注意财多身弱反而为钱所累。', '财星大运，进账机会多，宜开源合作，但勿贪多求快。', '求财之运，行动力换来回报，记得量入为出、落袋为安。'][i % 3];
-    }
+    // 选模板池
+    let pool: string[] = FALLBACK;
+    if (dayWx === dayunWx) pool = TEMPLATES.bijian;
+    else if (wxSheng[dayWx] === dayunWx) pool = TEMPLATES.yin;
+    else if (wxSheng[dayunWx] === dayWx) pool = TEMPLATES.shishang;
+    else if (wxKe[dayWx] === dayunWx) pool = TEMPLATES.guansha;
+    else if (wxKe[dayunWx] === dayWx) pool = TEMPLATES.cai;
+
+    // 选用第 i 条（不超过 pool 长度），保证顺序选而不是简单模3 — 大运多的情况下不重复
+    const desc = pool[i % pool.length];
     return `${age}-${age + 9}岁 大运「${gz}」：${desc}`;
   });
 }
@@ -1013,6 +1055,7 @@ export default function Bazi() {
         endAge: number;
         startYear: number;
         endYear: number;
+        isPreStart?: boolean;
       }>;
     };
     lunarInfo: string;
@@ -1039,7 +1082,25 @@ export default function Bazi() {
   const [liuRiYear, setLiuRiYear] = useState<number | null>(null);
   const [liuRiMonth, setLiuRiMonth] = useState<number | null>(null);
   const [liuRiDays, setLiuRiDays] = useState<Array<{ day: number; ganZhi: string; wx: string; desc: string }> | null>(null);
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  /**
+   * 计算周岁（实岁）：用真实生日判定当前是否已过生日
+   * 八字排盘的"起运年龄"是虚岁；为准确判断当前大运，应使用实岁
+   */
+  const calcCurrentAge = (birthYear: number, birthMonth: number, birthDay: number): number => {
+    let age = now.getFullYear() - birthYear;
+    const passedBirthday =
+      now.getMonth() + 1 > birthMonth ||
+      (now.getMonth() + 1 === birthMonth && now.getDate() >= birthDay);
+    if (!passedBirthday) age -= 1;
+    return age;
+  };
+  // 实际周岁（精确，基于已选/已推算的生辰）
+  const currentExactAge = useMemo(() => {
+    if (!baziData) return 0;
+    return calcCurrentAge(baziData.birthYear, baziData.birthMonth, baziData.birthDay);
+  }, [baziData]);
   const yunRef = useRef<any>(null);
 
   // 自动填入当前用户档案
@@ -1145,21 +1206,32 @@ export default function Bazi() {
 
       const yun = eightChar.getYun(yunParam);
       yunRef.current = yun;
-      // 排 11 步大运（每步十年，覆盖到 100 岁内）
+      // 大运：精确计算起运日期/年龄、识别起运前小运
       const dayunRaw = yun.getDaYun(11);
-      const startAge = yun.getStartYear(); // getStartYear() 实际返回起运年龄
+      const startAge = yun.getStartYear(); // 起运年龄（虚岁，从出生到起运的年数）
       const startDate = yun.getStartSolar()?.toYmd?.() || ''; // 起运公历日期 YYYY-MM-DD
       const isForward = yun.isForward();
       const directionText = isForward ? '顺排' : '逆排';
 
+      // 区分"起运前小运"和真正的大运：getDaYun 第一段是起运前的小运，ganZhi 经常为 '—'
       const dayunSteps = Array.isArray(dayunRaw)
-        ? dayunRaw.map((d: any) => ({
-            ganZhi: (d.getGanZhi?.() as string) || '—', // 起运前的小运无干支，显示 —
-            startAge: d.getStartAge?.() ?? 0,
-            endAge: d.getEndAge?.() ?? 0,
-            startYear: d.getStartYear?.() ?? 0,
-            endYear: d.getEndYear?.() ?? 0,
-          }))
+        ? dayunRaw.map((d: any, idx: number) => {
+            const rawGanZhi = (d.getGanZhi?.() as string) || '';
+            const startA = d.getStartAge?.() ?? 0;
+            const endA = d.getEndAge?.() ?? 0;
+            const startY = d.getStartYear?.() ?? 0;
+            const endY = d.getEndYear?.() ?? 0;
+            // 标记是否是起运前的小运（idx === 0 且 ganZhi 为空/—）
+            const isPreStart = idx === 0 && (!rawGanZhi || rawGanZhi === '—');
+            return {
+              ganZhi: rawGanZhi || '—',
+              startAge: startA,
+              endAge: endA,
+              startYear: startY,
+              endYear: endY,
+              isPreStart,
+            };
+          })
         : [];
 
       // 神煞（自主计算，不依赖 lunar-typescript 的 getShenSha）
@@ -1269,8 +1341,47 @@ export default function Bazi() {
     }
   };
 
-  // 流月推算
-  // 流月：当前月起未来 12 个自然月逐月运势（自动计算，跨年）
+// 流月模板池：每类关系 5 条，按 i 索引选取避免简单轮转
+const LIUYUE_TEMPLATES: Record<string, string[]> = {
+  same: [
+    '比和之月，运势平稳',
+    '同气之月，宜稳扎稳打',
+    '比肩当令，适合与同伴协作，共担共进',
+    '同频之月，能量守恒，宜巩固既有阵地',
+    '气场合拍，本月不用太费力也能稳步推进',
+  ],
+  yin: [
+    '印星之月，利学业贵人',
+    '印绶当令，宜进修充电、亲近长辈',
+    '印星照临，学习效率高，易得提携',
+    '印气护体，本月精神状态好，适合啃硬骨头',
+    '贵人暗中相助，多问多得，少说多做更佳',
+  ],
+  shishang: [
+    '食伤之月，利创意发挥',
+    '才华之月，表达欲强，作品易被看见',
+    '食伤吐秀，灵感涌现，适合输出',
+    '表达欲爆棚，多写、多画、多讲，回报率高于埋头执行',
+    '思维活跃期，是解决疑难问题的好月份',
+  ],
+  guansha: [
+    '官杀之月，有压力挑战',
+    '官杀当值，责任加身，宜迎难而上',
+    '压力之月，扛过去就是成长',
+    '外部期待变高，主动揽责反而是机会',
+    '本月规则大于灵活，按部就班比临场发挥更稳',
+  ],
+  cai: [
+    '财运之月，利求财',
+    '财星当令，宜开源、谈合作',
+    '财星照临，进账机会增多，注意理财',
+    '现金流佳，适合结算、回款、谈价格',
+    '本月贵在"主动出击"，而不是"等米下锅"',
+  ],
+};
+
+// 流月推算
+// 流月：当前月起未来 12 个自然月逐月运势（自动计算，跨年）
   const buildFutureMonths = (dayGan: string, dayWx: string) => {
     const tgWx: Record<string, string> = {
       '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
@@ -1287,19 +1398,21 @@ export default function Bazi() {
       const m = d.getMonth() + 1;
       let gz = '';
       try {
-        // 月中农历月柱（近似节气月，跨年自动正确）
-        gz = Lunar.fromYmdHms(y, m, 15, 12, 0, 0).getMonthInGanZhi();
+        // 关键点：先把公历 → 农历，再取节气月柱（getMonthInGanZhi 内部按节气和年上起月计算）
+        const sol = Solar.fromYmdHms(y, m, 15, 12, 0, 0);
+        const lu = sol.getLunar();
+        gz = lu.getMonthInGanZhi();
       } catch {
         gz = '--';
       }
       const gan = gz.charAt(0);
       const wx = tgWx[gan] || '';
       let desc = '';
-      if (dayWx === wx) desc = ['比和之月，运势平稳', '同气之月，宜稳扎稳打', '比肩当令，适合与同伴协作，共担共进'][i % 3];
-      else if (wxSheng[dayWx] === wx) desc = ['印星之月，利学业贵人', '印绶当令，宜进修充电、亲近长辈', '印星照临，学习效率高，易得提携'][i % 3];
-      else if (wxSheng[wx] === dayWx) desc = ['食伤之月，利创意发挥', '才华之月，表达欲强，作品易被看见', '食伤吐秀，灵感涌现，适合输出'][i % 3];
-      else if (wxKe[dayWx] === wx) desc = ['官杀之月，有压力挑战', '官杀当值，责任加身，宜迎难而上', '压力之月，扛过去就是成长'][i % 3];
-      else if (wxKe[wx] === dayWx) desc = ['财运之月，利求财', '财星当令，宜开源、谈合作', '财星照临，进账机会增多，注意理财'][i % 3];
+      if (dayWx === wx) desc = LIUYUE_TEMPLATES.same[i % LIUYUE_TEMPLATES.same.length];
+      else if (wxSheng[dayWx] === wx) desc = LIUYUE_TEMPLATES.yin[i % LIUYUE_TEMPLATES.yin.length];
+      else if (wxSheng[wx] === dayWx) desc = LIUYUE_TEMPLATES.shishang[i % LIUYUE_TEMPLATES.shishang.length];
+      else if (wxKe[dayWx] === wx) desc = LIUYUE_TEMPLATES.guansha[i % LIUYUE_TEMPLATES.guansha.length];
+      else if (wxKe[wx] === dayWx) desc = LIUYUE_TEMPLATES.cai[i % LIUYUE_TEMPLATES.cai.length];
       result.push({ monthName: `${y}年${m}月`, ganZhi: gz, wx, desc });
     }
     setLiuYueMonths(result);
@@ -2130,13 +2243,43 @@ export default function Bazi() {
           )}
 
           {/* 大运 */}
-          <CollapsibleCard title="大运" summary={`起运${baziData.dayun.startAge}岁 · 十年一运 · 至${baziData.dayun.steps[baziData.dayun.steps.length - 1]?.endAge ?? 100}岁`} defaultOpen>
+          <CollapsibleCard title="大运" summary={`${(() => {
+            const beforeStart = currentExactAge < baziData.dayun.startAge;
+            if (beforeStart) {
+              return `起运前 · 还有${baziData.dayun.startAge - currentExactAge}年开始第一步大运`;
+            }
+            const last = baziData.dayun.steps[baziData.dayun.steps.length - 1];
+            return `起运${baziData.dayun.startAge}岁 · 十年一运 · 至${last?.endAge ?? 100}岁`;
+          })()}`} defaultOpen>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Alert message={`起运年龄：${baziData.dayun.startAge}岁（${baziData.dayun.startDate || '日期不详'}） | 排法：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运`} type="info" showIcon style={{ marginBottom: 12 }} />
+            <Alert
+              message={`起运年龄：${baziData.dayun.startAge}岁（${baziData.dayun.startDate || '日期待推算'}） | 起运方向：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运` +
+                (currentExactAge < baziData.dayun.startAge ? ` | 当前 ${currentExactAge} 岁（未起运）` : ' | 当前 ' + currentExactAge + ' 岁')}
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+            />
             <Row gutter={[8, 8]}>
               {baziData.dayun.steps.map((step, i) => {
-                const isCurrent = baziData.dayun.startAge + i * 10 <= currentYear - baziData.birthYear
-                  && baziData.dayun.startAge + (i + 1) * 10 >= currentYear - baziData.birthYear;
+                // 起运前的小运：标灰，不视为"当前大运"
+                if (step.isPreStart) {
+                  return (
+                    <Col xs={12} sm={8} md={6} key={`pre-${i}`}>
+                      <Card size="small" style={{ borderStyle: 'dashed', borderColor: 'var(--border-light)', background: 'rgba(0,0,0,0.02)' }}>
+                        <Space direction="vertical" size={0}>
+                          <Text type="secondary" style={{ fontSize: 14 }}>起运前·小运</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>0~{step.startAge}岁</Text>
+                          <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}年以前</Text>
+                          <Tag style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-secondary)', border: 'none', marginTop: 4 }}>未起运</Tag>
+                        </Space>
+                      </Card>
+                    </Col>
+                  );
+                }
+                // 起运后的真正大运：用精确年龄判断当前所在
+                // 起运那年的实际周岁可能小于 起运年龄（虚岁），所以"在当前步"的判定用 <= endAge && > startAge
+                const realStart = i === 0 ? 0 : step.startAge;
+                const isCurrent = currentExactAge >= realStart && currentExactAge < step.endAge;
                 return (
                   <Col xs={12} sm={8} md={6} key={i}>
                     <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(194,59,43,0.06)' : undefined }}>
@@ -2163,19 +2306,27 @@ export default function Bazi() {
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             {liunianYears ? (
               <Row gutter={[8, 8]}>
-                {liunianYears.map((y) => (
-                  <Col xs={12} sm={8} md={6} key={y.year}>
-                    <Card size="small" style={{ height: '100%', borderColor: 'var(--border-light)' }}>
-                      <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                        <Space>
-                          <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
-                          <Tag style={{ background: WX_BG[y.wx], color: WX_COLORS[y.wx], border: 'none', fontSize: 12, margin: 0 }}>{y.ganZhi}</Tag>
+                {liunianYears.map((y) => {
+                  const isYearCurrent = y.year === currentYear;
+                  return (
+                    <Col xs={12} sm={8} md={6} key={y.year}>
+                      <Card size="small" style={{
+                        height: '100%',
+                        borderColor: isYearCurrent ? 'var(--wx-fire)' : 'var(--border-light)',
+                        background: isYearCurrent ? 'rgba(194,59,43,0.05)' : undefined,
+                      }}>
+                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                          <Space>
+                            <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
+                            <Tag style={{ background: WX_BG[y.wx], color: WX_COLORS[y.wx], border: 'none', fontSize: 12, margin: 0 }}>{y.ganZhi}</Tag>
+                            {isYearCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none', fontSize: 11, margin: 0 }}>本年</Tag>}
+                          </Space>
+                          <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
                         </Space>
-                        <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
-                      </Space>
-                    </Card>
-                  </Col>
-                ))}
+                      </Card>
+                    </Col>
+                  );
+                })}
               </Row>
             ) : (
               <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示今年起连续十年的流年运势。</Text>
@@ -2346,6 +2497,16 @@ export default function Bazi() {
                   <Tag key={i} color="gold" style={{ margin: '0 4px', fontSize: 13 }}>{kw}</Tag>
                 ))}
               </Paragraph>
+              {/* 本命盘指纹 */}
+              {fortuneOverview.signature && (
+                <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message={<span style={{ fontFamily: 'var(--font-display)' }}>📜 本命印鉴</span>}
+                  description={<span style={{ fontSize: 13, lineHeight: 1.8 }}>{fortuneOverview.signature}</span>}
+                />
+              )}
               <Divider orientation="left" plain style={{ fontSize: 13 }}>人生各阶段</Divider>
               {fortuneOverview.lifeStages.map((ls, i) => (
                 <Paragraph key={i} style={{ marginBottom: 8 }}>

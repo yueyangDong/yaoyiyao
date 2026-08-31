@@ -5,20 +5,29 @@ import type { PillarData } from '../pages/Bazi';
 
 export interface HePanInput {
   mine: {
+    name?: string;
     pillars: PillarData[];
+    dayGan: string;
     dayWx: string;
+    dayZhi?: string;
     zodiac: string;
     nayin: string;
     yongShen: string[];
     ziwei?: any[];
   };
   partner: {
+    name?: string;
     pillars: PillarData[];
+    dayGan: string;
     dayWx: string;
+    dayZhi?: string;
     zodiac: string;
     nayin: string;
     yongShen: string[];
     ziwei?: any[];
+    birthInfo?: string;
+    birthplace?: string[];
+    longitude?: number;
   };
 }
 
@@ -28,15 +37,32 @@ export interface HePanItem {
   desc: string;
 }
 
+export interface PartyLoveAdvice {
+  mine: string;
+  partner: string;
+}
+
 export interface HePanResult {
   totalScore: number;
   level: string;
   items: HePanItem[];
   summary: string;
+  loveAdvice?: PartyLoveAdvice;
+  partnerDisplay?: {
+    name: string;
+    birth: string;
+    dayWx: string;
+    zodiac: string;
+    nayin: string;
+  };
 }
 
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' }; // 我生
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };   // 我克
+const DZ_WX: Record<string, string> = {
+  '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
+  '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
+};
 const NAYIN_WX: Record<string, string> = {
   '海中金': '金', '剑锋金': '金', '白蜡金': '金', '沙中金': '金', '金箔金': '金', '钗钏金': '金',
   '大林木': '木', '杨柳木': '木', '松柏木': '木', '平地木': '木', '桑柘木': '木', '石榴木': '木',
@@ -52,6 +78,79 @@ const SAN_HE: Record<string, string[]> = {
   '猴': ['鼠', '龙'], '鸡': ['牛', '蛇'], '狗': ['虎', '马'], '猪': ['兔', '羊'],
 };
 const LIU_CHONG: Record<string, string> = { '鼠': '马', '马': '鼠', '牛': '羊', '羊': '牛', '虎': '猴', '猴': '虎', '兔': '鸡', '鸡': '兔', '龙': '狗', '狗': '龙', '蛇': '猪', '猪': '蛇' };
+
+// 双向爱情建议生成（基于双方各自的十神配偶星 / 夫妻宫日支）
+function genLoveAdviceForParty(
+  whoLabel: string,
+  dayGan: string,
+  dayZhi: string,
+  gender: 'male' | 'female',
+  pillars: PillarData[],
+  wx: string,
+  partnerWx: string,
+  wxScore: number
+): string {
+  // 配偶星
+  const spouseStarName = gender === 'male' ? '正财' : '正官';
+  const spouseStarAlt = gender === 'male' ? '偏财' : '七杀';
+  const spousePillars = pillars.filter(p => p.shiShen === spouseStarName);
+  const altPillars = pillars.filter(p => p.shiShen === spouseStarAlt);
+  const dayWx = wx;
+
+  // 五行关系定性
+  const mutualText =
+    WX_SHENG[dayWx] === partnerWx ? `${whoLabel}更倾向于主动付出与照顾对方，这是你的感情优势——记得别让对方"享受"得心安理得而不自知。` :
+    WX_SHENG[partnerWx] === dayWx ? `${whoLabel}更像是被照顾的一方，享受对方对你的滋养。学会表达感激，让对方知道你看到了他的付出。` :
+    dayWx === partnerWx ? `${whoLabel}与对方在性格与节奏上接近，默契十足；也因为太像，有些事反而缺少互补——刻意学一些"对方擅长而你不擅长"的事，能让关系更有层次。` :
+    WX_KE[dayWx] === partnerWx ? `${whoLabel}相对强势（你的五行克对方），相处时记得把"主导"变成"引领"，少一些命令感、多一些商量。` :
+    WX_KE[partnerWx] === dayWx ? `${whoLabel}在这段关系里更主动也更容易妥协；如果你觉得累，可以直接说出来——长久的委屈比一时的争执更伤感情。` :
+    `${whoLabel}与对方五行无直接生克关系，相处有各自空间，关系更接近"独立个体"的深度联结。`;
+
+  // 配偶星文案
+  let spouseText = '';
+  if (spousePillars.length > 0) {
+    const sp = spousePillars[0];
+    const stageLabelMap: Record<string, string> = { '年柱': '早年', '月柱': '青壮年', '日柱': '中年（婚姻主场）', '时柱': '中晚年' };
+    spouseText = `你的${spouseStarName}在${sp.pillar}（${sp.ganZhi}），对应的缘分在${stageLabelMap[sp.pillar] || sp.pillar}最活跃。`;
+  } else if (altPillars.length > 0) {
+    const alt = altPillars[0];
+    spouseText = `你命局中没有显${spouseStarName}，但${spouseStarAlt}在${alt.pillar}（${alt.ganZhi}），说明你的缘分来得不一定"按部就班"，反而可能通过意料之外的方式出现。`;
+  } else {
+    spouseText = `你命局中配偶星不显，姻缘偏晚——不是没有，而是来得更精细、更需要契机。耐心等比焦虑找更有效。`;
+  }
+
+  // 日支（夫妻宫）提示
+  const dayZhiWx = DZ_WX[dayZhi] || '';
+  const dayZhiDescMap: Record<string, string> = {
+    '子': '你骨子里喜欢聪慧、灵活、能跟你聊到一块的人。',
+    '丑': '你喜欢踏实稳重、能把日子过出滋味的人。',
+    '寅': '你喜欢有冲劲、爱闯荡、和你一起看世界的人。',
+    '卯': '你喜欢温柔体贴、不太强势但很有生活情调的人。',
+    '辰': '你喜欢有主见、有资源、能撑起一个家的人。',
+    '巳': '你喜欢聪明、反应快、懂得生活情趣的人。',
+    '午': '你喜欢热情大方、愿意带你一起嗨的人。',
+    '未': '你喜欢温厚纯良、能在背后默默支撑你的人。',
+    '申': '你喜欢机敏有主见、能和你过招的人。',
+    '酉': '你喜欢讲究美感、生活精致的人。',
+    '戌': '你喜欢忠诚可靠、能一起扛事的人。',
+    '亥': '你喜欢浪漫、有想象力的灵魂。',
+  };
+
+  // 三条金句
+  const tags: string[] = [];
+  if (wxScore >= 18) tags.push('这段缘分磁场非常合');
+  else if (wxScore >= 14) tags.push('相处自然、值得慢慢经营');
+  else if (wxScore >= 10) tags.push('互补为主，需要主动磨合');
+  else tags.push('需要更多包容和沟通');
+
+  return [
+    `${whoLabel}的爱情建议：${spouseText}`,
+    mutualText,
+    `日支（夫妻宫）${dayZhi}的白话：${dayZhiDescMap[dayZhi] || '夫妻宫与你有独特共鸣。'}`,
+    `行动建议：${tags[0]}。`,
+    `彼此记住——你爱上的不只是"对方这一刻的样子"，还有"对方未来可能成为的样子"。给对方成长的时间。`,
+  ].join('');
+}
 
 export function analyzeHePan(input: HePanInput): HePanResult {
   const { mine, partner } = input;
@@ -159,5 +258,24 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const level = totalScore >= 80 ? '天作之合' : totalScore >= 65 ? '良缘' : totalScore >= 50 ? '平常' : '需磨合';
   const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}合盘看的是趋势，最终经营在两人。`;
 
-  return { totalScore, level, items, summary };
+  // 双方各自爱情建议（差异化）
+  const mineGender: 'male' | 'female' = (mine as any).gender === 'female' || (mine as any).gender === '女' ? 'female' : 'male';
+  const partnerGender: 'male' | 'female' = (partner as any).gender === 'female' || (partner as any).gender === '女' ? 'female' : 'male';
+  const mineLabel = mine.name ? `「${mine.name}」` : '我';
+  const partnerLabel = partner.name ? `「${partner.name}」` : '对方';
+  const loveAdvice: PartyLoveAdvice = {
+    mine: genLoveAdviceForParty(mineLabel, mine.dayGan, mine.dayZhi || '', mineGender, mine.pillars, mine.dayWx, partner.dayWx, wxScore),
+    partner: genLoveAdviceForParty(partnerLabel, partner.dayGan, partner.dayZhi || '', partnerGender, partner.pillars, partner.dayWx, mine.dayWx, wxScore),
+  };
+
+  // 对方卡片展示信息
+  const partnerDisplay = {
+    name: partner.name || '对方',
+    birth: partner.birthInfo || '',
+    dayWx: partner.dayWx,
+    zodiac: partner.zodiac,
+    nayin: partner.nayin,
+  };
+
+  return { totalScore, level, items, summary, loveAdvice, partnerDisplay };
 }

@@ -46,6 +46,7 @@ export interface FortuneOverview {
   luckyDirection: string;
   luckyIndustries: string[];
   luckyZodiac: string[];
+  signature: string; // 本命盘指纹总结（让每次排盘都有独特文字感）
 }
 
 // ========== 基础映射表 ==========
@@ -1509,6 +1510,33 @@ export function analyzeFortuneOverview(
     lifeLesson += `你的日主中和平衡，人生的课题是"保持平衡"——在进取和休息之间、在付出和接受之间找到自己的节奏。`;
   }
 
+  // ===== 本命盘指纹（让每次排盘都不同） =====
+  // 1) 列出日主关联十神
+  const allShiShenSet = new Set(pillars.map(p => p.shiShen).filter(Boolean));
+  const ssList = Array.from(allShiShenSet);
+  // 2) 找出特定神煞（最有代表性的 3 个）
+  const notableShenSha = shenSha
+    .filter(s => ['天乙贵人', '文昌', '将星', '驿马', '桃花', '华盖', '禄神', '天德贵人', '月德贵人', '太极贵人'].includes(s.name))
+    .slice(0, 3)
+    .map(s => `${s.name}（${s.pillar}）`);
+  // 3) 整体阴阳分布
+  const yangCount = pillars.filter(p => TG_YIN_YANG[p.tianGan] === '阳').length;
+  const yinCount = 4 - yangCount;
+  const yinYangDesc = yangCount > yinCount ? '阳气偏盛' : yinCount > yangCount ? '阴气柔和' : '阴阳平衡';
+  // 4) 拼指纹
+  const signature =
+    `四柱干支为「${pillars.map(p => p.ganZhi).join(' · ')}」，格局${strengthLevel}；` +
+    `命中显${ssList.length}种十神（${ssList.slice(0, 4).join('、')}），${yinYangDesc}。` +
+    (notableShenSha.length > 0 ? `显著神煞：${notableShenSha.join('、')}，这些吉星/特点会在不同人生阶段被激活。` : '无特别显著的神煞，命局靠十神与五行平衡自主运行。') +
+    `整体来看，这是属于"${strengthLevel}型 + ${strongest}旺 + ${dayWx}日主"的一张盘——`;
+  const signatureHints: Record<string, string> = {
+    '身强': '有能量、有主见，适合做开拓性的事。',
+    '身弱': '敏感细腻、靠协作取胜，适合做"加法"而非"乘法"。',
+    '中和': '可塑性强，能在不同环境切换角色，是"全能选手"的底子。',
+  };
+  const fullSignature = signature + (signatureHints[strengthLevel] || '是独特的一张命盘。');
+
+
   // ===== 幸运元素 =====
   const mainYong = yongShen[0] || dayWx;
   const luckyColor = WX_COLOR[mainYong] || '各种颜色';
@@ -1542,6 +1570,7 @@ export function analyzeFortuneOverview(
     luckyDirection,
     luckyIndustries,
     luckyZodiac: Array.from(new Set(luckyZodiac)),
+    signature: fullSignature,
   };
 }
 

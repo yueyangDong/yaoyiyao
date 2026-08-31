@@ -522,6 +522,58 @@ export default function Ziwei() {
     return 'default';
   };
 
+  // 各宫位专属"易遇事/如何补强"短句（让十二宫解读有差异化目标）
+const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
+  '命宫': {
+    eventHint: '容易遇到影响"自我定位"的事件——价值观冲突、转行、人生方向选择。',
+    boostHint: '想强化命宫能量：在穿搭习惯、固定仪式、自我成长的方式上做小动作（不是大改）。',
+  },
+  '兄弟': {
+    eventHint: '容易在合作、合伙、社交圈子里有"人来人往"——有人走近、有人走远。',
+    boostHint: '想强化兄弟宫：把时间投资给真心相待的几个人，建立"少而精"的深度关系网。',
+  },
+  '夫妻': {
+    eventHint: '容易遇到关于婚姻、深度亲密关系、共同生活节奏的事件。',
+    boostHint: '想强化夫妻宫：把重心放在"沟通质量"而非"外在条件匹配"，多制造共同的体验。',
+  },
+  '子女': {
+    eventHint: '容易有小孩相关的计划（生养、教育），或与下属、门生、作品的缘分变动。',
+    boostHint: '想强化子女宫：用"耐心和引导"代替"控制"，无论对象是孩子、学生还是下属。',
+  },
+  '财帛': {
+    eventHint: '容易遇到现金流变动——加薪/降薪、投资盈亏、收入结构变化。',
+    boostHint: '想强化财帛宫：建立"自动增值系统"（理财、被动收入），别只靠单一工资。',
+  },
+  '疾厄': {
+    eventHint: '身体某些信号会被放大——是提醒也是转机，体检报告里的小异常值得注意。',
+    boostHint: '想强化疾厄宫：作息规律 + 定期体检 + 一项长期运动，是成本最低的"改命"方式。',
+  },
+  '迁移': {
+    eventHint: '容易有出行、搬迁、身份变更（出差/移居/换平台），外出是人生主场。',
+    boostHint: '想强化迁移宫：把外在形象/作品质量作为基础——出门在外你代表的是自己的品牌。',
+  },
+  '交友': {
+    eventHint: '朋友圈会显著变化——有人从陌生人变知己，也有人从熟人走远。',
+    boostHint: '想强化交友宫：帮别人之前先评估"信任成本"，合伙关系要把规则写清楚。',
+  },
+  '官禄': {
+    eventHint: '事业上容易遇到"是否全力投入"的抉择，或者角色的明显转变（升职/转岗/创业）。',
+    boostHint: '想强化官禄宫：把"专业能力"和"行业口碑"放在首位，时间会复利。',
+  },
+  '田宅': {
+    eventHint: '居住环境、房产、家庭根基相关的事件会比较多（搬家、装修、买房）。',
+    boostHint: '想强化田宅宫：在家的氛围上下功夫——一个舒服的"根据地"是你所有战斗的后勤。',
+  },
+  '福德': {
+    eventHint: '精神世界的"质量"会被反复考验——这一阵快乐、下一年焦虑是常态。',
+    boostHint: '想强化福德宫：找到一种"低成本满足感"的来源（兴趣、信仰、运动），是中年最大的护城河。',
+  },
+  '父母': {
+    eventHint: '容易有与父母、长辈、上级相关的事件，需要被看见/被认可的感受会增强。',
+    boostHint: '想强化父母宫：把"孝"变成"常回家 + 日常关心"，而不是大事上才出现。',
+  },
+};
+
   // 生成某宫的白话解读
   const getGongExplanation = (gong: any) => {
     const base = GONG_PLAIN_TEXT[gong.name] || `${gong.name}宫是命盘中的重要组成部分。`;
@@ -529,7 +581,7 @@ export default function Ziwei() {
     const minorStars = gong.minorStars || [];
     const score = getPalaceScore(gong);
 
-    // 开头：直白结论
+    // 开头：直白结论（按吉/中/凶 分池 + 哈希选则确保稳定）
     const verdicts: Record<string, string[]> = {
       '吉': [
         `整体来看，你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
@@ -552,7 +604,6 @@ export default function Ziwei() {
       ],
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
-    // 按宫位名哈希确定性选择，保证折叠重开文案稳定
     const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
     const verdict = verdictList[hash(gong.name) % verdictList.length];
 
@@ -570,24 +621,52 @@ export default function Ziwei() {
       if (STAR_PERSONALITY[mainStar.name]) {
         parts.push(STAR_PERSONALITY[mainStar.name] + '。');
       }
+
+      // 双主星同宫的解读：两个星曜的"特质融合"
+      if (majorStars.length >= 2) {
+        const second = majorStars[1];
+        const main = majorStars[0];
+        if (STAR_PERSONALITY[main.name] && STAR_PERSONALITY[second.name]) {
+          parts.push(`另外${second.name}同宫 — ${STAR_PERSONALITY[second.name]}两种特质叠加，让你在这领域多了一种"变奏"，但也意味着更复杂的需求。`);
+        }
+      }
     }
 
     if (minorStars.length > 0) {
-      const descs = minorStars.filter((s: string) => MINOR_STAR_DESC[s]).map((s: string) => MINOR_STAR_DESC[s]);
-      if (descs.length > 0) {
-        parts.push(`加上${descs.join('、')}，更添助力。`);
+      // 把辅星分为吉/煞/普通三档，差异化呈现
+      const auspiciousMinors = minorStars.filter((s: string) => JI_STARS.has(s));
+      const maleficMinors = minorStars.filter((s: string) => XIONG_STARS.has(s));
+      const normalMinors = minorStars.filter((s: string) => !JI_STARS.has(s) && !XIONG_STARS.has(s) && MINOR_STAR_DESC[s]);
+      if (auspiciousMinors.length > 0) {
+        parts.push(`吉星「${auspiciousMinors.join('、')}」同度，让你在这领域有"助力人群"——他们会在关键时刻拉你一把。`);
+      }
+      if (maleficMinors.length > 0) {
+        parts.push(`然而「${maleficMinors.join('、')}」也在提醒你——这部分的事容易有"小摩擦"，不必紧张，而是把规则前置。`);
+      }
+      if (normalMinors.length > 0) {
+        parts.push(`辅星${normalMinors.join('、')}的影响相对平稳。`);
       }
     }
 
     if (majorStars.length === 0 && minorStars.length === 0) {
-      parts.push('此宫为空宫，需借对宫星曜来参考，不代表不好——空宫的弹性更大。');
+      parts.push('此宫为空宫，无主星坐守——空宫不代表空无一物，而是弹性更大、需要借对宫星曜来考量。这意味着你在这领域有更多"自我塑造"的空间。');
     }
 
-    // 检查四化
+    // 检查四化（按星分组，丰富说法）
     for (const s of majorStars) {
       if (s.sihua && SIHUA_EFFECT[s.sihua]) {
         parts.push(SIHUA_EFFECT[s.sihua]);
       }
+    }
+
+    // 易遇事 / 如何补强（每个宫的针对性提示）
+    const tips = GONG_TIPS[gong.name];
+    if (tips) {
+      // 用主星或四化作为"个性化 hook"，让提示不那么模板化
+      const hookStar = majorStars[0]?.name || '';
+      const hookText = hookStar ? `（因${hookStar}在此）` : '';
+      parts.push(`<strong>易遇事：</strong>${tips.eventHint}${hookText}`);
+      parts.push(`<strong>如何补强：</strong>${tips.boostHint}`);
     }
 
     // 添加哲理性结语

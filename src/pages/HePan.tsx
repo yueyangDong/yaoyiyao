@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
 import {
-  Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space,
+  Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader,
 } from 'antd';
 import { Lunar, Solar } from 'lunar-typescript';
-import { useUser } from '../context/UserContext';
+import { pcaCode } from 'cn-division';
+import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
@@ -30,13 +31,18 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
     { pillar: '日柱', ganZhi: ec.getDay(), tianGan: ec.getDayGan(), diZhi: ec.getDayZhi(), cangGan: ec.getDayHideGan(), shiShen: ec.getDayShiShenGan(), shiShenZhi: (ec.getDayShiShenZhi() || []).join('/'), nayin: ec.getDayNaYin() },
     { pillar: '时柱', ganZhi: ec.getTime(), tianGan: ec.getTimeGan(), diZhi: ec.getTimeZhi(), cangGan: ec.getTimeHideGan(), shiShen: ec.getTimeShiShenGan(), shiShenZhi: (ec.getTimeShiShenZhi() || []).join('/'), nayin: ec.getTimeNaYin() },
   ];
-  const dayWx = TG_WX[ec.getDayGan()] || '';
+  const dayGan = ec.getDayGan();
+  const dayWx = TG_WX[dayGan] || '';
   const biJie = pillars.filter(p => ['比肩', '劫财'].includes(p.shiShen)).length;
   const strengthLevel = biJie >= 2 ? '身强' : '身弱';
   const yongShen = strengthLevel === '身强' ? [WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean) : [WX_SHENG[dayWx], dayWx];
   return {
-    pillars,
+    name: gender === 'male' ? '男方' : '女方',
+    gender,
+    dayGan,
     dayWx,
+    dayZhi: pillars[2].diZhi,
+    pillars,
     zodiac: lunar.getYearShengXiao(),
     nayin: ec.getDayNaYin(),
     yongShen: [...new Set(yongShen)],
@@ -62,16 +68,21 @@ export default function HePan() {
       { pillar: '日柱', ganZhi: ec.getDay(), tianGan: ec.getDayGan(), diZhi: ec.getDayZhi(), cangGan: ec.getDayHideGan(), shiShen: ec.getDayShiShenGan(), shiShenZhi: (ec.getDayShiShenZhi() || []).join('/'), nayin: ec.getDayNaYin() },
       { pillar: '时柱', ganZhi: ec.getTime(), tianGan: ec.getTimeGan(), diZhi: ec.getTimeZhi(), cangGan: ec.getTimeHideGan(), shiShen: ec.getTimeShiShenGan(), shiShenZhi: (ec.getTimeShiShenZhi() || []).join('/'), nayin: ec.getTimeNaYin() },
     ];
-    const dayWx = TG_WX[ec.getDayGan()] || '';
+    const dayGan = ec.getDayGan();
+    const dayWx = TG_WX[dayGan] || '';
     const biJie = pillars.filter(p => ['比肩', '劫财'].includes(p.shiShen)).length;
     const yongShen = biJie >= 2 ? [WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean) : [WX_SHENG[dayWx], dayWx];
     return {
-      pillars,
+      name: currentUser.name,
+      gender: currentUser.gender === '男' ? 'male' : 'female',
+      dayGan,
       dayWx,
+      dayZhi: pillars[2].diZhi,
+      pillars,
       zodiac: lunar.getYearShengXiao(),
       nayin: ec.getDayNaYin(),
       yongShen: [...new Set(yongShen)],
-      name: currentUser.name,
+      birthInfo: `${currentUser.birthYear}年${currentUser.birthMonth}月${currentUser.birthDay}日 ${currentUser.birthHour}:${String(currentUser.birthMinute || 0).padStart(2, '0')}`,
     };
   })();
 
@@ -81,7 +92,7 @@ export default function HePan() {
       return;
     }
     const values = form.getFieldsValue();
-    const { year, month, day, hour, minute, gender } = values;
+    const { year, month, day, hour, minute, gender, birthplace } = values;
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的对方出生信息');
       return;
@@ -95,17 +106,38 @@ export default function HePan() {
       return;
     }
 
+    // 真太阳时校正（对方若有出生地，则按当地经度校正）
+    let calcHour = hour;
+    let calcMinute = minute || 0;
+    const partnerLng = (birthplace && birthplace.length >= 2)
+      ? getCityLng(birthplace[0], birthplace[1], birthplace[2])
+      : 120;
+    if (partnerLng !== 120) {
+      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng);
+      calcHour = trueSolar.hour;
+      calcMinute = trueSolar.minute;
+    }
+
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
-      const partner = buildPerson(year, month, day, hour, minute || 0, gender || 'female');
+      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female');
+      // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
+      if (partnerLng !== 120) {
+        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时）`;
+      } else {
+        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}`;
+      }
+      // 把对方出生地/经度也写入（便于后续扩展）
+      (partner as any).birthplaceArr = birthplace || [];
+      (partner as any).longitude = partnerLng;
       const r = analyzeHePan({ mine, partner });
       setResult(r);
       // 保存合盘记录
       addHistory({
         userId: currentUser?.id || '',
         module: 'hepan',
-        queryParams: { year, month, day, hour, minute, gender },
+        queryParams: { year, month, day, hour, minute, gender, birthplace },
         resultSummary: `情侣合盘：${r.totalScore}分（${r.level}）`,
       });
     } catch (e: any) {
@@ -131,6 +163,15 @@ export default function HePan() {
 
       {/* 对方 */}
       <Card title="对方（手动填写）" size="small" style={{ marginBottom: 16 }}>
+        {result && (result.partnerDisplay) ? (
+          <Space_Info
+            name={result.partnerDisplay.name || '对方'}
+            birth={result.partnerDisplay.birth}
+            dayWx={result.partnerDisplay.dayWx}
+            zodiac={result.partnerDisplay.zodiac}
+            nayin={result.partnerDisplay.nayin}
+          />
+        ) : null}
         <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0 }}>
           <Row gutter={12}>
             <Col span={8}><Form.Item name="year" label="年" rules={[{ required: true }]}><InputNumber min={1900} max={new Date().getFullYear()} placeholder="1998" style={{ width: '100%' }} /></Form.Item></Col>
@@ -140,6 +181,15 @@ export default function HePan() {
             <Col span={8}><Form.Item name="minute" label="分"><InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="gender" label="性别"><Radio.Group><Radio.Button value="male">男</Radio.Button><Radio.Button value="female">女</Radio.Button></Radio.Group></Form.Item></Col>
           </Row>
+          <Form.Item name="birthplace" label="出生地（可选，用于真太阳时校正）">
+            <Cascader
+              options={pcaCode}
+              fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
+              placeholder="请选择省/市/区（不填则按北京东八区）"
+              changeOnSelect
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
           <Button type="primary" block size="large" onClick={handleCalc} loading={loading}>开始合盘</Button>
         </Form>
       </Card>
@@ -166,6 +216,20 @@ export default function HePan() {
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 4 }}>{it.desc}</Text>
             </div>
           ))}
+          {/* 双方独立爱情建议 */}
+          {result.loveAdvice && mine && (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(194,59,43,0.04)', border: '1px solid rgba(194,59,43,0.15)' }}>
+              <Text strong style={{ fontSize: 14, color: 'var(--wx-fire)', display: 'block', marginBottom: 8 }}>💕 给你们的爱情建议（分别致双方）</Text>
+              <div style={{ marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>致「{mine.name}」（我）：</Text>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 4, marginBottom: 0 }}>{result.loveAdvice.mine}</Paragraph>
+              </div>
+              <div>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>致「{result.partnerDisplay?.name || '对方'}」：</Text>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 4, marginBottom: 0 }}>{result.loveAdvice.partner}</Paragraph>
+              </div>
+            </div>
+          )}
           <Alert style={{ marginTop: 8 }} type="info" showIcon message="合盘结果仅供娱乐参考。真正的缘分，靠两个人共同经营。" />
           </Card>
           <div style={{ textAlign: 'center', marginTop: 10 }}>

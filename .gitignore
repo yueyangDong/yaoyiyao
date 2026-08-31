@@ -9,4 +9,7 @@ dist/
 project.private.config.json
 .worktrees/
 
+# 工作区记忆（本地 workspace memory，不入库）
+.workbuddy/
+
 爻一爻-debug.apk
