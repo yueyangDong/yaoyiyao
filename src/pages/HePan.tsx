@@ -9,7 +9,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan } from '../utils/hepan';
-import { isValidSolarDate, isSolarFuture } from '../utils/dateValidation';
+import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -20,9 +20,11 @@ const TG_WX: Record<string, string> = {
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
 
-/** 从四柱生成合盘输入（对方）。dayOffset：真太阳时校正跨午夜时的日历日偏移 */
-function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0) {
-  let solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
+/** 从出生信息生成合盘输入。calendar：出生日期的历法；dayOffset：真太阳时校正跨午夜时的日历日偏移 */
+function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0, calendar: 'solar' | 'lunar' = 'solar') {
+  let solar = calendar === 'lunar'
+    ? Lunar.fromYmdHms(year, month, day, hour, minute, 0).getSolar()
+    : Solar.fromYmdHms(year, month, day, hour, minute, 0);
   if (dayOffset !== 0) solar = solar.next(dayOffset);
   const lunar = solar.getLunar();
   const ec = lunar.getEightChar();
@@ -60,8 +62,11 @@ export default function HePan() {
 
   const mine = (() => {
     if (!currentUser) return null;
-    const solar = Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0);
-    const lunar = solar.getLunar();
+    // 按档案记录的历法解析（档案暂不存闰月标记，农历按平月处理）
+    const isLunarProfile = currentUser.birthCalendar === 'lunar';
+    const lunar = isLunarProfile
+      ? Lunar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0)
+      : Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0).getLunar();
     const ec = lunar.getEightChar();
     const pillars = [
       { pillar: '年柱', ganZhi: ec.getYear(), tianGan: ec.getYearGan(), diZhi: ec.getYearZhi(), cangGan: ec.getYearHideGan(), shiShen: ec.getYearShiShenGan(), shiShenZhi: (ec.getYearShiShenZhi() || []).join('/'), nayin: ec.getYearNaYin() },
@@ -83,7 +88,7 @@ export default function HePan() {
       zodiac: lunar.getYearShengXiao(),
       nayin: ec.getDayNaYin(),
       yongShen: [...new Set(yongShen)],
-      birthInfo: `${currentUser.birthYear}年${currentUser.birthMonth}月${currentUser.birthDay}日 ${currentUser.birthHour}:${String(currentUser.birthMinute || 0).padStart(2, '0')}`,
+      birthInfo: `${currentUser.birthYear}年${currentUser.birthMonth}月${currentUser.birthDay}日 ${currentUser.birthHour}:${String(currentUser.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`,
     };
   })();
 
@@ -94,15 +99,18 @@ export default function HePan() {
     }
     const values = form.getFieldsValue();
     const { year, month, day, hour, minute, gender, birthplace } = values;
+    const calendar: 'solar' | 'lunar' = values.calendar === 'lunar' ? 'lunar' : 'solar';
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的对方出生信息');
       return;
     }
-    if (!isValidSolarDate(year, month, day)) {
-      message.warning('对方日期无效，请检查');
+    if (calendar === 'solar' ? !isValidSolarDate(year, month, day) : !isValidLunarDate(year, month, day, false)) {
+      message.warning(`对方${calendar === 'lunar' ? '农历' : '公历'}日期无效，请检查`);
       return;
     }
-    if (isSolarFuture(year, month, day, hour || 0, minute || 0)) {
+    if (calendar === 'solar'
+      ? isSolarFuture(year, month, day, hour || 0, minute || 0)
+      : isLunarFuture(year, month, day, false, hour || 0, minute || 0)) {
       message.warning('对方出生时间不能晚于当前时间');
       return;
     }
@@ -124,12 +132,13 @@ export default function HePan() {
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
-      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset);
+      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar);
       // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
+      const calLabel = calendar === 'lunar' ? '（农历）' : '';
       if (partnerLng !== 120) {
-        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时${tsDayOffset !== 0 ? `，${tsDayOffset > 0 ? '次日' : '前一日'}` : ''}）`;
+        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}${calLabel}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时${tsDayOffset !== 0 ? `，${tsDayOffset > 0 ? '次日' : '前一日'}` : ''}）`;
       } else {
-        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}`;
+        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}${calLabel}`;
       }
       // 把对方出生地/经度也写入（便于后续扩展）
       (partner as any).birthplaceArr = birthplace || [];
@@ -140,7 +149,7 @@ export default function HePan() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'hepan',
-        queryParams: { year, month, day, hour, minute, gender, birthplace },
+        queryParams: { year, month, day, hour, minute, gender, birthplace, calendar },
         resultSummary: `情侣合盘：${r.totalScore}分（${r.level}）`,
       });
     } catch (e: any) {
@@ -175,8 +184,16 @@ export default function HePan() {
             nayin={result.partnerDisplay.nayin}
           />
         ) : null}
-        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0 }}>
+        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar' }}>
+          <Alert
+            message="默认按公历（阳历）解析生日"
+            description="请确认对方生日的历法：如是农历生日，请把下方「历法」切换为农历后再填写，否则排盘会出错。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+          />
           <Row gutter={12}>
+            <Col span={8}><Form.Item name="calendar" label="历法"><Radio.Group><Radio.Button value="solar">公历</Radio.Button><Radio.Button value="lunar">农历</Radio.Button></Radio.Group></Form.Item></Col>
             <Col span={8}><Form.Item name="year" label="年" rules={[{ required: true }]}><InputNumber min={1900} max={new Date().getFullYear()} placeholder="1998" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="month" label="月" rules={[{ required: true }]}><InputNumber min={1} max={12} placeholder="6" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="day" label="日" rules={[{ required: true }]}><InputNumber min={1} max={31} placeholder="15" style={{ width: '100%' }} /></Form.Item></Col>
