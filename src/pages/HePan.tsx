@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import {
-  Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader,
+  Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader, Checkbox,
 } from 'antd';
 import { Lunar, Solar } from 'lunar-typescript';
 import { pcaCode } from 'cn-division';
@@ -20,10 +20,10 @@ const TG_WX: Record<string, string> = {
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
 
-/** 从出生信息生成合盘输入。calendar：出生日期的历法；dayOffset：真太阳时校正跨午夜时的日历日偏移 */
-function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0, calendar: 'solar' | 'lunar' = 'solar') {
+/** 从出生信息生成合盘输入。calendar：出生日期的历法；isLeap：农历闰月；dayOffset：真太阳时校正跨午夜时的日历日偏移 */
+function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0, calendar: 'solar' | 'lunar' = 'solar', isLeap = false) {
   let solar = calendar === 'lunar'
-    ? Lunar.fromYmdHms(year, month, day, hour, minute, 0).getSolar()
+    ? Lunar.fromYmdHms(year, isLeap ? -month : month, day, hour, minute, 0).getSolar()
     : Solar.fromYmdHms(year, month, day, hour, minute, 0);
   if (dayOffset !== 0) solar = solar.next(dayOffset);
   const lunar = solar.getLunar();
@@ -100,22 +100,24 @@ export default function HePan() {
     const values = form.getFieldsValue();
     const { year, month, day, hour, minute, gender, birthplace } = values;
     const calendar: 'solar' | 'lunar' = values.calendar === 'lunar' ? 'lunar' : 'solar';
+    const isLeap = calendar === 'lunar' && values.isLeap === true;
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的对方出生信息');
       return;
     }
-    if (calendar === 'solar' ? !isValidSolarDate(year, month, day) : !isValidLunarDate(year, month, day, false)) {
-      message.warning(`对方${calendar === 'lunar' ? '农历' : '公历'}日期无效，请检查`);
+    if (calendar === 'solar' ? !isValidSolarDate(year, month, day) : !isValidLunarDate(year, month, day, isLeap)) {
+      message.warning(`对方${calendar === 'lunar' ? '农历' : '公历'}日期无效，请检查${calendar === 'lunar' && !isLeap ? '（如为闰月请勾选「闰月」）' : ''}`);
       return;
     }
     if (calendar === 'solar'
       ? isSolarFuture(year, month, day, hour || 0, minute || 0)
-      : isLunarFuture(year, month, day, false, hour || 0, minute || 0)) {
+      : isLunarFuture(year, month, day, isLeap, hour || 0, minute || 0)) {
       message.warning('对方出生时间不能晚于当前时间');
       return;
     }
 
     // 真太阳时校正（对方若有出生地，则按当地经度 + 均时差校正；跨午夜时同步平移日期）
+    // 均时差需要公历日期：农历输入先换算为对应公历日
     let calcHour = hour;
     let calcMinute = minute || 0;
     let tsDayOffset = 0;
@@ -123,7 +125,14 @@ export default function HePan() {
       ? getCityLng(birthplace[0], birthplace[1], birthplace[2])
       : 120;
     if (partnerLng !== 120) {
-      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng, new Date(year, month - 1, day));
+      let eotDate: Date;
+      if (calendar === 'lunar') {
+        const s = Lunar.fromYmdHms(year, isLeap ? -month : month, day, 12, 0, 0).getSolar();
+        eotDate = new Date(s.getYear(), s.getMonth() - 1, s.getDay());
+      } else {
+        eotDate = new Date(year, month - 1, day);
+      }
+      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng, eotDate);
       calcHour = trueSolar.hour;
       calcMinute = trueSolar.minute;
       tsDayOffset = trueSolar.dayOffset || 0;
@@ -132,9 +141,9 @@ export default function HePan() {
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
-      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar);
+      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar, isLeap);
       // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
-      const calLabel = calendar === 'lunar' ? '（农历）' : '';
+      const calLabel = calendar === 'lunar' ? `（农历${isLeap ? '闰' : ''}）` : '';
       if (partnerLng !== 120) {
         partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}${calLabel}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时${tsDayOffset !== 0 ? `，${tsDayOffset > 0 ? '次日' : '前一日'}` : ''}）`;
       } else {
@@ -149,7 +158,7 @@ export default function HePan() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'hepan',
-        queryParams: { year, month, day, hour, minute, gender, birthplace, calendar },
+        queryParams: { year, month, day, hour, minute, gender, birthplace, calendar, isLeap },
         resultSummary: `情侣合盘：${r.totalScore}分（${r.level}）`,
       });
     } catch (e: any) {
@@ -187,13 +196,18 @@ export default function HePan() {
         <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar' }}>
           <Alert
             message="默认按公历（阳历）解析生日"
-            description="请确认对方生日的历法：如是农历生日，请把下方「历法」切换为农历后再填写，否则排盘会出错。"
+            description="请确认对方生日的历法：如是农历生日，请把下方「历法」切换为农历后再填写（闰月出生请勾选「闰月」），否则排盘会出错。"
             type="info"
             showIcon
             style={{ marginBottom: 12 }}
           />
           <Row gutter={12}>
             <Col span={8}><Form.Item name="calendar" label="历法"><Radio.Group><Radio.Button value="solar">公历</Radio.Button><Radio.Button value="lunar">农历</Radio.Button></Radio.Group></Form.Item></Col>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.calendar !== cur.calendar}>
+              {({ getFieldValue }) => getFieldValue('calendar') === 'lunar' ? (
+                <Col span={8}><Form.Item name="isLeap" valuePropName="checked" label=" "><Checkbox>闰月</Checkbox></Form.Item></Col>
+              ) : null}
+            </Form.Item>
             <Col span={8}><Form.Item name="year" label="年" rules={[{ required: true }]}><InputNumber min={1900} max={new Date().getFullYear()} placeholder="1998" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="month" label="月" rules={[{ required: true }]}><InputNumber min={1} max={12} placeholder="6" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="day" label="日" rules={[{ required: true }]}><InputNumber min={1} max={31} placeholder="15" style={{ width: '100%' }} /></Form.Item></Col>
