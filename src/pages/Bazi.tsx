@@ -1162,21 +1162,25 @@ export default function Bazi() {
       let calcHour = hour;
       let calcMinute = minute || 0;
       let lng = 120;
+      let tsDayOffset = 0; // 真太阳时校正跨午夜时的日历日偏移（必须同步平移出生日期，否则日柱错一天）
       if (birthplace && birthplace.length >= 2) {
         lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
       }
       if (lng !== 120) {
-        const trueSolar = getTrueSolarHour(hour, minute || 0, lng);
+        const trueSolar = getTrueSolarHour(hour, minute || 0, lng, new Date(year, month - 1, day));
         calcHour = trueSolar.hour;
         calcMinute = trueSolar.minute;
+        tsDayOffset = trueSolar.dayOffset || 0;
       }
 
       let lunar: Lunar;
       if (inputMode === 'solar') {
-        const solar = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
+        let solar = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
+        if (tsDayOffset !== 0) solar = solar.next(tsDayOffset);
         lunar = solar.getLunar();
       } else {
         lunar = Lunar.fromYmdHms(year, leapMonth === month ? -month : month, day, calcHour, calcMinute, 0);
+        if (tsDayOffset !== 0) lunar = lunar.getSolar().next(tsDayOffset).getLunar();
       }
 
       const eightChar = lunar.getEightChar();

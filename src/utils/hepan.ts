@@ -1,6 +1,15 @@
 // ========== 情侣合盘 ==========
 // 八字合婚（日主五行/地支关系/纳音/生肖/喜用神）+ 紫微合盘（命宫主星/四化）
 // desc 全部由具体数据生成，避免固定模板
+//
+// 【对称合盘 v2（2026-09-02）】
+// 此前"日主五行/纳音/喜用互补"三项以 mine 为基准单向打分，
+// 导致"男+女"与"女+男"输入顺序不同 → 总分不同（最多差 4~6 分，可能跨档）。
+// v2 修复原则：
+//   1. 互动层显式计算两个方向（A→B 与 B→A），分项得分 = 双向均分（对称聚合）；
+//   2. 方向性差异不抹平，而是输出到 result.perspectives（"我视角/对方视角"双维度），
+//      交换输入后 mine/partner 内容随"人"走、分数不变；
+//   3. 交换不变性由单元测试保证（hepan.test.ts 交换输入用例）。
 import type { PillarData } from '../pages/Bazi';
 
 export interface HePanInput {
@@ -48,6 +57,8 @@ export interface HePanResult {
   items: HePanItem[];
   summary: string;
   loveAdvice?: PartyLoveAdvice;
+  /** 双向视角明细：分数对称（交换输入不变），文字视角随人走 */
+  perspectives?: { mine: string; partner: string };
   partnerDisplay?: {
     name: string;
     birth: string;
@@ -78,6 +89,37 @@ const SAN_HE: Record<string, string[]> = {
   '猴': ['鼠', '龙'], '鸡': ['牛', '蛇'], '狗': ['虎', '马'], '猪': ['兔', '羊'],
 };
 const LIU_CHONG: Record<string, string> = { '鼠': '马', '马': '鼠', '牛': '羊', '羊': '牛', '虎': '猴', '猴': '虎', '兔': '鸡', '鸡': '兔', '龙': '狗', '狗': '龙', '蛇': '猪', '猪': '蛇' };
+
+// ========== 双向对称打分辅助（v2） ==========
+// 单向关系分值：我生对方 20 / 对方生我 18 / 比和 14 / 我克对方 8 / 对方克我 6 / 无直接生克 12
+// 分项得分 = round((A→B + B→A) / 2)，构造上对称：交换双方输入分项分不变。
+// （五行相异的两两组合必然是一对方向互补关系：一方"生"另一方必"被生"，"克"对"被克"。）
+function wxDirScore(from: string, to: string): number {
+  if (WX_SHENG[from] === to) return 20; // from 生 to
+  if (WX_SHENG[to] === from) return 18; // from 受 to 生
+  if (from === to) return 14;           // 比和
+  if (WX_KE[from] === to) return 8;     // from 克 to
+  if (WX_KE[to] === from) return 6;     // from 受 to 克
+  return 12;
+}
+function nyDirScore(from: string, to: string): number {
+  if (!from || !to) return 12;
+  if (WX_SHENG[from] === to) return 20;
+  if (WX_SHENG[to] === from) return 18;
+  if (from === to) return 14;
+  if (WX_KE[from] === to) return 8;
+  if (WX_KE[to] === from) return 6;
+  return 12;
+}
+// 单向五行关系的一句话描述（供 desc 与 perspectives 复用，主语可换）
+function wxRelText(fromWx: string, toWx: string, fromLabel: string, toLabel: string): string {
+  if (WX_SHENG[fromWx] === toWx) return `${fromLabel}之${fromWx}生${toLabel}之${toWx}，${fromLabel}更愿意主动付出与滋养`;
+  if (WX_SHENG[toWx] === fromWx) return `${toLabel}之${toWx}生${fromLabel}之${fromWx}，${fromLabel}更被照顾与滋养`;
+  if (WX_KE[fromWx] === toWx) return `${fromLabel}之${fromWx}克${toLabel}之${toWx}，${fromLabel}相对占主导`;
+  if (WX_KE[toWx] === fromWx) return `${toLabel}之${toWx}克${fromLabel}之${fromWx}，${fromLabel}需要更多表达自己`;
+  if (fromWx === toWx) return `${fromLabel}与${toLabel}日主同为${fromWx}，比和相处、默契十足`;
+  return `${fromLabel}与${toLabel}五行无直接生克，相处有各自空间`;
+}
 
 // 双向爱情建议生成（基于双方各自的十神配偶星 / 夫妻宫日支）
 function genLoveAdviceForParty(
@@ -156,21 +198,25 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const { mine, partner } = input;
   const items: HePanItem[] = [];
 
-  // 1) 日主五行（20 分）
+  // 1) 日主五行（20 分）——双向计算取均分（对称）
   const mWx = mine.dayWx, pWx = partner.dayWx;
-  let wxScore: number; let wxDesc: string;
+  const wxAB = wxDirScore(mWx, pWx); // 我 → 对方
+  const wxBA = wxDirScore(pWx, mWx); // 对方 → 我
+  const wxScore = Math.round((wxAB + wxBA) / 2);
+  let wxDesc: string;
   if (WX_SHENG[mWx] === pWx) {
-    wxScore = 20; wxDesc = `你的日主${mWx}生对方${pWx}，你更愿意付出与滋养对方，相处自然顺遂。`;
+    wxDesc = `你的日主${mWx}生对方${pWx}：你更愿意付出与滋养对方；反向看对方处于受生位，能安心接收你的好。单向流动明显，注意别让付出失衡。`;
   } else if (WX_SHENG[pWx] === mWx) {
-    wxScore = 18; wxDesc = `对方日主${pWx}生你的${mWx}，对方更照顾你，你能感受到被滋养。`;
+    wxDesc = `对方日主${pWx}生你的${mWx}：对方更照顾你，你能感受到被滋养；记得及时回应，让流动双向。`;
   } else if (mWx === pWx) {
-    wxScore = 14; wxDesc = `两人日主同为${mWx}，同气比和，像朋友一样有默契，但少了互补。`;
+    wxDesc = `两人日主同为${mWx}，同气比和，像朋友一样有默契，但少了互补。`;
   } else if (WX_KE[mWx] === pWx) {
-    wxScore = 8; wxDesc = `你的日主${mWx}克对方${pWx}，你较强势，需多包容对方，否则易有摩擦。`;
+    wxDesc = `你的日主${mWx}克对方${pWx}：你较强势，对方易感压抑；相处时把"主导"变成"引领"，多商量、少命令。`;
   } else if (WX_KE[pWx] === mWx) {
-    wxScore = 6; wxDesc = `对方日主${pWx}克你的${mWx}，相处中对方占上风，你需要更多表达自己。`;
+    wxDesc = `对方日主${pWx}克你的${mWx}：相处中对方占上风，你需要更多表达自己，也别默默累积委屈。`;
   } else {
-    wxScore = 12; wxDesc = `两人日主${mWx}与${pWx}无直接生克，关系平淡但有各自空间。`;
+    // 防御：五行相异的组合必有生克关系，正常不应到达此分支
+    wxDesc = `两人日主${mWx}与${pWx}无直接生克，关系平淡但有各自空间。`;
   }
   items.push({ title: '日主五行', score: wxScore, desc: wxDesc });
 
@@ -191,19 +237,24 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const dzDesc = `双方地支合${heCount}处、冲刑${chongCount}处。${heCount > chongCount ? '合的缘分多于冲撞，彼此能互相成就。' : chongCount > 0 ? '冲撞多于相合，需要更多磨合与体谅。' : '地支关系平稳，无大合大冲。'}`;
   items.push({ title: '地支合冲', score: dzScore, desc: dzDesc });
 
-  // 3) 纳音（20 分）
+  // 3) 纳音（20 分）——双向计算取均分（对称）
   const mNy = NAYIN_WX[mine.nayin] || '', pNy = NAYIN_WX[partner.nayin] || '';
-  let nyScore: number; let nyDesc: string;
+  const nyAB = nyDirScore(mNy, pNy); // 我 → 对方
+  const nyBA = nyDirScore(pNy, mNy); // 对方 → 我
+  const nyScore = Math.round((nyAB + nyBA) / 2);
+  let nyDesc: string;
   if (mNy && pNy && WX_SHENG[mNy] === pNy) {
-    nyScore = 20; nyDesc = `你的纳音${mine.nayin}（${mNy}）生对方${partner.nayin}（${pNy}），年命相生，家宅安宁。`;
+    nyDesc = `你的纳音${mine.nayin}（${mNy}）生对方${partner.nayin}（${pNy}）：你的年命旺对方，家宅安宁；年命相生是传统合婚的吉兆。`;
   } else if (mNy && pNy && WX_SHENG[pNy] === mNy) {
-    nyScore = 18; nyDesc = `对方纳音${partner.nayin}（${pNy}）生你的${mine.nayin}（${mNy}），对方旺你，得助力。`;
+    nyDesc = `对方纳音${partner.nayin}（${pNy}）生你的${mine.nayin}（${mNy}）：对方年命旺你，得助力；领受之余也多体谅对方的付出。`;
   } else if (mNy && mNy === pNy) {
-    nyScore = 14; nyDesc = `双方纳音同属${mine.nayin}，命韵相似，彼此懂对方的节奏。`;
+    nyDesc = `双方纳音同属${mine.nayin}，命韵相似，彼此懂对方的节奏。`;
   } else if (mNy && pNy && WX_KE[mNy] === pNy) {
-    nyScore = 8; nyDesc = `你的纳音${mine.nayin}克对方${partner.nayin}，年命相克，宜多相让。`;
+    nyDesc = `你的纳音${mine.nayin}（${mNy}）克对方${partner.nayin}（${pNy}）：你年命占强势位，宜多相让。`;
+  } else if (mNy && pNy && WX_KE[pNy] === mNy) {
+    nyDesc = `对方纳音${partner.nayin}（${pNy}）克你的${mine.nayin}（${mNy}）：对方年命占强势位，你需要更多话语权上的平衡。`;
   } else {
-    nyScore = 12; nyDesc = `纳音${mine.nayin}与${partner.nayin}无直接生克，平顺无大碍。`;
+    nyDesc = `纳音${mine.nayin}与${partner.nayin}无直接生克，平顺无大碍。`;
   }
   items.push({ title: '纳音年命', score: nyScore, desc: nyDesc });
 
@@ -220,16 +271,16 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   }
   items.push({ title: '生肖配对', score: sxScore, desc: sxDesc });
 
-  // 5) 喜用神互补（20 分）
-  const partnerHelps = mine.yongShen.includes(partner.dayWx);
-  const mineHelps = partner.yongShen.includes(mine.dayWx);
+  // 5) 喜用神互补（20 分）——按"受益方向"对称打分
+  const partnerHelps = mine.yongShen.includes(partner.dayWx); // 对方补我（我受益）
+  const mineHelps = partner.yongShen.includes(mine.dayWx);    // 我补对方（对方受益）
   let ysScore: number; let ysDesc: string;
   if (partnerHelps && mineHelps) {
     ysScore = 20; ysDesc = `互为喜用：对方日主${partner.dayWx}补你的用神，你的${mine.dayWx}也补对方，彼此是对方的贵人。`;
   } else if (partnerHelps) {
-    ysScore = 16; ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起运势有助益。`;
+    ysScore = 15; ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起你的运势有助益（你更受益）；而你的${mine.dayWx}不在对方喜用之列，记得在情感之外也给对方实际的支持。`;
   } else if (mineHelps) {
-    ysScore = 14; ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方。`;
+    ysScore = 15; ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方（对方更受益）；但对方${partner.dayWx}非你喜用，别把"我对他好"当成关系好的全部保证。`;
   } else {
     ysScore = 6; ysDesc = `双方日主都不在对方喜用神之列，互补性一般，需靠后天经营。`;
   }
@@ -277,5 +328,14 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     nayin: partner.nayin,
   };
 
-  return { totalScore, level, items, summary, loveAdvice, partnerDisplay };
+  // 双向视角明细（v2）：分数已对称，此处的"方向性"作为独立信息输出。
+  // 交换输入后 mine/partner 内容随"人"走（不是随输入位置走），总分解读不变。
+  const mLabel = mine.name ? `「${mine.name}」` : '我';
+  const pLabel = partner.name ? `「${partner.name}」` : '对方';
+  const perspectives = {
+    mine: `${mLabel}视角：${wxRelText(mWx, pWx, mLabel, pLabel)}；${partnerHelps ? `对方日主${pWx}正补${mLabel}的喜用神，${mLabel}在这段关系里运势更受益` : `对方日主${pWx}不在${mLabel}喜用之列，${mLabel}的获益更依赖日常经营`}。`,
+    partner: `${pLabel}视角：${wxRelText(pWx, mWx, pLabel, mLabel)}；${mineHelps ? `对方日主${mWx}正补${pLabel}的喜用神，${pLabel}在这段关系里运势更受益` : `对方日主${mWx}不在${pLabel}喜用之列，${pLabel}的获益更依赖日常经营`}。`,
+  };
+
+  return { totalScore, level, items, summary, loveAdvice, partnerDisplay, perspectives };
 }

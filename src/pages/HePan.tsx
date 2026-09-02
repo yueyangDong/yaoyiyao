@@ -20,9 +20,10 @@ const TG_WX: Record<string, string> = {
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
 
-/** 从四柱生成合盘输入（对方） */
-function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string) {
-  const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
+/** 从四柱生成合盘输入（对方）。dayOffset：真太阳时校正跨午夜时的日历日偏移 */
+function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0) {
+  let solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
+  if (dayOffset !== 0) solar = solar.next(dayOffset);
   const lunar = solar.getLunar();
   const ec = lunar.getEightChar();
   const pillars = [
@@ -106,25 +107,27 @@ export default function HePan() {
       return;
     }
 
-    // 真太阳时校正（对方若有出生地，则按当地经度校正）
+    // 真太阳时校正（对方若有出生地，则按当地经度 + 均时差校正；跨午夜时同步平移日期）
     let calcHour = hour;
     let calcMinute = minute || 0;
+    let tsDayOffset = 0;
     const partnerLng = (birthplace && birthplace.length >= 2)
       ? getCityLng(birthplace[0], birthplace[1], birthplace[2])
       : 120;
     if (partnerLng !== 120) {
-      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng);
+      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng, new Date(year, month - 1, day));
       calcHour = trueSolar.hour;
       calcMinute = trueSolar.minute;
+      tsDayOffset = trueSolar.dayOffset || 0;
     }
 
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
-      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female');
+      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset);
       // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
       if (partnerLng !== 120) {
-        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时）`;
+        partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时${tsDayOffset !== 0 ? `，${tsDayOffset > 0 ? '次日' : '前一日'}` : ''}）`;
       } else {
         partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}`;
       }
@@ -216,6 +219,18 @@ export default function HePan() {
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 4 }}>{it.desc}</Text>
             </div>
           ))}
+          {/* 双向视角（对称合盘 v2：分数与输入顺序无关，视角文字分属两人） */}
+          {result.perspectives && (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
+              <Text strong style={{ fontSize: 14, color: '#2563eb', display: 'block', marginBottom: 8 }}>🔀 双向视角（同一份缘分，两种感受）</Text>
+              <div style={{ marginBottom: 8 }}>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 4, marginBottom: 0 }}>{result.perspectives.mine}</Paragraph>
+              </div>
+              <div>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 4, marginBottom: 0 }}>{result.perspectives.partner}</Paragraph>
+              </div>
+            </div>
+          )}
           {/* 双方独立爱情建议 */}
           {result.loveAdvice && mine && (
             <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(194,59,43,0.04)', border: '1px solid rgba(194,59,43,0.15)' }}>

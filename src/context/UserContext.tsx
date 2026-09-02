@@ -453,10 +453,24 @@ export function getCityLng(province: string, city: string, district?: string): n
   return 120;
 }
 
-export function getTrueSolarHour(hour: number, minute: number, lng: number): { hour: number; minute: number } {
+/**
+ * 真太阳时校正：平太阳时（标准时 + 经度差 4 分钟/度）+ 均时差（Equation of Time，±16 分钟）。
+ * 返回 dayOffset：校正跨越午夜时日历日的偏移（-1/0/1），调用方必须同步平移出生日期，
+ * 否则日柱会排错一天（如乌鲁木齐 00:10 → 真太阳时为前一日 22:00 左右）。
+ * @param date 公历出生日期（用于计算均时差；不传则忽略均时差，仅做经度校正）
+ */
+export function getTrueSolarHour(hour: number, minute: number, lng: number, date?: Date): { hour: number; minute: number; dayOffset: number } {
   const offsetMinutes = Math.round((lng - 120) * 4);
-  let totalMinutes = hour * 60 + minute + offsetMinutes;
-  if (totalMinutes < 0) totalMinutes += 24 * 60;
-  if (totalMinutes >= 24 * 60) totalMinutes -= 24 * 60;
-  return { hour: Math.floor(totalMinutes / 60), minute: totalMinutes % 60 };
+  // 均时差近似式（NOAA）：B = 2π(n-81)/364，EoT = 9.87·sin2B − 7.53·cosB − 1.5·sinB
+  let eot = 0;
+  if (date) {
+    const start = Date.UTC(date.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - start) / 86400000) + 1;
+    const B = (2 * Math.PI * (dayOfYear - 81)) / 364;
+    eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+  }
+  const total = hour * 60 + minute + offsetMinutes + eot;
+  const dayOffset = Math.floor(total / (24 * 60));
+  const within = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+  return { hour: Math.floor(within / 60), minute: Math.round(within % 60), dayOffset };
 }

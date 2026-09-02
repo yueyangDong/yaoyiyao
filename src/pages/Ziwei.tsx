@@ -350,17 +350,19 @@ export default function Ziwei() {
     try {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
-      // 真太阳时校正（仿八字页 handleCalc）
+      // 真太阳时校正（仿八字页 handleCalc；跨午夜时同步平移日期）
       let calcHour = hour;
       let calcMinute = minute || 0;
       let lng = 120;
+      let tsDayOffset = 0;
       if (birthplace && birthplace.length >= 2) {
         lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
       }
       if (lng !== 120) {
-        const trueSolar = getTrueSolarHour(hour, minute || 0, lng);
+        const trueSolar = getTrueSolarHour(hour, minute || 0, lng, new Date(year, month - 1, day));
         calcHour = trueSolar.hour;
         calcMinute = trueSolar.minute;
+        tsDayOffset = trueSolar.dayOffset || 0;
       }
 
       // 用 lunar-typescript 获取公历/农历对照
@@ -370,15 +372,20 @@ export default function Ziwei() {
       let lunisolarDateStr: string;
 
       if (calendarType === 'solar') {
-        sol = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
+        let sol2 = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
+        if (tsDayOffset !== 0) sol2 = sol2.next(tsDayOffset);
+        sol = sol2;
         lu = sol.getLunar();
-        solarDateStr = `${year}年${month}月${day}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
+        solarDateStr = `${sol.getYear()}年${sol.getMonth()}月${sol.getDay()}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
         lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
       } else {
         // 农历输入
         const m = isLeapMonth ? -(month) : month;
         lu = Lunar.fromYmdHms(year, m, day, calcHour, calcMinute, 0);
-        sol = lu.getSolar();
+        let sol2 = lu.getSolar();
+        if (tsDayOffset !== 0) sol2 = sol2.next(tsDayOffset);
+        sol = sol2;
+        lu = sol.getLunar();
         solarDateStr = `${sol.getYear()}年${sol.getMonth()}月${sol.getDay()}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
         lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
       }
@@ -387,20 +394,29 @@ export default function Ziwei() {
       const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay(), calcHour, calcMinute, 0);
 
       // 使用 @ziweijs/core 排盘
+      // 注：真太阳时已在上方完成校正（含均时差与跨日平移），此处不再传 longitude/useTrueSolarTime，
+      // 避免 @ziweijs/core 内部二次校正。
       const result = ziwei.bySolar({
         name: '',
         gender: gender || 'male',
         date: solarDate,
         language: 'zh-CN',
-        longitude: lng,
       } as any);
+
+      // 身宫推算（@ziweijs/core 0.3.0 的宫位对象没有 isShenGong 字段，原写法永远找不到身宫）：
+      // 安星诀——寅宫起正月顺数至生月得"生月宫"，再从生月宫起子时顺数至生时，即身宫。
+      const ZHI_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+      const lunarMonthAbs = Math.abs(lu.getMonth());
+      const hourZhiIdx = ZHI_ORDER.indexOf(lu.getTimeZhi());
+      const monthPalaceIdx = (2 + lunarMonthAbs - 1) % 12;
+      const shenGongBranch = ZHI_ORDER[(monthPalaceIdx + hourZhiIdx) % 12];
 
       const gongData = result.palaces.map((p: any) => ({
         name: p.name,
         stem: p.stem,
         branch: p.branch,
         isLaiYin: p.isLaiYin,
-        isShenGong: p.isShenGong,
+        isShenGong: p.branch === shenGongBranch,
         majorStars: (p.majorStars || []).map((s: any) => ({
           name: s.name,
           type: s.type,
