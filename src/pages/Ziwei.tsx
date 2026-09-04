@@ -420,7 +420,8 @@ export default function Ziwei() {
         majorStars: (p.majorStars || []).map((s: any) => ({
           name: s.name,
           type: s.type,
-          sihua: s.ST?.CF?.name || null,
+          // 生年四化（YT）优先，其次自化（ST.CF/CP）——旧写法只取自化导致生年四化全部丢失
+          sihua: s.YT?.name || s.ST?.CF?.name || s.ST?.CP?.name || null,
         })),
         minorStars: (p.minorStars || []).map((s: any) => s.name),
       }));

@@ -64,11 +64,31 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     tryGe('日月并明格', mingStars.includes('太阳') && mingStars.includes('太阴'));
     tryGe('廉贞贪狼格', mingStars.includes('廉贞') && mingStars.includes('贪狼'));
   }
-  // 府相朝垣：天府与天相分居两宫
+  // 府相朝垣：天府与天相分居命宫三方四正之内（通常为财帛宫/官禄宫），且不同宫
   {
-    const fuGong = gongData.find(g => (g.majorStars || []).some((s: any) => s.name === '天府'));
-    const xiangGong = gongData.find(g => (g.majorStars || []).some((s: any) => s.name === '天相'));
+    const sifangNames = SIFANG;
+    const inSifang = gongData.filter(g => sifangNames.includes(g.name));
+    const fuGong = inSifang.find(g => (g.majorStars || []).some((s: any) => s.name === '天府'));
+    const xiangGong = inSifang.find(g => (g.majorStars || []).some((s: any) => s.name === '天相'));
     tryGe('府相朝垣格', !!fuGong && !!xiangGong && fuGong.name !== xiangGong.name);
+  }
+
+  // ---- 突发吉格：火贪 / 铃贪（三方四正同一宫内贪狼与火星或铃星同度，不需吉星会照） ----
+  for (const gName of SIFANG) {
+    const g = gongData.find(x => x.name === gName);
+    if (!g) continue;
+    const names = [
+      ...(g.majorStars || []).map((s: any) => s.name),
+      ...(g.minorStars || []).map((s: any) => (typeof s === 'string' ? s : s?.name)),
+    ];
+    if (names.includes('贪狼') && names.includes('火星')) {
+      geNames.push('火贪格');
+      reasons.push(`火贪格：${g.name}贪狼与火星同度，火炼贪狼主突发横发，机遇来得快`);
+    }
+    if (names.includes('贪狼') && names.includes('铃星')) {
+      geNames.push('铃贪格');
+      reasons.push(`铃贪格：${g.name}贪狼与铃星同度，主意外之财与突变机遇`);
+    }
   }
 
   // ---- 杂耀格（命宫夹宫：前后两宫） ----
