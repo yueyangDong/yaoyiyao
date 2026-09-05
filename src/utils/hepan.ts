@@ -11,6 +11,45 @@
 //      交换输入后 mine/partner 内容随"人"走、分数不变；
 //   3. 交换不变性由单元测试保证（hepan.test.ts 交换输入用例）。
 import type { PillarData } from '../pages/Bazi';
+import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
+
+// ========== 紫微合盘：星性分组与经典配对 ==========
+// 中州派星性三分：领导贵气型 / 智谋支援型 / 开创行动型
+const ZW_GROUP_NAMES = ['领导贵气型', '智谋支援型', '开创行动型'];
+const ZW_GROUP_LEAD = ['紫微', '天府', '天相', '太阳', '天梁'];
+const ZW_GROUP_SUPPORT = ['天机', '太阴', '天同', '巨门'];
+
+function zwGroupOf(star: string): number {
+  if (ZW_GROUP_LEAD.includes(star)) return 0;
+  if (ZW_GROUP_SUPPORT.includes(star)) return 1;
+  return 2;
+}
+
+/** 经典互补配对（钥匙按星名排序归一） */
+const ZW_IDEAL_PAIRS: Record<string, number> = {
+  '天府+紫微': 10, '太阳+太阴': 10, '天机+天梁': 9, '天同+太阴': 9,
+  '天相+武曲': 9, '天同+天梁': 9, '天相+紫微': 8, '天府+廉贞': 8,
+};
+
+function zwPairKey(a: string, b: string): string {
+  return [a, b].sort().join('+');
+}
+
+function zwPalaceStars(chart: any[], palace: string): string[] {
+  const g = (chart || []).find((x: any) => x?.name === palace);
+  return ((g?.majorStars) || []).map((s: any) => (typeof s === 'string' ? s : s?.name)).filter(Boolean);
+}
+
+/** 单向：A 的生年干四化对 B 命宫主星的引动（禄>科>权>忌，无引动为中平） */
+function sihuaDirOnMing(fromStem: string, toMingStars: string[], fromLabel: string, toLabel: string): { score: number; text: string } {
+  const t = STEM_SIHUA_TABLE[fromStem];
+  if (!t || toMingStars.length === 0) return { score: 5, text: '' };
+  if (toMingStars.includes(t.lu)) return { score: 10, text: `${fromLabel}的${fromStem}干${t.lu}化禄正坐${toLabel}命宫——${fromLabel}的存在本身就能旺${toLabel}，是天生的助力缘` };
+  if (toMingStars.includes(t.ke)) return { score: 8, text: `${fromLabel}的${fromStem}干${t.ke}化科坐${toLabel}命宫——${fromLabel}能给${toLabel}带来名声、贵人与体面` };
+  if (toMingStars.includes(t.quan)) return { score: 7, text: `${fromLabel}的${fromStem}干${t.quan}化权坐${toLabel}命宫——${fromLabel}能推动${toLabel}成长，但要注意别变成施压` };
+  if (toMingStars.includes(t.ji)) return { score: 3, text: `${fromLabel}的${fromStem}干${t.ji}化忌坐${toLabel}命宫——${fromLabel}的执念容易变成${toLabel}的压力，相处宜多留空间` };
+  return { score: 5, text: `${fromLabel}的生年四化未直接引动${toLabel}命星，这一方向的缘分靠日常经营` };
+}
 
 export interface HePanInput {
   mine: {
@@ -286,23 +325,65 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   }
   items.push({ title: '喜用互补', score: ysScore, desc: ysDesc });
 
-  // 6) 紫微命宫主星（10 分）——简化：无 ziwei 数据给基础分
+  // 6) 紫微命宫主星（10 分）——星性分组 + 经典配对 + 夫妻宫互参（双向对称）
   let zwScore = 6; let zwDesc = '紫微命盘需双方都排盘后细化比对（当前以基础缘分分计）。';
   const mZw = mine.ziwei, pZw = partner.ziwei;
   if (Array.isArray(mZw) && Array.isArray(pZw)) {
-    const mingStars = (g: any[]) => {
-      const m = g.find(x => x.name === '命宫');
-      return (m?.majorStars || []).map((s: any) => s.name);
-    };
-    const ms = mingStars(mZw), ps = mingStars(pZw);
-    const commonJi = ['紫微', '天府', '天同', '天梁', '太阴', '太阳'].filter(s => ms.includes(s) && ps.includes(s)).length;
-    zwScore = 4 + commonJi * 2;
-    zwDesc = `双方命宫主星共有吉星 ${commonJi} 颗，${commonJi >= 2 ? '命盘气质相近，容易相互理解。' : '命盘风格各异，互补与新鲜感并存。'}`;
+    const ms = zwPalaceStars(mZw, '命宫');
+    const ps = zwPalaceStars(pZw, '命宫');
+    if (ms.length > 0 && ps.length > 0) {
+      const a = ms[0], b = ps[0];
+      // 基础配对分（对称部分）
+      let pair: number; let pairText: string;
+      if (a === b) {
+        pair = 7;
+        pairText = `双方命宫同坐${a}——同类相吸、节奏一致，但要警惕把同样的短板一起放大`;
+      } else {
+        const ideal = ZW_IDEAL_PAIRS[zwPairKey(a, b)];
+        if (ideal) {
+          pair = ideal;
+          pairText = `${a}与${b}是经典互补组合，一个主外一个主内，配合度高`;
+        } else {
+          const gA = zwGroupOf(a), gB = zwGroupOf(b);
+          if (gA !== gB) {
+            pair = 8;
+            pairText = `${a}（${ZW_GROUP_NAMES[gA]}）配${b}（${ZW_GROUP_NAMES[gB]}），一刚一柔、一动一静，互补性好`;
+          } else {
+            pair = 6;
+            pairText = `${a}与${b}同属${ZW_GROUP_NAMES[gA]}，风格相近——默契有余、互补不足，需要刻意引入不同视角`;
+          }
+        }
+      }
+      // 夫妻宫互参（方向性）：对方命宫主星落入我的夫妻宫＝正缘类型吻合
+      const mSpouse = zwPalaceStars(mZw, '夫妻');
+      const pSpouse = zwPalaceStars(pZw, '夫妻');
+      const abBonus = mSpouse.some((s) => ps.includes(s)) ? 2 : 0;
+      const baBonus = pSpouse.some((s) => ms.includes(s)) ? 2 : 0;
+      const ab = Math.min(10, pair + abBonus);
+      const ba = Math.min(10, pair + baBonus);
+      zwScore = Math.round((ab + ba) / 2);
+      const spouseTexts: string[] = [];
+      if (abBonus) spouseTexts.push('对方命宫主星正落你的夫妻宫，是你命中欣赏的类型');
+      if (baBonus) spouseTexts.push('你的命宫主星正落对方夫妻宫，在对方眼里你是理想型');
+      zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : '夫妻宫互参无直接对应，缘分靠相处养成。'}`;
+    }
   }
   items.push({ title: '紫微命宫', score: zwScore, desc: zwDesc });
 
-  // 7) 四化互动（10 分）——简化
+  // 7) 四化互动（10 分）——双方生年干四化是否引动对方命星（禄>科>权>忌，双向对称）
   let sihuaScore = 6; let sihuaDesc = '四化互动需双方完整命盘比对（当前以基础缘分分计）。';
+  const mStem = mine.pillars?.[0]?.tianGan;
+  const pStem = partner.pillars?.[0]?.tianGan;
+  if (Array.isArray(mZw) && Array.isArray(pZw) && mStem && pStem && STEM_SIHUA_TABLE[mStem] && STEM_SIHUA_TABLE[pStem]) {
+    const mMing = zwPalaceStars(mZw, '命宫');
+    const pMing = zwPalaceStars(pZw, '命宫');
+    if (mMing.length > 0 && pMing.length > 0) {
+      const ab = sihuaDirOnMing(mStem, pMing, '你', '对方'); // 我年干四化 → 对方命宫
+      const ba = sihuaDirOnMing(pStem, mMing, '对方', '你'); // 对方年干四化 → 我命宫
+      sihuaScore = Math.round((ab.score + ba.score) / 2);
+      sihuaDesc = `${ab.text}；${ba.text}。`;
+    }
+  }
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
 
   const totalScore = items.reduce((s, i) => s + i.score, 0);

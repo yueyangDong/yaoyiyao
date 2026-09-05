@@ -118,4 +118,66 @@ describe('analyzeHePan', () => {
     const nyItem = r.items.find(i => i.title.includes('纳音'))!;
     expect(nyItem.score).toBe(7); // 纳音 金(剑锋金)克木(大林木)：(8 + 6) / 2
   });
+
+  // ========== 紫微合盘 v3：命宫主星 + 四化互动 ==========
+  it('紫微命宫：日月经典互补配 → 满分', () => {
+    const ziweiSun = [{ name: '命宫', majorStars: [{ name: '太阳' }] }];
+    const ziweiMoon = [{ name: '命宫', majorStars: [{ name: '太阴' }] }];
+    const r = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: ziweiSun },
+      partner: { ...input().partner, ziwei: ziweiMoon },
+    }));
+    const item = r.items.find(i => i.title.includes('紫微命宫'))!;
+    expect(item.score).toBe(10);
+    expect(item.desc).toContain('太阳');
+  });
+
+  it('紫微命宫：夫妻宫互参命中 → 加分', () => {
+    const ziweiA = [
+      { name: '命宫', majorStars: [{ name: '紫微' }] },
+      { name: '夫妻', majorStars: [{ name: '太阴' }] },
+    ];
+    const ziweiB = [{ name: '命宫', majorStars: [{ name: '太阴' }] }];
+    const r = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: ziweiA },
+      partner: { ...input().partner, ziwei: ziweiB },
+    }));
+    const item = r.items.find(i => i.title.includes('紫微命宫'))!;
+    // 紫微(领导型) vs 太阴(智谋型)：异组 8 分；对方命星落我夫妻宫 +2 → (10+8)/2=9
+    expect(item.score).toBe(9);
+    expect(item.desc).toContain('夫妻宫');
+  });
+
+  it('四化互动：我年干化禄星正坐对方命宫 → 高分且对称', () => {
+    // mine 年干壬 → 天梁化禄；partner 命宫坐天梁
+    const ziweiA = [{ name: '命宫', majorStars: [{ name: '紫微' }] }];
+    const ziweiB = [{ name: '命宫', majorStars: [{ name: '天梁' }] }];
+    const over = {
+      mine: { ...input().mine, ziwei: ziweiA },
+      partner: { ...input().partner, ziwei: ziweiB },
+    };
+    const r1 = analyzeHePan(input(over));
+    const item1 = r1.items.find(i => i.title.includes('四化互动'))!;
+    // ab：壬→天梁化禄坐对方命=10；ba：甲→廉贞/破军/武曲/太阳均不在[紫微]=5 → 均分 8
+    expect(item1.score).toBe(8);
+    expect(item1.desc).toContain('化禄');
+    // 交换输入分项分不变（对称性）
+    const r2 = analyzeHePan({ mine: over.partner, partner: over.mine });
+    const item2 = r2.items.find(i => i.title.includes('四化互动'))!;
+    expect(item2.score).toBe(item1.score);
+  });
+
+  it('四化互动：年干化忌星坐对方命宫 → 低分预警', () => {
+    // mine 年干壬 → 武曲化忌；partner 命宫坐武曲
+    const ziweiA = [{ name: '命宫', majorStars: [{ name: '紫微' }] }];
+    const ziweiB = [{ name: '命宫', majorStars: [{ name: '武曲' }] }];
+    const r = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: ziweiA },
+      partner: { ...input().partner, ziwei: ziweiB },
+    }));
+    const item = r.items.find(i => i.title.includes('四化互动'))!;
+    // ab=3（忌坐命），ba=5（甲干四化不涉紫微）→ 均分 4
+    expect(item.score).toBe(4);
+    expect(item.desc).toContain('化忌');
+  });
 });

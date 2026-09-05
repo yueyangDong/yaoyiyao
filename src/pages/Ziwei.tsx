@@ -120,7 +120,9 @@ function getRandomQuote(): string {
 
 function getPalaceScore(gong: any): { level: '吉' | '中' | '凶'; jiCount: number; xiongCount: number; sihuaGood: number; sihuaBad: number } {
   let jiCount = 0, xiongCount = 0, sihuaGood = 0, sihuaBad = 0;
-  const stars = [...(gong.majorStars || []), ...(gong.minorStars || []).map((s: string) => ({ name: s, sihua: null }))];
+  // 辅星优先使用带四化的完整信息（minorStarDetails），退回纯名称列表
+  const minors = gong.minorStarDetails || (gong.minorStars || []).map((s: string) => ({ name: s, sihua: null }));
+  const stars = [...(gong.majorStars || []), ...minors];
   for (const s of stars) {
     if (JI_STARS.has(s.name)) jiCount++;
     if (XIONG_STARS.has(s.name)) xiongCount++;
@@ -239,11 +241,11 @@ function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarD
               {isShen ? '·身' : ''}
             </text>
 
-            {/* 主星 */}
+            {/* 主星（生年化 + 自化分层展示） */}
             {majorStars.slice(0, 3).map((s: any, si: number) => (
               <text key={`ms-${si}`} x={starPos.x} y={starPos.y + si * 15} textAnchor="middle"
                 fontSize={11} fontWeight={600} fill={starColor(s)} fontFamily="var(--font-display)">
-                {s.name}{s.sihua ? `化${s.sihua}` : ''}
+                {s.name}{s.sihua ? `化${s.sihua}` : ''}{s.sihuaSelf ? `${s.sihua ? '·' : ''}自化${s.sihuaSelf}` : ''}
               </text>
             ))}
 
@@ -420,10 +422,21 @@ export default function Ziwei() {
         majorStars: (p.majorStars || []).map((s: any) => ({
           name: s.name,
           type: s.type,
-          // 生年四化（YT）优先，其次自化（ST.CF/CP）——旧写法只取自化导致生年四化全部丢失
-          sihua: s.YT?.name || s.ST?.CF?.name || s.ST?.CP?.name || null,
+          // 生年四化（体）与自化（用）分层保留，不再合并吞没
+          sihua: s.YT?.name || null,
+          sihuaSelf: s.ST?.CF?.name || s.ST?.CP?.name || null,
+          sihuaSelfKind: s.ST?.CF?.name ? 'CF' : (s.ST?.CP?.name ? 'CP' : null),
         })),
+        // 辅星名称列表（供界面展示，保持 string[] 兼容）
         minorStars: (p.minorStars || []).map((s: any) => s.name),
+        // 辅星完整信息（含四化——文昌化忌、文曲化科、左辅化科等不可丢失）
+        minorStarDetails: (p.minorStars || []).map((s: any) => ({
+          name: s.name,
+          type: 'minor',
+          sihua: s.YT?.name || null,
+          sihuaSelf: s.ST?.CF?.name || s.ST?.CP?.name || null,
+          sihuaSelfKind: s.ST?.CF?.name ? 'CF' : (s.ST?.CP?.name ? 'CP' : null),
+        })),
       }));
 
       // 找命宫和身宫
@@ -458,8 +471,8 @@ export default function Ziwei() {
         if (gong.name === '夫妻' && allStars.some((s: string) => ['天相', '天同', '太阴'].includes(s))) {
           highlights.push('夫妻宫有吉星，婚姻稳定，配偶条件不错');
         }
-        // 疾厄宫警示
-        if (gong.name === '疾厄' && allStars.some((s: string) => ['七杀', '破军', '廉贞', '擎羊', '火星'].includes(s))) {
+        // 疾厄宫警示（中州派定性：廉贞为正曜而非煞星，不列入）
+        if (gong.name === '疾厄' && allStars.some((s: string) => ['七杀', '破军', '擎羊', '火星'].includes(s))) {
           warnings.push('疾厄宫有煞星，注意意外伤害和定期体检');
         }
         // 交友宫警示
@@ -521,9 +534,14 @@ export default function Ziwei() {
   };
 
   // 总评与一句话结论（generateSummarizedReport 生成，供结论卡与总评首句加粗使用）
+  // 传入时将 minorStars 替换为带四化的 minorStarDetails，确保辅星四化参与总评分析
   const summarized = useMemo(() => {
     if (!ziweiData) return null;
-    return generateSummarizedReport(ziweiData.gongData);
+    const palaces = ziweiData.gongData.map((g: any) => ({
+      ...g,
+      minorStars: g.minorStarDetails || [],
+    }));
+    return generateSummarizedReport(palaces);
   }, [ziweiData]);
 
   const plainConclusion = useMemo(() => {

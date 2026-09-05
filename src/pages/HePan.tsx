@@ -3,6 +3,7 @@ import {
   Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader, Checkbox,
 } from 'antd';
 import { Lunar, Solar } from 'lunar-typescript';
+import { ziwei } from '@ziweijs/core';
 import { pcaCode } from 'cn-division';
 import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
 import DivinationOverlay from '../components/DivinationOverlay';
@@ -19,6 +20,31 @@ const TG_WX: Record<string, string> = {
 };
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
+
+/**
+ * 为合盘双方排紫微命盘（轻量版：只保留合盘需要的宫位名/主星/生年四化）。
+ * 排盘失败时返回 undefined，合盘自动降级为基础分，不影响主流程。
+ */
+function buildZiweiChart(solar: any, gender: string): any[] | undefined {
+  try {
+    const date = new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay(), solar.getHour(), solar.getMinute(), 0);
+    const result = ziwei.bySolar({
+      name: '',
+      gender: gender === 'male' ? 'male' : 'female',
+      date,
+      language: 'zh-CN',
+    } as any);
+    return (result.palaces || []).map((p: any) => ({
+      name: p.name,
+      majorStars: (p.majorStars || []).map((s: any) => ({
+        name: s.name,
+        sihua: s.YT?.name || null,
+      })),
+    }));
+  } catch {
+    return undefined;
+  }
+}
 
 /** 从出生信息生成合盘输入。calendar：出生日期的历法；isLeap：农历闰月；dayOffset：真太阳时校正跨午夜时的日历日偏移 */
 function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0, calendar: 'solar' | 'lunar' = 'solar', isLeap = false) {
@@ -49,6 +75,7 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
     zodiac: lunar.getYearShengXiao(),
     nayin: ec.getDayNaYin(),
     yongShen: [...new Set(yongShen)],
+    ziwei: buildZiweiChart(solar, gender),
     birthInfo: `${year}年${month}月${day}日 ${hour}:${String(minute).padStart(2, '0')}`,
   };
 }
@@ -67,6 +94,10 @@ export default function HePan() {
     const lunar = isLunarProfile
       ? Lunar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0)
       : Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0).getLunar();
+    const solarForZiwei = isLunarProfile
+      ? lunar.getSolar()
+      : Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0);
+    const myGender = currentUser.gender === '男' ? 'male' : 'female';
     const ec = lunar.getEightChar();
     const pillars = [
       { pillar: '年柱', ganZhi: ec.getYear(), tianGan: ec.getYearGan(), diZhi: ec.getYearZhi(), cangGan: ec.getYearHideGan(), shiShen: ec.getYearShiShenGan(), shiShenZhi: (ec.getYearShiShenZhi() || []).join('/'), nayin: ec.getYearNaYin() },
@@ -80,7 +111,7 @@ export default function HePan() {
     const yongShen = biJie >= 2 ? [WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean) : [WX_SHENG[dayWx], dayWx];
     return {
       name: currentUser.name,
-      gender: currentUser.gender === '男' ? 'male' : 'female',
+      gender: myGender,
       dayGan,
       dayWx,
       dayZhi: pillars[2].diZhi,
@@ -88,6 +119,7 @@ export default function HePan() {
       zodiac: lunar.getYearShengXiao(),
       nayin: ec.getDayNaYin(),
       yongShen: [...new Set(yongShen)],
+      ziwei: buildZiweiChart(solarForZiwei, myGender),
       birthInfo: `${currentUser.birthYear}年${currentUser.birthMonth}月${currentUser.birthDay}日 ${currentUser.birthHour}:${String(currentUser.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`,
     };
   })();

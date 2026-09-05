@@ -10,8 +10,63 @@ export interface StarInfo {
   name: string;          // 星曜中文名
   type?: 'major' | 'minor' | string;  // 主星/辅星
   sihua?: string | null;              // 四化标记：'禄'|'权'|'科'|'忌'
+  sihuaSelf?: string | null;          // 自化标记（与生年化分层，避免体用混杂）
+  sihuaSelfKind?: 'CF' | 'CP' | null; // CF=离心自化 CP=向心自化
   YT?: { name: string; key: string }; // @ziweijs/core 生年四化
   ST?: Partial<Record<string, { name: string; key: string }>>; // @ziweijs/core 自化
+}
+
+/**
+ * 四化条目（带来源标注，区分生年化"体"与自化"用"）
+ */
+export interface SihuaEntry {
+  star: string;
+  sihua: string;                       // '禄'|'权'|'科'|'忌'
+  source: 'birth' | 'selfCF' | 'selfCP'; // birth=生年化 selfCF=离心自化 selfCP=向心自化
+}
+
+// ========== 十干四化表（中州派） ==========
+
+/**
+ * 十干四化表——用于天干溯源：
+ * 根据四化星曜组合反推引发天干，定性其为一生之"体"（生年）或阶段之"用"
+ */
+export const STEM_SIHUA_TABLE: Record<string, { lu: string; quan: string; ke: string; ji: string }> = {
+  '甲': { lu: '廉贞', quan: '破军', ke: '武曲', ji: '太阳' },
+  '乙': { lu: '天机', quan: '天梁', ke: '紫微', ji: '太阴' },
+  '丙': { lu: '天同', quan: '天机', ke: '文昌', ji: '廉贞' },
+  '丁': { lu: '太阴', quan: '天同', ke: '天机', ji: '巨门' },
+  '戊': { lu: '贪狼', quan: '太阴', ke: '右弼', ji: '天机' },
+  '己': { lu: '武曲', quan: '贪狼', ke: '天梁', ji: '文曲' },
+  '庚': { lu: '太阳', quan: '武曲', ke: '太阴', ji: '天同' },
+  '辛': { lu: '巨门', quan: '太阳', ke: '文曲', ji: '文昌' },
+  '壬': { lu: '天梁', quan: '紫微', ke: '左辅', ji: '武曲' },
+  '癸': { lu: '破军', quan: '巨门', ke: '太阴', ji: '贪狼' },
+};
+
+const SIHUA_TABLE_KEY: Record<string, 'lu' | 'quan' | 'ke' | 'ji'> = {
+  '禄': 'lu', '权': 'quan', '科': 'ke', '忌': 'ji',
+};
+
+/**
+ * 由一组四化（星曜+化型）反推最可能的引发天干。
+ * 采用计票制：每颗星在每个天干表中命中记一票，得票最高且 ≥2 票者胜出。
+ */
+export function inferBirthStem(entries: { star: string; sihua: string }[]): string | null {
+  const tally: Record<string, number> = {};
+  for (const e of entries) {
+    const key = SIHUA_TABLE_KEY[e.sihua];
+    if (!key) continue;
+    for (const [stem, t] of Object.entries(STEM_SIHUA_TABLE)) {
+      if (t[key] === e.star) tally[stem] = (tally[stem] || 0) + 1;
+    }
+  }
+  let best: string | null = null;
+  let bestScore = 0;
+  for (const [stem, score] of Object.entries(tally)) {
+    if (score > bestScore) { best = stem; bestScore = score; }
+  }
+  return bestScore >= 2 ? best : null;
 }
 
 /**
@@ -34,7 +89,8 @@ export interface PalaceData {
 export interface OppositePalaceInfo {
   name: string;
   majorStars: string[];    // 对宫主星名列表
-  sihua: string | null;    // 对宫主要四化
+  sihua: string | null;    // 对宫主要四化（兼容字段，取第一个）
+  sihuaList?: { star: string; sihua: string }[]; // 对宫全部四化（多化全量）
 }
 
 /**
@@ -45,6 +101,7 @@ export interface TrianglePalacesInfo {
     name: string;
     majorStars: string[];
     sihua: string | null;
+    sihuaList?: { star: string; sihua: string }[]; // 该三合宫全部四化（多化全量）
   }[];
 }
 
@@ -274,21 +331,62 @@ const MAIN_STAR_HIGHLIGHT: Record<string, string> = {
   '破军': '破军入局，创新力和破坏力并存，不走寻常路',
 };
 
-// ========== 十二宫固定说明文本 ==========
+// ========== 十二宫动态文案库 ==========
 
-const GONG_BASE_DESC: Record<string, string> = {
-  '命宫': '命宫是整张命盘的起点，代表你的性格本质、先天禀赋和人生基调。命宫坐什么星，你就是什么样的人。',
-  '兄弟': '兄弟宫看你和兄弟姐妹、平辈朋友、合作伙伴的关系。兄弟宫好的人社交圈优质，合作运佳。',
-  '夫妻': '夫妻宫决定了你的配偶类型、婚姻质量和感情模式。夫妻宫不只是看婚姻，也反映你的合作能力。',
-  '子女': '子女宫不只是孩子缘分，还代表你的下属、学生、享乐方式和偏财投资运。子女宫好的人带小孩也轻松。',
-  '财帛': '财帛宫看赚钱能力和花钱方式——你靠什么赚钱、钱又花在哪里。财帛宫是"收入流"的体现，不是存款数。',
-  '疾厄': '疾厄宫看身体健康和体质强弱。疾厄宫好不代表不生病，而是生病后恢复快、抗压能力强。',
-  '迁移': '迁移宫看外出运、社会形象和人生舞台。迁移宫好的人适合外地发展、经常出差或从事涉外工作。',
-  '交友': '交友宫也叫仆役宫，看朋友质量、同事关系和下属运。交友宫有煞星的话，合伙和用人要格外小心。',
-  '官禄': '官禄宫是你的事业方向和发展天花板——适合做什么行业、能做到多高的位置。',
-  '田宅': '田宅宫看房产运、家庭环境和居住品质，也代表你的"人生根基"稳不稳、有没有安身立命之所。',
-  '福德': '福德宫是你精神世界的质量。福德宫好的人"会享福"，是打心底里能快乐的人，晚年生活安逸。',
-  '父母': '父母宫看与父母的关系、家庭教育背景，也代表上司缘和长辈缘，以及你的学历天花板和文书运。',
+/** 宫位行动建议（用于动态收尾，替代固定鸡汤——鸡汤人人相同，建议因盘而异） */
+const GONG_ADVICE: Record<string, string> = {
+  '命宫': '把精力投在最有天赋感的方向，不随大流',
+  '兄弟': '平辈即资源，选对同行者比单打独斗重要',
+  '夫妻': '先看清自己需要的伴侣类型，再谈心动',
+  '子女': '用心经营传承、创作与晚辈缘，它们会回报你',
+  '财帛': '顺着自己擅长的进财方式走，不眼红别人的财路',
+  '疾厄': '提前保养是性价比最高的投资，别等警报才行动',
+  '迁移': '外面的世界是你的舞台，别困在舒适圈里',
+  '交友': '朋友贵精不贵多，深交之前多观察',
+  '官禄': '在擅长的领域深耕，比频繁换赛道走得更远',
+  '田宅': '根基稳则心安定，置业安家宜早做规划',
+  '福德': '精神富足是底层运势，留时间给真正热爱的事',
+  '父母': '长辈缘是隐形资产，文书合约之事宜多一分谨慎',
+};
+
+/** 14主星固定次序（用于双星组合键归一） */
+const STAR_ORDER = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
+
+function pairKey(a: string, b: string): string {
+  const ia = STAR_ORDER.indexOf(a);
+  const ib = STAR_ORDER.indexOf(b);
+  return ia <= ib ? `${a}+${b}` : `${b}+${a}`;
+}
+
+/**
+ * 双星同宫组合特质（覆盖安星规则下全部24种同宫组合）
+ * 专属文案替代通用模板，是降低解读重合度的关键
+ */
+const PAIR_TRAITS: Record<string, string> = {
+  '紫微+天府': '帝星配财库——既有领导力又懂守成，能做大事也守得住江山',
+  '紫微+贪狼': '帝王带桃花——魅力与手腕并存，社交场如鱼得水，需防享乐误事',
+  '紫微+天相': '君臣相得——贵气足、有章法，易得贵人提携，适合大平台',
+  '紫微+七杀': '化杀为权——能把压力变权力，开创性强，大将之格',
+  '紫微+破军': '改革者组合——不甘守成，能在变动中建立新秩序',
+  '天机+太阴': '机月同辉——心思细腻，擅长幕后谋划与精细执行，宜专业深耕',
+  '天机+巨门': '思辨组合——靠脑靠嘴吃饭，分析表达俱佳，防言多惹是非',
+  '天机+天梁': '善荫同宫——智谋带正气，善策划有担当，适合顾问、医疗、教育',
+  '太阳+太阴': '日月同宫——刚柔并济，外在热情内在细腻，注意情绪起伏',
+  '太阳+巨门': '光芒外放——靠表达和影响力立足，慎言可免口舌之争',
+  '太阳+天梁': '阳梁昌禄之基——光明正直有长者缘，专业声誉是立身之本',
+  '武曲+天府': '双财库同宫——理财能力顶尖，实业与守成兼备，财运根基极稳',
+  '武曲+贪狼': '武贪同行——大器晚成格，中年后运势渐开，人脉变现能力强',
+  '武曲+天相': '财官双美——刚柔有度，专业立身又懂协调，管理财务两相宜',
+  '武曲+七杀': '刚决果断——执行力爆表的开疆型，需防过刚易折',
+  '武曲+破军': '财星带破——敢赌敢拼大起大落，赚得快去得也快，要留退路',
+  '天同+太阴': '福月同辉——温柔富贵，生活品味佳，宜静不宜躁',
+  '天同+巨门': '福星带暗——内心敏感想得多，宜以专业口才立身',
+  '天同+天梁': '同梁福寿——心态好人缘佳，宜稳定平台长期发展',
+  '廉贞+天府': '囚星入库——才华有靠山，事业心强且稳，适合大机构掌权',
+  '廉贞+贪狼': '双桃花同宫——魅力四射，才艺与社交是利器，感情贵在专一',
+  '廉贞+天相': '印星相随——才华易得贵人赏识，宜在专业领域建个人品牌',
+  '廉贞+七杀': '刚毅果敢——敢作敢当，适合竞争性强的领域，防冲动树敌',
+  '廉贞+破军': '变动中求财——破旧有才，宜新兴行业，起伏中见机会',
 };
 
 /**
@@ -330,6 +428,8 @@ const TRIANGLE_MAP: Record<string, string[]> = {
 
 /**
  * 从星曜对象中提取四化标记（兼容多种数据格式）
+ * 注意：此函数为生年优先的合并视图，仅用于快速判断；
+ * 需要区分"体（生年）/用（自化）"时请用 extractSihuaEntries
  */
 function extractSihua(star: StarInfo): string | null {
   // 优先使用已提取的 sihua 字段
@@ -341,6 +441,28 @@ function extractSihua(star: StarInfo): string | null {
   // @ziweijs/core 原始格式：ST - CP（向心自化）
   if (star.ST?.CP?.name) return star.ST.CP.name;
   return null;
+}
+
+/**
+ * 从星曜对象中提取全部四化条目（带来源分层）。
+ * 生年化（体）与自化（用）各自成条，不再互相吞没：
+ * 同一颗星可同时拥有生年化和自化，两者都会保留。
+ */
+function extractSihuaEntries(star: StarInfo): SihuaEntry[] {
+  const entries: SihuaEntry[] = [];
+  const hasRaw = star.YT !== undefined || star.ST !== undefined;
+
+  // 生年化（体）：原始格式取 YT；简化格式（无 YT/ST）取 sihua 字段
+  const birthName = star.YT?.name || (!hasRaw ? star.sihua || null : null);
+  if (birthName) entries.push({ star: star.name, sihua: birthName, source: 'birth' });
+
+  // 自化（用）：原始格式取 ST.CF/CP；简化格式取 sihuaSelf + sihuaSelfKind
+  const cfName = star.ST?.CF?.name || (star.sihuaSelfKind === 'CF' ? star.sihuaSelf || null : null);
+  const cpName = star.ST?.CP?.name || (star.sihuaSelfKind === 'CP' ? star.sihuaSelf || null : null);
+  if (cfName) entries.push({ star: star.name, sihua: cfName, source: 'selfCF' });
+  if (cpName) entries.push({ star: star.name, sihua: cpName, source: 'selfCP' });
+
+  return entries;
 }
 
 /**
@@ -381,16 +503,13 @@ function getMainStarNames(stars: (StarInfo | string)[]): string[] {
 }
 
 /**
- * 获取某宫的四化汇总
+ * 获取某宫的四化汇总（含生年化与自化，多化全量保留）
  */
-function getPalaceSihua(stars: (StarInfo | string)[]): { star: string; sihua: string }[] {
-  const result: { star: string; sihua: string }[] = [];
+function getPalaceSihua(stars: (StarInfo | string)[]): SihuaEntry[] {
+  const result: SihuaEntry[] = [];
   for (const star of stars) {
     if (typeof star === 'string') continue;
-    const sihua = extractSihua(star);
-    if (sihua) {
-      result.push({ star: star.name, sihua });
-    }
+    result.push(...extractSihuaEntries(star));
   }
   return result;
 }
@@ -411,137 +530,158 @@ function hasSpecificSihua(stars: (StarInfo | string)[], sihuaType: string): bool
 /**
  * 根据宫位名生成该宫的个性化解读（适用于单个宫位的情境化白话解读）
  *
- * 场景适配：每个宫位侧重不同的生活层面，解读逻辑随之调整
+ * 设计原则（简洁、准确、低重合度）：
+ * - 不用固定开场白和固定鸡汤收尾——那些是"人人相同"的重合度重灾区
+ * - 双星同宫用24组专属文案，单星按宫位维度取特质，空宫实质借星论
+ * - 对宫/三合只在有四化互动时提及，无信息不凑字
+ * - 收尾为动态行动建议：由本宫四化/吉凶组合决定措辞
  */
 function getPalaceSpecificContext(
   palaceName: string,
   mainStars: string[],
   minorStars: string[],
-  sihuaInfos: { star: string; sihua: string }[],
+  sihuaInfos: SihuaEntry[],
   oppositeInfo: OppositePalaceInfo | null,
-  triangleInfos: { name: string; majorStars: string[]; sihua: string | null }[],
+  triangleInfos: { name: string; majorStars: string[]; sihua: string | null; sihuaList?: { star: string; sihua: string }[] }[],
 ): string {
   const parts: string[] = [];
 
-  // 1. 宫位开场白
-  parts.push(GONG_BASE_DESC[palaceName] || `${palaceName}宫反映你人生中重要的一个面向。`);
-
-  // 2. 本宫星曜分析
+  // 1. 本宫配置定位（动态生成：星曜+生年化标签；空宫实质借对宫论）
+  const birthTagOf = (sn: string) => {
+    const t = sihuaInfos.find((s) => s.star === sn && s.source === 'birth');
+    return t ? `化${t.sihua}` : '';
+  };
   if (mainStars.length > 0) {
-    const starDetails = mainStars.map((sn) => {
-      const sihuaTag = sihuaInfos.find((s) => s.star === sn);
-      const trait = MAIN_STAR_TRAITS[sn];
-      let detail = `${sn}`;
-      if (sihuaTag) detail += `化${sihuaTag.sihua}`;
-      if (trait) {
-        // 根据宫位类型选取对应的描述维度
-        if (palaceName === '命宫') detail += `（${trait.personality}）`;
-        else if (palaceName === '夫妻') detail += `（${trait.love}）`;
-        else if (palaceName === '财帛') detail += `（${trait.fortune}）`;
-        else if (palaceName === '官禄') detail += `（${trait.career}）`;
-        else if (palaceName === '疾厄') detail += `（${trait.health}）`;
-        else detail += `（${trait.personality}）`;
-      }
-      return detail;
-    });
-
-    if (starDetails.length === 1) {
-      parts.push(`此宫坐${starDetails[0]}，这是你的核心特质。`);
-    } else if (starDetails.length === 2) {
-      parts.push(`${starDetails.join('与')}同宫，两种特质交融——`);
-      // 双星同宫需要描述冲突或融合
-      if (mainStars.length === 2) {
-        const trait0 = MAIN_STAR_TRAITS[mainStars[0]];
-        const trait1 = MAIN_STAR_TRAITS[mainStars[1]];
-        if (trait0 && trait1) {
-          parts.push(`${trait0.positive}的同时，又有${trait1.positive}的一面。`);
-        }
-      }
-    } else {
-      parts.push(`此宫群星汇聚（${starDetails.join('、')}），能量强大但格局复杂。`);
-    }
+    parts.push(`${palaceName}宫坐${mainStars.map((s) => `${s}${birthTagOf(s)}`).join('与')}。`);
   } else {
-    parts.push('此宫为空宫，无主星坐守——空宫不代表空无一物，而是弹性更大、需要借对宫星曜来考量。');
+    const oppStars = oppositeInfo && oppositeInfo.majorStars.length > 0
+      ? oppositeInfo.majorStars.join('、')
+      : '';
+    if (oppStars) {
+      parts.push(`${palaceName}宫为空宫，借对宫${oppStars}论——空宫不是空白，而是弹性大、可塑性高，${oppStars}的特质会透过环境和际遇在你身上显现。`);
+    } else {
+      parts.push(`${palaceName}宫空而无借——此宫能量平和，没有先天定式，全看后天经营。`);
+    }
   }
 
-  // 3. 四化分析
+  // 2. 星曜特质（双星专属文案优先；单星按宫位维度取；措辞随组合而变）
+  if (mainStars.length === 2) {
+    const pair = PAIR_TRAITS[pairKey(mainStars[0], mainStars[1])];
+    if (pair) {
+      parts.push(`${mainStars.join('、')}同宫：${pair}。`);
+    } else {
+      const t0 = MAIN_STAR_TRAITS[mainStars[0]];
+      const t1 = MAIN_STAR_TRAITS[mainStars[1]];
+      if (t0 && t1) parts.push(`${t0.positive}，兼具${t1.positive}。`);
+    }
+  } else if (mainStars.length === 1) {
+    const trait = MAIN_STAR_TRAITS[mainStars[0]];
+    if (trait) {
+      const dim = palaceName === '命宫' ? trait.personality
+        : palaceName === '夫妻' ? trait.love
+        : palaceName === '财帛' ? trait.fortune
+        : palaceName === '官禄' ? trait.career
+        : palaceName === '疾厄' ? trait.health
+        : trait.personality;
+      parts.push(`${mainStars[0]}的特质落在这里：${dim}。`);
+    }
+  } else if (mainStars.length > 2) {
+    parts.push(`群星汇聚（${mainStars.join('、')}），能量强但需学会取舍聚焦。`);
+  }
+
+  // 3. 四化分析（生年化为"体"主一生基调，自化为"用"主能量流动）
   if (sihuaInfos.length > 0) {
-    for (const { star, sihua } of sihuaInfos) {
+    for (const { star, sihua, source } of sihuaInfos) {
+      if (source === 'selfCF') {
+        parts.push(`${star}离心自化${sihua}——此宫的${sihua === '忌' ? '压力' : '能量'}有向外流失的倾向，得到的容易再失去，宜顺势而为、不执着于守成。`);
+        continue;
+      }
+      if (source === 'selfCP') {
+        parts.push(`${star}向心自化${sihua}——此宫能量向内汇聚，${sihua === '忌' ? '压力多由自身造成，反求诸己即可化解' : '外来机缘会主动靠拢，守得住比争得到更重要'}。`);
+        continue;
+      }
       switch (sihua) {
         case '禄':
-          parts.push(`${star}化禄在${palaceName}宫——这是你的福气点，在${palaceName}领域容易有收获、机遇和贵人相助。`);
+          parts.push(`${star}化禄——此领域是你的福气点，容易有收获、机遇和贵人相助。`);
           break;
         case '权':
-          parts.push(`${star}化权在此——${palaceName}领域你有强大的掌控力和决策力，适合主动出击、把握主导权。`);
+          parts.push(`${star}化权——此领域你有强大的掌控力和决策力，适合主动出击。`);
           break;
         case '科':
-          parts.push(`${star}化科照${palaceName}宫——你在这个领域有天然的魅力加成，容易获得名声、认可和贵人赏识。`);
+          parts.push(`${star}化科——此领域有天然的魅力加成，容易获得名声与贵人赏识。`);
           break;
         case '忌':
-          parts.push(`${star}化忌落${palaceName}宫——这是你人生需要修炼的功课。这个领域容易遇到波折，但也因此会让你成长最多。`);
+          parts.push(`${star}化忌——此领域容易遇到波折，但也是你成长最多的地方。`);
           break;
       }
     }
   }
 
-  // 4. 辅星分析
+  // 4. 辅星（精简：只点关键助力与风险，不罗列全部描述）
   if (minorStars.length > 0) {
-    const descParts: string[] = [];
-    const ausp: string[] = [];
-    const malef: string[] = [];
+    const ausp = minorStars.filter(isAuspiciousStar).slice(0, 2);
+    const malef = minorStars.filter(isMaleficStar).slice(0, 2);
+    if (ausp.length > 0) parts.push(`得${ausp.join('、')}相助，事半功倍。`);
+    if (malef.length > 0) parts.push(`逢${malef.join('、')}，行事宜多一分耐心，切忌冲动。`);
+  }
 
-    for (const sn of minorStars) {
-      if (isAuspiciousStar(sn)) ausp.push(sn);
-      else if (isMaleficStar(sn)) malef.push(sn);
-      if (MINOR_STAR_DESC[sn]) descParts.push(`${sn}（${MINOR_STAR_DESC[sn]}）`);
-    }
-
-    if (descParts.length > 0) {
-      parts.push(`辅星方面，${descParts.join('、')}，为${palaceName}宫增添了更多色彩。`);
-    }
-
-    if (ausp.length > 0) {
-      parts.push(`吉星${ausp.join('、')}加持，${palaceName}宫得到正面助益。`);
-    }
-    if (malef.length > 0) {
-      parts.push(`但煞星${malef.join('、')}在此，${palaceName}方面会有些波折，需要多加注意。`);
+  // 5. 对宫冲照（仅有四化互动时输出：禄权科为"照"，化忌为"冲"）
+  if (oppositeInfo) {
+    const oppList = oppositeInfo.sihuaList && oppositeInfo.sihuaList.length > 0
+      ? oppositeInfo.sihuaList
+      : (oppositeInfo.sihua ? [{ star: '', sihua: oppositeInfo.sihua }] : []);
+    if (oppList.length > 0) {
+      const oppTags: string[] = [];
+      let hasChong = false;
+      for (const item of oppList) {
+        const label = item.star ? `${item.star}化${item.sihua}` : `化${item.sihua}`;
+        if (item.sihua === '忌') {
+          hasChong = true;
+          oppTags.push(`${label}直冲本宫`);
+        } else {
+          oppTags.push(`${label}照会`);
+        }
+      }
+      parts.push(`对宫${oppositeInfo.name}有${oppTags.join('、')}。`);
+      if (hasChong) {
+        parts.push(`对宫化忌来冲，${palaceName}领域易受外部环境和他人的压力冲击，宜主动经营化解，不宜消极回避。`);
+      }
     }
   }
 
-  // 5. 对宫分析
-  if (oppositeInfo && oppositeInfo.majorStars.length > 0) {
-    const oppStars = oppositeInfo.majorStars.join('、');
-    const oppTag = oppositeInfo.sihua ? `，有化${oppositeInfo.sihua}加持` : '';
-    parts.push(`对宫${oppositeInfo.name}坐${oppStars}${oppTag}——对宫就像一面镜子，照出${palaceName}宫的另外一面。`);
-  }
-
-  // 6. 三合宫分析
+  // 6. 三合四化汇入（仅当三合宫带四化时提及，否则不凑字）
   if (triangleInfos && triangleInfos.length > 0) {
-    const triDetails = triangleInfos
-      .filter((t) => t.majorStars.length > 0)
-      .map((t) => {
-        const base = `${t.name}宫有${t.majorStars.join('、')}`;
-        return t.sihua ? `${base}并化${t.sihua}` : base;
-      });
-    if (triDetails.length > 0) {
-      parts.push(`三合来看，${triDetails.join('；')}——这些宫位的能量都会汇入${palaceName}宫，形成合力。`);
+    const triTags: string[] = [];
+    for (const t of triangleInfos) {
+      const list = t.sihuaList && t.sihuaList.length > 0
+        ? t.sihuaList
+        : (t.sihua ? [{ star: '', sihua: t.sihua }] : []);
+      for (const it of list) {
+        const label = it.star ? `${it.star}化${it.sihua}` : `化${it.sihua}`;
+        triTags.push(`${t.name}宫${label}${it.sihua === '忌' ? '（压力亦汇入）' : ''}`);
+      }
+    }
+    if (triTags.length > 0) {
+      parts.push(`三方会照中，${triTags.join('、')}的能量也会汇入本宫。`);
     }
   }
 
-  // 7. 收尾句
-  const closingSentences: Record<string, string> = {
-    '命宫': '命宫的格局决定了你人生的底色，理解它，不是为了认命，而是为了更好地发挥自己的天赋。',
-    '夫妻': '感情是两个人的事，了解自己的夫妻宫能帮你更清醒地选择伴侣，而不是被感觉牵着走。',
-    '财帛': '财运不是天注定，而是看你如何运用自己的天赋和机会。财帛宫告诉你的赚钱方向，路还得你自己走。',
-    '官禄': '事业成就取决于你是否在自己擅长的领域深耕。官禄宫给你指明了方向，剩下的靠努力。',
-    '疾厄': '身体是革命的本钱，疾厄宫的提醒不是吓唬你，而是让你提前注意、主动保养。',
-    '福德': '真正的富有是内心的安宁。福德宫好的人，不一定最有钱，但一定最会生活。',
-  };
-
-  if (closingSentences[palaceName]) {
-    parts.push(closingSentences[palaceName]);
-  } else {
-    parts.push(`${palaceName}宫的格局不是一成不变的——命盘是地图，怎么走，永远在你手里。`);
+  // 7. 动态收尾建议（由本宫四化与吉凶组合决定措辞，替代固定鸡汤）
+  const advice = GONG_ADVICE[palaceName];
+  const hasBirthJi = sihuaInfos.some((s) => s.sihua === '忌' && s.source === 'birth');
+  const hasBirthLu = sihuaInfos.some((s) => s.sihua === '禄' && s.source === 'birth');
+  const malefCount = minorStars.filter(isMaleficStar).length;
+  const auspCount = minorStars.filter(isAuspiciousStar).length;
+  if (hasBirthJi && advice) {
+    parts.push(`功课提示：此宫化忌不是凶兆，而是你此生的执念课题——${advice}，跨过去就是最深的成长。`);
+  } else if (hasBirthLu && advice) {
+    parts.push(`顺势方向：${advice}，福气用在刀刃上效果翻倍。`);
+  } else if (malefCount >= 2 && advice) {
+    parts.push(`行事提醒：${advice}，稳中求进方为上策。`);
+  } else if (auspCount >= 2 && advice) {
+    parts.push(`优势所在：${advice}，贵人缘旺，值得大胆投入。`);
+  } else if (advice) {
+    parts.push(`建议：${advice}。`);
   }
 
   return parts.join('');
@@ -569,7 +709,7 @@ export function generatePalaceReading(
   // 分离主星和辅星
   const mainStars: string[] = [];
   const minorStars: string[] = [];
-  const allSihua: { star: string; sihua: string }[] = [];
+  const allSihua: SihuaEntry[] = [];
 
   for (const star of stars) {
     const name = getStarName(star);
@@ -587,19 +727,16 @@ export function generatePalaceReading(
       } else {
         mainStars.push(name);
       }
-      // 提取四化
-      const extractedSihua = extractSihua(star);
-      if (extractedSihua) {
-        allSihua.push({ star: name, sihua: extractedSihua });
-      }
+      // 提取四化（生年化+自化全量，带来源分层）
+      allSihua.push(...extractSihuaEntries(star));
     }
   }
 
-  // 合并传入的四化参数
+  // 合并传入的四化参数（外部传入一律按生年化"体"处理）
   if (sihua) {
     for (const item of sihua) {
       if (!allSihua.some((s) => s.star === item.star && s.sihua === item.sihua)) {
-        allSihua.push(item);
+        allSihua.push({ star: item.star, sihua: item.sihua, source: 'birth' });
       }
     }
   }
@@ -609,6 +746,7 @@ export function generatePalaceReading(
     name: p.name,
     majorStars: p.majorStars,
     sihua: p.sihua,
+    sihuaList: p.sihuaList,
   })) || [];
 
   // 生成解读文本
@@ -667,12 +805,13 @@ export function getAllPalacesReading(allPalacesData: PalaceData[]): PalaceReadin
         ...(oppPalace.minorStars || []).map((s) => (typeof s === 'string' ? s : s)),
       ];
       const oppMainStars = getMainStarNames(oppStars);
-      // 获取对宫第一个四化（如果有）
+      // 对宫全部四化（多化全量，sihua 字段保留第一个作兼容）
       const oppSihuas = getPalaceSihua(oppStars);
       oppositeInfo = {
         name: oppositeName,
         majorStars: oppMainStars,
         sihua: oppSihuas.length > 0 ? oppSihuas[0].sihua : null,
+        sihuaList: oppSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
       };
     }
 
@@ -693,6 +832,7 @@ export function getAllPalacesReading(allPalacesData: PalaceData[]): PalaceReadin
             name: triPalace.name,
             majorStars: triMainStars,
             sihua: triSihuas.length > 0 ? triSihuas[0].sihua : null,
+            sihuaList: triSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
           };
         }),
     };
@@ -722,7 +862,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
 
   // 收集全盘所有星的汇总信息
   const allStarsGlobal: { name: string; palace: string; sihua: string | null }[] = [];
-  const allSihuaList: { star: string; palace: string; sihua: string }[] = [];
+  const allSihuaList: { star: string; palace: string; sihua: string; source: 'birth' | 'selfCF' | 'selfCP' }[] = [];
 
   for (const palace of allPalacesData) {
     const stars: (StarInfo | string)[] = [
@@ -731,10 +871,10 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     ];
     for (const star of stars) {
       const name = typeof star === 'string' ? star : star.name;
-      const sihua = typeof star === 'string' ? null : extractSihua(star);
-      allStarsGlobal.push({ name, palace: palace.name, sihua });
-      if (sihua) {
-        allSihuaList.push({ star: name, palace: palace.name, sihua });
+      const entries = typeof star === 'string' ? [] : extractSihuaEntries(star);
+      allStarsGlobal.push({ name, palace: palace.name, sihua: entries.length > 0 ? entries[0].sihua : null });
+      for (const e of entries) {
+        allSihuaList.push({ star: name, palace: palace.name, sihua: e.sihua, source: e.source });
       }
     }
   }
@@ -758,18 +898,51 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     }
   }
 
-  // 2. 四化禄所在宫 —— 福气所在
-  const luItems = allSihuaList.filter((s) => s.sihua === '禄');
+  // 2. 四化联动分析 —— 天干溯源 + 禄随忌走 + 实禄/虚禄 + 权科制衡（中州派核心）
+  // 六我宫（能量内收）与六他宫（能量外泄）
+  const INNER_PALACES = ['命宫', '财帛', '官禄', '田宅', '福德', '疾厄'];
+  const birthSihua = allSihuaList.filter((s) => s.source === 'birth');
+  const selfSihua = allSihuaList.filter((s) => s.source !== 'birth');
+  const birthStem = inferBirthStem(birthSihua);
+  const stemLabel = birthStem ? `${birthStem}干四化（生年之体，主一生基调）` : '生年四化';
+
+  const luItems = birthSihua.filter((s) => s.sihua === '禄');
+  const quanItems = birthSihua.filter((s) => s.sihua === '权');
+  const keItems = birthSihua.filter((s) => s.sihua === '科');
+  const birthJiItems = birthSihua.filter((s) => s.sihua === '忌');
+
   if (luItems.length > 0) {
-    const luStars = luItems.map((s) => `${s.star}在${s.palace}宫化禄`).join('、');
-    highlights.push(`四化中有化禄——${luStars}，这是你的福气源泉，在这些领域顺势而为会有事半功倍的效果。`);
+    for (const lu of luItems) {
+      const isInner = INNER_PALACES.includes(lu.palace);
+      let text = `${stemLabel}——${lu.star}在${lu.palace}宫化禄，`;
+      text += isInner
+        ? `${lu.palace}为我宫，此为"实禄"，福气能量内收，是你顺手可用的资源，顺势而为事半功倍。`
+        : `${lu.palace}为他宫，此为"虚禄"，福气能量外泄，机缘多在他人与外境，需主动经营方能承接。`;
+      // 禄随忌走：禄的能量最终流向化忌所在领域
+      if (birthJiItems.length > 0) {
+        const ji = birthJiItems[0];
+        text += `按"禄随忌走"，这份禄的能量最终流向${ji.palace}宫的${ji.star}化忌——${ji.palace}领域才是你真正执着投入、需要用功的所在。`;
+      }
+      // 权科制衡助力
+      const qkParts: string[] = [];
+      if (quanItems.length > 0) qkParts.push(`${quanItems[0].star}化权在${quanItems[0].palace}宫提供掌控力`);
+      if (keItems.length > 0) qkParts.push(`${keItems[0].star}化科在${keItems[0].palace}宫提供名声助力`);
+      if (qkParts.length > 0) text += `权科夹辅：${qkParts.join('，')}，此禄有源有护，非浮禄。`;
+      highlights.push(text);
+    }
   }
 
-  // 3. 四化权所在宫 —— 掌控力所在
-  const quanItems = allSihuaList.filter((s) => s.sihua === '权');
-  if (quanItems.length > 0) {
+  if (quanItems.length > 0 && luItems.length === 0) {
     const quanStars = quanItems.map((s) => `${s.star}在${s.palace}宫化权`).join('、');
     highlights.push(`命盘有化权——${quanStars}，你在这个领域具备领导力和主导权，适合主动争取和掌控局面。`);
+  }
+
+  // 自化提示（"用"层面的能量流动，体用分层呈现）
+  if (selfSihua.length > 0) {
+    const desc = selfSihua
+      .map((s) => `${s.star}在${s.palace}宫${s.source === 'selfCF' ? '离心' : '向心'}自化${s.sihua}`)
+      .join('、');
+    cautions.push(`命盘带自化——${desc}。自化是"用"层面的能量流动：离心者得到后易再流失，向心者机缘自来但需守得住，皆以平常心对待得失为宜。`);
   }
 
   // 4. 财帛宫、田宅宫有财星
@@ -863,7 +1036,8 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     ];
     const jeMainStars = getMainStarNames(jeStars);
     const jeAllNames = jeStars.map((s) => getStarName(s));
-    const dangerStars = ['七杀', '破军', '廉贞', '擎羊', '火星', '铃星', '陀罗', '地空', '地劫'];
+    // 中州派定性：廉贞为正曜（官禄主、次桃花）而非六煞，不与羊陀火铃空劫并列
+    const dangerStars = ['七杀', '破军', '擎羊', '火星', '铃星', '陀罗', '地空', '地劫'];
     const matched = jeAllNames.filter((s) => dangerStars.includes(s));
     if (matched.length > 0) {
       cautions.push(`疾厄宫有${matched.join('、')}——体质上需要注意，建议保持规律作息和定期体检，避免意外伤害。`);
@@ -928,7 +1102,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
  */
 function generateOverallReading(
   _allPalacesData: PalaceData[],
-  allSihua: { star: string; palace: string; sihua: string }[],
+  allSihua: { star: string; palace: string; sihua: string; source?: 'birth' | 'selfCF' | 'selfCP' }[],
   highlights: string[],
   cautions: string[],
 ): string {
@@ -937,11 +1111,12 @@ function generateOverallReading(
   // 开场
   parts.push('综合来看，这张命盘展现了独特的生命图景。');
 
-  // 四化特征总结
-  const luCount = allSihua.filter((s) => s.sihua === '禄').length;
-  const quanCount = allSihua.filter((s) => s.sihua === '权').length;
-  const keCount = allSihua.filter((s) => s.sihua === '科').length;
-  const jiCount = allSihua.filter((s) => s.sihua === '忌').length;
+  // 四化特征总结（只计生年化"体"，自化另计）
+  const birthOnly = allSihua.filter((s) => !s.source || s.source === 'birth');
+  const luCount = birthOnly.filter((s) => s.sihua === '禄').length;
+  const quanCount = birthOnly.filter((s) => s.sihua === '权').length;
+  const keCount = birthOnly.filter((s) => s.sihua === '科').length;
+  const jiCount = birthOnly.filter((s) => s.sihua === '忌').length;
 
   if (luCount > 1) {
     parts.push('命盘中化禄较多，整体运气不错，人生中容易遇到机遇和贵人，关键是要懂得抓住。');
@@ -1009,6 +1184,8 @@ function normalizePalaceArray(palaces: any[]): PalaceData[] {
             name: s.name,
             type: s.type || 'major',
             sihua: s.sihua,
+            sihuaSelf: s.sihuaSelf ?? null,
+            sihuaSelfKind: s.sihuaSelfKind ?? null,
           };
         }
         // @ziweijs/core 原始格式
@@ -1024,7 +1201,7 @@ function normalizePalaceArray(palaces: any[]): PalaceData[] {
       return { name: String(s), type: 'major', sihua: null };
     });
 
-    // 处理 minorStars
+    // 处理 minorStars（辅星同样可能带四化——如辛干文昌化忌、壬干左辅化科，不可丢失）
     const minorStars: (StarInfo | string)[] = (p.minorStars || []).map((s: any) => {
       if (s && typeof s === 'object') {
         if (s.sihua !== undefined && !s.YT && !s.ST) {
@@ -1032,12 +1209,16 @@ function normalizePalaceArray(palaces: any[]): PalaceData[] {
             name: s.name,
             type: 'minor',
             sihua: s.sihua,
+            sihuaSelf: s.sihuaSelf ?? null,
+            sihuaSelfKind: s.sihuaSelfKind ?? null,
           };
         }
         return {
           name: s.name,
           type: 'minor',
-          sihua: null,
+          YT: s.YT,
+          ST: s.ST,
+          sihua: s.YT?.name || s.ST?.CF?.name || s.ST?.CP?.name || null,
         };
       }
       return String(s);
