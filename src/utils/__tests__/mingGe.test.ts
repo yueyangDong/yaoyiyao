@@ -130,6 +130,35 @@ describe('analyzeMingGeDetailed', () => {
     const r = analyzeMingGeDetailed(ps, '戊', '中和', {});
     expect(r.geName).toContain('月令杂气');
   });
+
+  it('羊刃格只论阳干：乙阴干生在寅月（非羊刃）走普通八格', () => {
+    // 乙日主，月支寅。YANG_REN['乙']='寅'，但乙是阴干，不应判羊刃格
+    const ps = pillars(['庚', '甲', '乙', '丁'], ['申', '寅', '卯', '亥'],
+      [['壬'], ['甲'], ['乙'], ['甲']], ['正官', '劫财', '比肩', '比肩']);
+    ps[1].shiShenZhi = '劫财/伤官/正财'; // 寅藏甲丙戊 → 劫财/伤官/正财
+    const r = analyzeMingGeDetailed(ps, '乙', '中和', {});
+    expect(r.geName).not.toContain('羊刃');
+  });
+
+  it('羊刃格：甲阳干生在卯月 → 羊刃格', () => {
+    // 甲日主，月支卯 = 甲的羊刃（YANG_REN['甲']='卯'），甲是阳干 → 羊刃格
+    const ps = pillars(['辛', '庚', '甲', '丙'], ['酉', '卯', '子', '午'],
+      [['辛'], ['乙'], ['癸'], ['丁']], ['正官', '劫财', '偏印', '食神']);
+    const r = analyzeMingGeDetailed(ps, '甲', '中和', {});
+    expect(r.geName).toContain('羊刃格');
+  });
+
+  it('从格看月支本气：月干非财官食伤但月支本气是 → 仍判从格', () => {
+    // 甲日主身极弱，月支申（本气庚→七杀），月干丙（食神）
+    // 旧代码看月干十神=食神→从儿格；正确应看月支本气=七杀→从官杀格
+    const ps = pillars(['庚', '丙', '甲', '庚'], ['午', '申', '午', '午'],
+      [['丁'], ['庚', '壬', '戊'], ['丁'], ['丁']],
+      ['七杀', '食神', '伤官', '七杀']);
+    ps[1].shiShenZhi = '七杀/偏印/偏财'; // 申藏庚壬戊 → 七杀/偏印/偏财
+    const r = analyzeMingGeDetailed(ps, '甲', '身极弱', {});
+    expect(r.geName).toContain('从官杀格');
+    expect(r.geName).not.toContain('从儿');
+  });
 });
 
 describe('analyzeTouGan', () => {

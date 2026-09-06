@@ -14,6 +14,10 @@ const TG_WX: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
 };
+const TG_YIN_YANG: Record<string, string> = {
+  '甲': '阳', '乙': '阴', '丙': '阳', '丁': '阴', '戊': '阳',
+  '己': '阴', '庚': '阳', '辛': '阴', '壬': '阳', '癸': '阴',
+};
 const DZ_WX: Record<string, string> = {
   '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
@@ -89,14 +93,16 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
     }
   }
   // 从格：日主极弱，顺从月令旺神（财/官杀/食伤）
+  // 注意：从格看月令（月支本气）十神，非月干十神
   if (strengthLevel === '身极弱') {
-    const monthSS = pillars[1].shiShen || '';
+    const monthShiShenZhiArr = (pillars[1].shiShenZhi || '').split('/').filter(Boolean);
+    const monthBenQiSS = monthShiShenZhiArr[0] || pillars[1].shiShen || '';
     const fromNames: Record<string, string> = {
       '正财': '从财格', '偏财': '从财格',
       '正官': '从官杀格', '七杀': '从官杀格',
       '食神': '从儿格', '伤官': '从儿格',
     };
-    if (fromNames[monthSS]) {
+    if (fromNames[monthBenQiSS]) {
       // 假从：日主有余气根（日支同气）或比劫帮身 → 从得不纯
       const dayZhi = pillars[2].diZhi;
       const dayWx2 = TG_WX[dayGan] || '';
@@ -104,9 +110,9 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
       const biJieTou = pillars.some(p => ['比肩', '劫财'].includes(p.shiShen));
       const jia = hasRoot || biJieTou;
       return {
-        name: jia ? `假${fromNames[monthSS]}` : fromNames[monthSS],
+        name: jia ? `假${fromNames[monthBenQiSS]}` : fromNames[monthBenQiSS],
         type: '外格',
-        desc: `日主${dayGan}极弱，月令${monthZhi}${monthSS}成势，全局顺从旺神。${jia ? `日主有余气根（日支${dayZhi}同气）或比劫帮身，从得不纯，为假从——大运见印比易反复，宜顺势不可强扶` : '从得纯粹，为真从——大运喜顺从旺神，忌印比来犯'}。`,
+        desc: `日主${dayGan}极弱，月令${monthZhi}本气${monthBenQiSS}成势，全局顺从旺神。${jia ? `日主有余气根（日支${dayZhi}同气）或比劫帮身，从得不纯，为假从——大运见印比易反复，宜顺势不可强扶` : '从得纯粹，为真从——大运喜顺从旺神，忌印比来犯'}。`,
       };
     }
   }
@@ -212,10 +218,11 @@ export function analyzeMingGeDetailed(
     details.push(yueJie
       ? `月支${monthZhi} = ${dayGan}之禄位，比劫${biJie}透/地支同气${dzTongQi}位 → 建禄月劫格`
       : `月支${monthZhi} = ${dayGan}之禄位 → 建禄格`);
-  } else if (YANG_REN[dayGan] === monthZhi) {
+  } else if (YANG_REN[dayGan] === monthZhi && TG_YIN_YANG[dayGan] === '阳') {
+    // 羊刃格只论阳干（甲丙戊庚壬）：阳干帝旺为羊刃；阴干不论正羊刃，走普通八格
     geName = '羊刃格'; geType = '禄格'; score = '中上';
-    desc = `月令${monthZhi}为日主${dayGan}之羊刃，羊刃主刚烈果决、行动力强，但需注意冲动。`;
-    details.push(`月支${monthZhi} = ${dayGan}之羊刃 → 羊刃格`);
+    desc = `月令${monthZhi}为日主${dayGan}之羊刃（阳干帝旺之地），羊刃主刚烈果决、行动力强，但需注意冲动。`;
+    details.push(`月支${monthZhi} = ${dayGan}（阳干）之羊刃 → 羊刃格`);
   } else {
     // 3) 普通八格
     const bg = baGe(pillars, dayGan);
