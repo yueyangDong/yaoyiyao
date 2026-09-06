@@ -21,26 +21,10 @@ import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
-import { generateSummarizedReport, analyzeHoroscopeSihua } from '../utils/ziweiAnalysis';
+import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
 
 const { Title, Text, Paragraph } = Typography;
-
-// 十二宫白话解释模板
-const GONG_PLAIN_TEXT: Record<string, string> = {
-  '命宫': '命宫是你的"人生底色"，代表你的性格和命格基调。命宫坐什么星，你就带什么特质。',
-  '兄弟': '兄弟宫看你和兄弟姐妹、平辈朋友的关系，也反映合作运和社交圈质量。',
-  '夫妻': '夫妻宫决定你的配偶类型和婚姻质量，也看你的合作运。',
-  '子女': '子女宫不只是孩子缘分，还代表你的下属、学生、享乐方式和偏财运。',
-  '财帛': '财帛宫看赚钱能力和花钱方式——你靠什么赚钱、钱花在哪里。',
-  '疾厄': '疾厄宫看身体健康。疾厄宫好不代表不生病，而是生病后恢复快、体质好。',
-  '迁移': '迁移宫看外出运、社会形象。迁移宫好的人适合外地发展或经常出差。',
-  '交友': '交友宫（仆役宫）看朋友质量和合作伙伴。交友宫有煞星的话合伙要小心。',
-  '官禄': '官禄宫是你的事业方向——适合做什么、能做到多高。',
-  '田宅': '田宅宫看房产运和家庭环境，也代表你的"根基"稳不稳。',
-  '福德': '福德宫是你精神世界的质量。福德宫好的人"会享福"，是打心底里能快乐的人。',
-  '父母': '父母宫看与父母的关系，也代表上司和长辈缘，以及你的学历天花板。',
-};
 
 // 星曜个性描述
 const STAR_PERSONALITY: Record<string, string> = {
@@ -58,23 +42,6 @@ const STAR_PERSONALITY: Record<string, string> = {
   '天梁': '成熟稳重，有长者风范，喜欢帮助别人',
   '七杀': '敢闯敢拼，有开拓精神，适合创业和竞争',
   '破军': '我行我素，不拘一格，有创造力和破坏力双重特质',
-};
-
-const MINOR_STAR_DESC: Record<string, string> = {
-  '文昌': '读书聪明，文笔好',
-  '文曲': '有才艺，口才好',
-  '天魁': '有贵人运，得男性贵人相助',
-  '天钺': '有贵人运，得女性贵人相助',
-  '左辅': '有帮手，团队运好',
-  '右弼': '有得力助手',
-  '禄存': '有财库，能存住钱',
-  '擎羊': '性格刚烈，行动力强但容易冲动',
-  '陀罗': '做事慢但稳重，有时拖延',
-  '火星': '脾气急，爆发力强',
-  '铃星': '内心急躁，但不外露',
-  '地空': '想法天马行空，不太实际',
-  '地劫': '波折多，需经历风雨才能见彩虹',
-  '天马': '奔波劳碌，适合动态工作',
 };
 
 // 四化对宫位的影响白话
@@ -630,28 +597,36 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
   },
 };
 
-  // 生成某宫的白话解读
-  const getGongExplanation = (gong: any) => {
-    const base = GONG_PLAIN_TEXT[gong.name] || `${gong.name}宫是命盘中的重要组成部分。`;
-    const majorStars = gong.majorStars || [];
-    const minorStars = gong.minorStars || [];
-    const score = getPalaceScore(gong);
+  // 各宫白话解读（getAllPalacesReading 引擎：体用分层四化、对宫冲照、三合会照、
+  // 24 组双星专属文案、空宫借对宫、动态收尾建议——传入前合并 minorStarDetails 保留辅星四化）
+  const palaceReadings = useMemo<Record<string, string>>(() => {
+    if (!ziweiData) return {};
+    const palaces = ziweiData.gongData.map((g: any) => ({
+      ...g,
+      minorStars: g.minorStarDetails || (g.minorStars || []).map((n: string) => ({ name: n, type: 'minor' })),
+    }));
+    const readings = getAllPalacesReading(palaces);
+    const map: Record<string, string> = {};
+    for (const r of readings) map[r.palaceName] = r.reading;
+    return map;
+  }, [ziweiData]);
 
-    // 开头：直白结论（按吉/中/凶 分池 + 哈希选则确保稳定）
+  // 每宫开头判语（吉/中/凶分池；哈希输入含宫名+主星，同宫名不同盘措辞不同，降重合度）
+  const getGongVerdict = (gong: any): string => {
+    const score = getPalaceScore(gong);
+    const starKey = (gong.majorStars || []).map((s: any) => s.name).join('') || '空宫';
     const verdicts: Record<string, string[]> = {
       '吉': [
-        `整体来看，你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
-        `你的${gong.name}宫吉星汇聚，在这一方面有天然优势。`,
+        `你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
+        `${gong.name}宫吉星汇聚，在这一方面有天然优势。`,
         `${gong.name}宫星曜清朗，在这个领域你比大多数人顺利。`,
-        `${gong.name}宫有${(gong.majorStars || []).slice(0, 2).map((s: any) => s.name).join('、')}坐守，是你天生顺手、容易出成绩的领域。`,
-        `你这${gong.name}宫底子好，${gong.name}相关的事往往事半功倍，值得重点经营。`,
+        `你这${gong.name}宫底子好，相关的事往往事半功倍，值得重点经营。`,
       ],
       '凶': [
-        `你的${gong.name}宫煞星较重，这个领域是人生中需要多花心思经营的地方。`,
-        `${gong.name}宫挑战较多，但记住——煞星也是成就一个人的磨刀石。`,
+        `你的${gong.name}宫煞星较重，这个领域需要多花心思经营。`,
+        `${gong.name}宫挑战较多，但煞星也是成就一个人的磨刀石。`,
         `${gong.name}宫波折较多，早经历、早成长，晚景反而更稳健。`,
-        `${gong.name}宫有${(gong.majorStars || []).slice(0, 2).map((s: any) => s.name).join('、')}把守，这一块容易操心，但也是你磨炼出真本事的地方。`,
-        `你${gong.name}宫是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
+        `${gong.name}宫是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
       ],
       '中': [
         `你的${gong.name}宫吉凶参半，有好有坏，整体还算平稳。`,
@@ -661,76 +636,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
     const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
-    const verdict = verdictList[hash(gong.name) % verdictList.length];
-
-    const parts: string[] = ['<strong>' + verdict + '</strong> ' + base];
-
-    if (majorStars.length > 0) {
-      const starNames = majorStars.map((s: any) => {
-        let name = s.name;
-        if (s.sihua) name += `化${s.sihua}`;
-        return name;
-      }).join('、');
-      parts.push(`${starNames}坐${gong.name}宫，`);
-
-      const mainStar = majorStars[0];
-      if (STAR_PERSONALITY[mainStar.name]) {
-        parts.push(STAR_PERSONALITY[mainStar.name] + '。');
-      }
-
-      // 双主星同宫的解读：两个星曜的"特质融合"
-      if (majorStars.length >= 2) {
-        const second = majorStars[1];
-        const main = majorStars[0];
-        if (STAR_PERSONALITY[main.name] && STAR_PERSONALITY[second.name]) {
-          parts.push(`另外${second.name}同宫 — ${STAR_PERSONALITY[second.name]}两种特质叠加，让你在这领域多了一种"变奏"，但也意味着更复杂的需求。`);
-        }
-      }
-    }
-
-    if (minorStars.length > 0) {
-      // 把辅星分为吉/煞/普通三档，差异化呈现
-      const auspiciousMinors = minorStars.filter((s: string) => JI_STARS.has(s));
-      const maleficMinors = minorStars.filter((s: string) => XIONG_STARS.has(s));
-      const normalMinors = minorStars.filter((s: string) => !JI_STARS.has(s) && !XIONG_STARS.has(s) && MINOR_STAR_DESC[s]);
-      if (auspiciousMinors.length > 0) {
-        parts.push(`吉星「${auspiciousMinors.join('、')}」同度，让你在这领域有"助力人群"——他们会在关键时刻拉你一把。`);
-      }
-      if (maleficMinors.length > 0) {
-        parts.push(`然而「${maleficMinors.join('、')}」也在提醒你——这部分的事容易有"小摩擦"，不必紧张，而是把规则前置。`);
-      }
-      if (normalMinors.length > 0) {
-        parts.push(`辅星${normalMinors.join('、')}的影响相对平稳。`);
-      }
-    }
-
-    if (majorStars.length === 0 && minorStars.length === 0) {
-      parts.push('此宫为空宫，无主星坐守——空宫不代表空无一物，而是弹性更大、需要借对宫星曜来考量。这意味着你在这领域有更多"自我塑造"的空间。');
-    }
-
-    // 检查四化（按星分组，丰富说法）
-    for (const s of majorStars) {
-      if (s.sihua && SIHUA_EFFECT[s.sihua]) {
-        parts.push(SIHUA_EFFECT[s.sihua]);
-      }
-    }
-
-    // 易遇事 / 如何补强（每个宫的针对性提示）
-    const tips = GONG_TIPS[gong.name];
-    if (tips) {
-      // 用主星或四化作为"个性化 hook"，让提示不那么模板化
-      const hookStar = majorStars[0]?.name || '';
-      const hookText = hookStar ? `（因${hookStar}在此）` : '';
-      parts.push(`<strong>易遇事：</strong>${tips.eventHint}${hookText}`);
-      parts.push(`<strong>如何补强：</strong>${tips.boostHint}`);
-    }
-
-    // 添加哲理性结语
-    if (GONG_JI_HINT[gong.name]) {
-      parts.push(` ${GONG_JI_HINT[gong.name]}。`);
-    }
-
-    return parts.join('');
+    return verdictList[hash(gong.name + starKey) % verdictList.length];
   };
 
   return (
@@ -1332,8 +1238,15 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                   </div>
                   <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
                     <BookOpen size={13} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-secondary)' }} />
-                    <span dangerouslySetInnerHTML={{ __html: getGongExplanation(gong) }} />
+                    <strong>{getGongVerdict(gong)}</strong>
+                    {palaceReadings[gong.name] || ''}
                   </Text>
+                  {GONG_TIPS[gong.name] && (
+                    <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 6 }}>
+                      <strong>易遇事：</strong>{GONG_TIPS[gong.name].eventHint}
+                      <strong style={{ marginLeft: 12 }}>如何补强：</strong>{GONG_TIPS[gong.name].boostHint}
+                    </Text>
+                  )}
                 </div>
               );
             })}

@@ -7,6 +7,7 @@ import {
   generatePalaceReading,
   normalizeAstrolabeData,
   analyzeHoroscopeSihua,
+  getAllPalacesReading,
 } from '../ziweiAnalysis';
 import { ziwei } from '@ziweijs/core';
 
@@ -180,5 +181,55 @@ describe('大限/流年四化飞星', () => {
     }
     expect(r.decadal!.summary).toContain('禄入官禄');
     expect(r.decadal!.summary).toContain('忌入子女');
+  });
+});
+
+describe('十二宫解读：冲照只论生年化（体），自化（用）不冲照他宫', () => {
+  const mkPalace = (name: string, stars: any[]): any => ({
+    name, majorStars: stars, minorStars: [],
+  });
+
+  it('对宫主星坐生年化忌 → 本宫解读出现"直冲本宫"', () => {
+    // 迁移坐太阳化忌（生年），命宫解读应提示冲照
+    const chart = [
+      mkPalace('命宫', [{ name: '天机', type: 'major' }]),
+      mkPalace('迁移', [{ name: '太阳', type: 'major', sihua: '忌', YT: { name: '忌', key: 'ji' } }]),
+    ];
+    const readings = getAllPalacesReading(chart);
+    const ming = readings.find((r) => r.palaceName === '命宫')!;
+    expect(ming.reading).toContain('直冲本宫');
+  });
+
+  it('对宫主星仅向心自化忌（无生年化）→ 本宫解读不出现"直冲本宫"', () => {
+    const chart = [
+      mkPalace('命宫', [{ name: '天机', type: 'major' }]),
+      mkPalace('迁移', [{ name: '太阳', type: 'major', sihuaSelf: '忌', sihuaSelfKind: 'CP', ST: { CP: { name: '忌', key: 'ji' } } }]),
+    ];
+    const readings = getAllPalacesReading(chart);
+    const ming = readings.find((r) => r.palaceName === '命宫')!;
+    expect(ming.reading).not.toContain('直冲本宫');
+  });
+
+  it('双星同宫用专属文案（如紫微天府=帝星配财库）', () => {
+    const chart = [mkPalace('命宫', [
+      { name: '紫微', type: 'major' }, { name: '天府', type: 'major' },
+    ])];
+    const readings = getAllPalacesReading(chart);
+    expect(readings[0].reading).toContain('帝星配财库');
+  });
+
+  it('参考盘端到端：@ziweijs/core 排盘 → 十二宫解读全覆盖且非空', () => {
+    const r = ziwei.bySolar({ name: '', gender: 'male', date: new Date(2000, 7, 16, 4, 0, 0), language: 'zh-CN' } as any);
+    const chart = r.palaces.map((p: any) => ({
+      name: p.name,
+      majorStars: (p.majorStars || []).map((s: any) => ({ name: s.name, type: 'major', sihua: s.sihua ?? s.YT?.name ?? null })),
+      minorStars: (p.minorStars || []).map((s: any) => ({ name: s.name, type: 'minor', sihua: s.sihua ?? s.YT?.name ?? null })),
+    }));
+    const readings = getAllPalacesReading(chart as any);
+    expect(readings).toHaveLength(12);
+    for (const reading of readings) {
+      expect(reading.reading.length).toBeGreaterThan(20);
+      expect(reading.palaceName).toBeTruthy();
+    }
   });
 });

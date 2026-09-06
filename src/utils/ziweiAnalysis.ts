@@ -724,8 +724,11 @@ function getPalaceSpecificContext(
     if (trait) {
       const dim = palaceName === '命宫' ? trait.personality
         : palaceName === '夫妻' ? trait.love
+        : palaceName === '子女' ? trait.love
         : palaceName === '财帛' ? trait.fortune
+        : palaceName === '田宅' ? trait.fortune
         : palaceName === '官禄' ? trait.career
+        : palaceName === '迁移' ? trait.career
         : palaceName === '疾厄' ? trait.health
         : trait.personality;
       parts.push(`${mainStars[0]}的特质落在这里：${dim}。`);
@@ -950,13 +953,14 @@ export function getAllPalacesReading(allPalacesData: PalaceData[]): PalaceReadin
         ...(oppPalace.minorStars || []).map((s) => (typeof s === 'string' ? s : s)),
       ];
       const oppMainStars = getMainStarNames(oppStars);
-      // 对宫全部四化（多化全量，sihua 字段保留第一个作兼容）
-      const oppSihuas = getPalaceSihua(oppStars);
+      // 对宫全部生年四化（多化全量，sihua 字段保留第一个作兼容）。
+      // 只论生年化"体"——自化是对宫自身的能量流出（用），不对本宫构成照会/冲照
+      const oppBirthSihuas = getPalaceSihua(oppStars).filter((s) => s.source === 'birth');
       oppositeInfo = {
         name: oppositeName,
         majorStars: oppMainStars,
-        sihua: oppSihuas.length > 0 ? oppSihuas[0].sihua : null,
-        sihuaList: oppSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
+        sihua: oppBirthSihuas.length > 0 ? oppBirthSihuas[0].sihua : null,
+        sihuaList: oppBirthSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
       };
     }
 
@@ -972,12 +976,13 @@ export function getAllPalacesReading(allPalacesData: PalaceData[]): PalaceReadin
             ...(triPalace.minorStars || []).map((s) => (typeof s === 'string' ? s : s)),
           ];
           const triMainStars = getMainStarNames(triStars);
-          const triSihuas = getPalaceSihua(triStars);
+          // 三合会照只论生年化"体"，自化（用）不汇入他宫
+          const triBirthSihuas = getPalaceSihua(triStars).filter((s) => s.source === 'birth');
           return {
             name: triPalace.name,
             majorStars: triMainStars,
-            sihua: triSihuas.length > 0 ? triSihuas[0].sihua : null,
-            sihuaList: triSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
+            sihua: triBirthSihuas.length > 0 ? triBirthSihuas[0].sihua : null,
+            sihuaList: triBirthSihuas.map((s) => ({ star: s.star, sihua: s.sihua })),
           };
         }),
     };
