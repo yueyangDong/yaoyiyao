@@ -7,53 +7,93 @@ import { ExperimentOutlined } from '@ant-design/icons';
 import { Flower2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, MeiHuaResult } from '../utils/meihuaUtils';
+import { useDailyQuota } from '../hooks/useDailyQuota';
 
 const { Title, Text, Paragraph } = Typography;
 
+// 六十四卦意象（中性短语，适配本卦/互卦/变卦三种语境）
+const GUA_IMAGERY: Record<string, string> = {
+  '乾为天': '刚健进取，能量充沛，主动权在手',
+  '坤为地': '柔顺承载，配合与包容比主导更有利',
+  '水雷屯': '如春芽破土，起步维艰但生机已现',
+  '山水蒙': '信息不足、方向未明，需要先学习和请教',
+  '水天需': '需要耐心等待，条件正在成熟',
+  '天水讼': '存在分歧争拗，硬碰硬不如各退一步',
+  '地水师': '需要集结众人之力，纪律和名分是关键',
+  '水地比': '亲近合作之象，选对伙伴事半功倍',
+  '风天小畜': '小有积蓄，力量未足，宜小步积累',
+  '天泽履': '如履虎尾，处境微妙，谨慎言行可保平安',
+  '地天泰': '天地交泰，上下通畅，顺势有为',
+  '天地否': '闭塞不通，宜守不宜进，静待转机',
+  '天火同人': '志同道合者相聚，公开坦荡则吉',
+  '火天大有': '丰盛富有，资源充足，宜谦以处之',
+  '地山谦': '谦逊低调，反而能成事',
+  '雷地豫': '顺时而动则安乐，但忌得意忘形',
+  '泽雷随': '随顺时势，跟人跟势不跟面子',
+  '山风蛊': '积弊显露，整治旧问题才能开新局',
+  '地泽临': '阳气渐盛，机遇临近，宜主动把握',
+  '风地观': '宜观察审视，看清再动',
+  '火雷噬嗑': '有梗阻需要果断排除，咬碎障碍',
+  '山火贲': '重修饰包装，形式虽美需防华而不实',
+  '山地剥': '剥落消耗，根基受侵蚀，宜固守自保',
+  '地雷复': '一阳来复，转机初现，宜顺势而为',
+  '天雷无妄': '不妄为则吉，意外之事需坦然面对',
+  '山天大畜': '大的积蓄，厚积薄发之象',
+  '山雷颐': '颐养之道，管住嘴、稳住心、养实力',
+  '泽风大过': '负担过重、压力失衡，需要卸力调整',
+  '坎为水': '险陷重重，以诚信和定力突围',
+  '离为火': '光明依附，找对依靠才能持续发光',
+  '泽山咸': '相互感应，以诚动人，感情与合作易成',
+  '雷风恒': '恒久稳定，守常持久比求变更重要',
+  '天山遁': '退避保全，急流勇退不是认输',
+  '雷天大壮': '声势正盛，切忌恃强冒进',
+  '火地晋': '旭日东升，晋升发展之象',
+  '地火明夷': '光明受伤，宜收敛锋芒、外晦内明',
+  '风火家人': '内部和睦是根本，先齐家后成事',
+  '火泽睽': '意见相左、貌合神离，求同存异为上',
+  '水山蹇': '前有险阻，宜退不宜进，贵人相助可解',
+  '雷水解': '困局消解，把握时机宜快不宜拖',
+  '山泽损': '先损后益，眼前吃亏是为了长远',
+  '风雷益': '增益相助，利有所往，宜大展拳脚',
+  '泽天夬': '当断则断，果决清除隐患',
+  '天风姤': '不期而遇，谨防一时冲动带来后患',
+  '泽地萃': '聚集汇拢，聚众成事需防闲言',
+  '地风升': '步步上升，积小成大',
+  '泽水困': '身处困境，守志不移，少说多做',
+  '水风井': '如井水养人，守好根本、修己安人',
+  '泽火革': '变革在即，顺天应人则成',
+  '火风鼎': '鼎新稳重，建立新秩序、新根基',
+  '震为雷': '惊雷动荡，临危不乱者胜',
+  '艮为山': '当止则止，静守比盲动更明智',
+  '风山渐': '循序渐进，欲速则不达',
+  '雷泽归妹': '名分未定、位置尴尬，急于求进易生波折',
+  '雷火丰': '丰盛鼎盛，也须防盛极而衰',
+  '火山旅': '行旅在外，谨慎谦柔则安',
+  '巽为风': '如风渗透，柔缓推进反而深入',
+  '兑为泽': '喜悦交流，和气生财，防口舌过度',
+  '风水涣': '涣散之时，先聚拢人心再做事',
+  '水泽节': '节制有度，过紧过松都不好',
+  '风泽中孚': '诚信为本，心诚则灵',
+  '雷山小过': '小有越过，宜小不宜大，宜下不宜上',
+  '水火既济': '事已成局，守成防乱是关键',
+  '火水未济': '差一步未成，行百里者半九十',
+};
+
 // 三卦串联解读（本卦→互卦→变卦像讲故事）
 function getThreeGuaStory(benName: string, huName: string, bianName: string, dongYao: number): string {
-  const stories: Record<string, string> = {
-    '乾为天': '事情以一种强势、主动的姿态开始，你有着充足的行动力。',
-    '坤为地': '事情从接纳、顺从开始，外部环境是主导力量。',
-    '水雷屯': '开始阶段充满艰难，像春天种子破土，需要耐心。',
-    '山水蒙': '开始时信息不明朗，像雾里看花，需要先搞清楚状况。',
-    '水天需': '开始阶段处于等待状态，事情尚在酝酿中。',
-    '天水讼': '一开始就存在分歧或争议，需要妥善沟通。',
-    '地水师': '开始就意识到需要团队或外援，一个人搞不定。',
-    '水地比': '开始阶段有利好的人际关系或合作机会。',
-    '风天小畜': '开始阶段是小步积累，进展缓慢但持续。',
-    '天泽履': '开始阶段需要谨慎行事，环境中存在风险因素。',
-    '地天泰': '开始阶段顺风顺水，天地交泰大吉大利。',
-    '天地否': '开始阶段闭塞不通，需要先打破隔阂。',
-    '天火同人': '开始阶段需要找到志同道合的人。',
-    '火天大有': '开始阶段资源充足，大有可为。',
-    '地山谦': '开始阶段需要保持谦虚低调的态度。',
-    '雷地豫': '开始阶段心情愉悦，但要防止乐极生悲。',
-    '泽雷随': '开始阶段需要顺应时势，不宜逆行。',
-    '山风蛊': '开始阶段发现积弊，需要拨乱反正。',
-    '地泽临': '开始阶段机遇来临，要把握时机。',
-    '风地观': '开始阶段宜多观察，少行动。',
-    '火雷噬嗑': '开始阶段有阻碍需要咬碎，需要决断力。',
-    '山火贲': '开始阶段注重外表包装，内在尚需充实。',
-    '山地剥': '开始阶段有人事变动或消耗，宜守不宜攻。',
-    '地雷复': '开始阶段是复兴之始，阳气回暖。',
-    '天雷无妄': '开始阶段纯任天然，不妄为反而是最好的作为。',
-    '山天大畜': '开始阶段是大积累的前奏，准备越多越好。',
-    '山雷颐': '开始阶段需要养精蓄锐，管好自己的事。',
-    '泽风大过': '开始阶段存在过度或失衡，调平衡是关键。',
-    '坎为水': '开始阶段如同涉水过河，需要谨慎和毅力。',
-    '离为火': '开始阶段明亮清晰，但要注意依附对的人。',
-  };
+  const ben = GUA_IMAGERY[benName] || `呈现出「${benName}」的状态，需要结合卦象细细体会`;
+  const hu = GUA_IMAGERY[huName] || `会遇到「${huName}」所示的波折和转折，需要灵活应对`;
+  const bian = GUA_IMAGERY[bianName] || `走向「${bianName}」所示的趋势`;
 
   let story = '';
-  story += '这件事开始的时候，' + (stories[benName] || `呈现出「${benName}」的状态，需要根据卦象判断方向。`) + '\n\n';
-  story += '过程中，' + (stories[huName] || `会遇到「${huName}」所示的波折和转折，需要灵活应对。`) + '\n\n';
-  story += '最终的结果偏向' + (stories[bianName] || `「${bianName}」所示的趋势。`);
+  story += `这件事的开端（${benName}）：${ben}。` + '\n\n';
+  story += `发展的过程（${huName}）：${hu}。` + '\n\n';
+  story += `最终的走向（${bianName}）：${bian}。`;
 
   if (dongYao <= 3) {
-    story += '变化出现在前期，开局的局面很快会改变，不用太纠结于当下的状态。';
+    story += '\n\n动爻位置偏低，变化出现在事情的前期——开局的局面很快会改变，不必太纠结于当下的状态。';
   } else {
-    story += '变化出现在中后期，前期可以按部就班，但到了关键时刻要果断调整。';
+    story += '\n\n动爻位置偏高，变化出现在事情的中后期——前期可以按部就班推进，但到了关键时刻要果断调整。';
   }
 
   if (benName === bianName) {
@@ -94,6 +134,7 @@ const TIYONG_DETAIL: Record<string, { title: string; desc: string; advice: strin
 
 export default function Meihua() {
   const { currentUser, addHistory } = useUser();
+  const { tryConsume, quotaModal } = useDailyQuota('meihua');
   const [mode, setMode] = useState<'date' | 'manual'>('date');
   const [num1, setNum1] = useState<number | null>(null);
   const [num2, setNum2] = useState<number | null>(null);
@@ -108,14 +149,15 @@ export default function Meihua() {
     }
   }, [currentUser]);
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
+    if (mode !== 'date' && (!num1 || !num2 || !num3)) { message.warning('请输入三个数字'); return; }
+    if (!(await tryConsume())) return;
     try {
       let res: MeiHuaResult;
       if (mode === 'date') {
         res = calcMeiHuaFromDate();
       } else {
-        if (!num1 || !num2 || !num3) { message.warning('请输入三个数字'); return; }
-        res = calcMeiHua(num1, num2, num3);
+        res = calcMeiHua(num1!, num2!, num3!);
       }
       setResult(res);
       message.success('起卦完成');
@@ -268,9 +310,28 @@ export default function Meihua() {
                 )}
               </Col>
             </Row>
+
+            {/* 变卦参断：定结局吉凶 */}
+            <Divider style={{ margin: '12px 0' }} />
+            <Row gutter={[16, 8]} align="middle">
+              <Col xs={24} md={10}>
+                <Text style={{ color: 'var(--text-secondary)' }}>
+                  变卦参断（结局）：变出之卦五行属「{result.bianYongWuxing}」，对体卦为
+                </Text>
+                <Text strong style={{ marginLeft: 6, fontSize: 16, color: result.bianRelation.includes('吉') || result.bianRelation === '体用比和' || result.bianRelation === '用生体' ? 'var(--wx-wood)' : result.bianRelation === '用克体' ? 'var(--wx-fire)' : 'var(--text-primary)' }}>
+                  {result.bianRelation}
+                </Text>
+              </Col>
+              <Col xs={24} md={14}>
+                <Text style={{ fontSize: 13, color: 'var(--text-body)' }}>
+                  本卦体用看当下格局，变卦参断定最终结局。{result.bianJudgement}
+                </Text>
+              </Col>
+            </Row>
           </Card>
         </>
       )}
+      {quotaModal}
     </div>
   );
 }

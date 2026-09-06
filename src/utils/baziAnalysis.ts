@@ -159,7 +159,7 @@ export function analyzeDayMasterStrength(
   const woKeWx = WX_KE[dayWx];
 
   let score = 0;
-  const maxScore = 14;
+  const maxScore = 11; // 理论满分：月令3 + 根气3 + 印星3 + 比劫2
 
   // ===== 1. 月令分析（最高±3分） =====
   const monthWx = DZ_WX[monthZhi];
@@ -352,22 +352,25 @@ export function analyzeDayMasterStrength(
     weakenDetail = `克泄耗力量很弱——四柱中缺乏食伤泄秀和官杀约束。日主释放和受到制约的渠道都少，能量容易"憋着"，需要通过运动或创作来疏导。`;
   }
 
-  // ===== 6. 综合判断 =====
+  // ===== 6. 综合判断（五档） =====
+  // 身极强(≥8) / 身强(5-7) / 中和(2-4) / 身弱(-1~1) / 身极弱(≤-2)
+  // 校准说明：旧版此处的"极强/极弱判定"把结果又赋回'身强'/'身弱'（死代码），
+  // 导致 mingGe.ts 的专旺格/从格（依赖身极强/身极弱）在生产中永远不会触发。
   let level = '';
-  if (score >= 5) {
+  if (score >= 8) {
+    level = '身极强';
+  } else if (score >= 5) {
     level = '身强';
   } else if (score >= 2) {
     level = '中和';
-  } else {
+  } else if (score >= -1) {
     level = '身弱';
+  } else {
+    level = '身极弱';
   }
 
-  // 极强/极弱判定
-  if (score >= 8) level = '身强';
-  if (score <= -1) level = '身弱';
-
   // 生成综合总结
-  const strengthLabel = level === '身强' ? '偏强' : level === '身弱' ? '偏弱' : '中和平衡';
+  const strengthLabel = level === '身极强' ? '极强，一行得势' : level === '身强' ? '偏强' : level === '身弱' ? '偏弱' : level === '身极弱' ? '极弱，易从势' : '中和平衡';
   const summary = `综合分析：日主${dayGan}（${dayWx}）综合评分${score}/${maxScore}，属于「${level}」(${strengthLabel})。` +
     `得令情况：${seasonDetail.split('。')[0]}。` +
     `根气情况：${rootsDetail.split('。')[0]}。` +

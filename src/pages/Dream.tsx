@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ALL_DREAMS, DREAM_CATEGORIES, PINYIN_MAP, DreamEntry } from '../data/dreamData';
 import { useUser } from '../context/UserContext';
+import { useDailyQuota } from '../hooks/useDailyQuota';
 import CollapsibleCard from '../components/CollapsibleCard';
 
 const { Title, Text, Paragraph } = Typography;
@@ -60,6 +61,7 @@ const CATEGORY_ICONS_SMALL: Record<string, React.ReactNode> = {
 
 export default function Dream() {
   const { currentUser, addHistory } = useUser();
+  const { tryConsume, quotaModal } = useDailyQuota('dream');
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDream, setSelectedDream] = useState<DreamEntry | null>(null);
@@ -94,8 +96,9 @@ export default function Dream() {
     return results;
   }, [searchText]);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     if (!value.trim()) return;
+    if (!(await tryConsume())) return;
     const txt = value.trim();
     // 更新搜索历史
     const newHistory = [txt, ...history.filter((h) => h !== txt)].slice(0, 10);
@@ -139,7 +142,8 @@ export default function Dream() {
       : [];
   }, [selectedCategory]);
 
-  const handleRandom = () => {
+  const handleRandom = async () => {
+    if (!(await tryConsume())) return;
     const idx = Math.floor(Math.random() * ALL_DREAMS.length);
     setSelectedDream(ALL_DREAMS[idx]);
     setModalOpen(true);
@@ -426,6 +430,7 @@ export default function Dream() {
           </>
         )}
       </Modal>
+      {quotaModal}
     </div>
   );
 }

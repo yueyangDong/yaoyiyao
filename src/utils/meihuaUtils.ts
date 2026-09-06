@@ -1,3 +1,5 @@
+import { Lunar } from 'lunar-typescript';
+
 // 八卦：0=坤, 1=乾, 2=兑, 3=离, 4=震, 5=巽, 6=坎, 7=艮
 const GUA_NAMES: Record<number, string> = {
   0: '坤', 1: '乾', 2: '兑', 3: '离', 4: '震', 5: '巽', 6: '坎', 7: '艮',
@@ -9,6 +11,17 @@ const GUA_SYMBOLS: Record<number, string> = {
 
 const GUA_WUXING: Record<number, string> = {
   0: '土', 1: '金', 2: '金', 3: '火', 4: '木', 5: '木', 6: '水', 7: '土',
+};
+
+// 卦序 -> 三爻位值（bit0=下爻，bit1=中爻，bit2=上爻；1=阳，0=阴）
+// 乾☰=111 兑☱=110(从下到上:阳阳阴=0b011) 离☲=101 震☳=100(从下到上:阳阴阴=0b001)
+// 巽☴=011(从下到上:阴阳阳=0b110) 坎☵=010 艮☶=001(从下到上:阴阴阳=0b100) 坤☷=000
+const GUA_BITS: Record<number, number> = {
+  0: 0b000, 1: 0b111, 2: 0b011, 3: 0b101, 4: 0b001, 5: 0b110, 6: 0b010, 7: 0b100,
+};
+
+const BITS_TO_GUA: Record<number, number> = {
+  0b000: 0, 0b111: 1, 0b011: 2, 0b101: 3, 0b001: 4, 0b110: 5, 0b010: 6, 0b100: 7,
 };
 
 // 六十四卦名 (上卦*8+下卦)
@@ -31,6 +44,8 @@ const HEXAGRAM_NAMES: Record<string, string> = {
   '0,5': '地风升', '0,6': '地水师', '0,7': '地山谦', '0,0': '坤为地',
 };
 
+const ZHI_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
 export interface MeiHuaResult {
   shangGua: number;
   xiaGua: number;
@@ -47,6 +62,9 @@ export interface MeiHuaResult {
   yongWuxing: string;
   relation: string;
   judgement: string;
+  bianYongWuxing: string;   // 变卦中用卦（变出之卦）的五行
+  bianRelation: string;     // 变卦用卦对体卦的生克（定结局吉凶）
+  bianJudgement: string;
 }
 
 function getGuaFromNum(n: number): number {
@@ -54,12 +72,7 @@ function getGuaFromNum(n: number): number {
   return r === 0 ? 8 : r;
 }
 
-function getGuaIndex(n: number): number {
-  const r = n % 8;
-  return r === 0 ? 0 : r; // 0=坤, 1=乾...
-}
-
-// 八卦数转索引 (1=乾,2=兑,3=离,4=震,5=巽,6=坎,7=艮,8=坤) -> (1=乾,2=兑,3=离,4=震,5=巽,6=坎,7=艮,0=坤)
+// 先天卦数(1乾2兑3离4震5巽6坎7艮8坤) -> 内部索引(1乾2兑3离4震5巽6坎7艮0坤)
 function guaNumToIndex(n: number): number {
   if (n === 8) return 0;
   return n;
@@ -69,26 +82,43 @@ function getHexagramName(shangIndex: number, xiaIndex: number): string {
   return HEXAGRAM_NAMES[`${shangIndex},${xiaIndex}`] || '未知卦';
 }
 
+/**
+ * 互卦：取本卦二、三、四爻为下互，三、四、五爻为上互。
+ * 六爻位序（从下到上）：爻1-3 为下卦，爻4-6 为上卦。
+ */
 function getHuGua(shangIndex: number, xiaIndex: number): { shang: number; xia: number } {
-  // 互卦：二三四爻为下互，三四五爻为上互
-  // 上卦代表上三爻，下卦代表下三爻
-  // 互卦下卦 = 下卦的上两爻 + 上卦的下爻 (爻位2,3,4)
-  // 互卦上卦 = 下卦的上爻 + 上卦的下两爻 (爻位3,4,5)
-  // 简化：下互=(上卦下爻,下卦上两爻), 上互=(上卦上两爻,下卦上爻)
-  // 实际上是：下互 = 取本卦二三四爻，上互 = 取本卦三四五爻
-  return { shang: xiaIndex, xia: shangIndex }; // 简化处理
+  const s = GUA_BITS[shangIndex];
+  const x = GUA_BITS[xiaIndex];
+  const y2 = (x >> 1) & 1;
+  const y3 = (x >> 2) & 1;
+  const y4 = s & 1;
+  const y5 = (s >> 1) & 1;
+  const huXiaBits = y2 | (y3 << 1) | (y4 << 2);
+  const huShangBits = y3 | (y4 << 1) | (y5 << 2);
+  return { shang: BITS_TO_GUA[huShangBits], xia: BITS_TO_GUA[huXiaBits] };
 }
 
+/** 变卦：动爻阴阳翻转（动爻 1-3 在下卦，4-6 在上卦）。 */
+function getBianGua(shangIndex: number, xiaIndex: number, dongYao: number): { shang: number; xia: number } {
+  let s = GUA_BITS[shangIndex];
+  let x = GUA_BITS[xiaIndex];
+  if (dongYao <= 3) {
+    x ^= 1 << (dongYao - 1);
+  } else {
+    s ^= 1 << (dongYao - 4);
+  }
+  return { shang: BITS_TO_GUA[s], xia: BITS_TO_GUA[x] };
+}
+
+/** 体用：动爻所在之卦为用卦，另一卦为体卦（体为自己，用为所占之事/外部环境）。 */
 function getTiYong(shangIndex: number, xiaIndex: number, dongYao: number): {
   ti: number;
   yong: number;
 } {
-  // 动爻在上卦(1-3) -> 上卦为用，下卦为体
-  // 动爻在下卦(4-6) -> 下卦为用，上卦为体
   if (dongYao <= 3) {
-    return { ti: xiaIndex, yong: shangIndex };
+    return { ti: shangIndex, yong: xiaIndex };
   }
-  return { ti: shangIndex, yong: xiaIndex };
+  return { ti: xiaIndex, yong: shangIndex };
 }
 
 function getWuxingRelation(tiWx: string, yongWx: string): { relation: string; judgement: string } {
@@ -115,11 +145,7 @@ function getWuxingRelation(tiWx: string, yongWx: string): { relation: string; ju
   return { relation: '用克体', judgement: '用克体，凶象，诸事不宜，宜守不宜攻，需谨慎行事，等待时机。' };
 }
 
-export function calcMeiHua(num1: number, num2: number, num3: number): MeiHuaResult {
-  const shangNum = getGuaFromNum(num1);
-  const xiaNum = getGuaFromNum(num2);
-  const dongYaoNum = num3 % 6 === 0 ? 6 : num3 % 6;
-
+function buildResult(shangNum: number, xiaNum: number, dongYaoNum: number): MeiHuaResult {
   const shangIndex = guaNumToIndex(shangNum);
   const xiaIndex = guaNumToIndex(xiaNum);
 
@@ -130,23 +156,19 @@ export function calcMeiHua(num1: number, num2: number, num3: number): MeiHuaResu
   const huName = getHexagramName(hu.shang, hu.xia);
   const huSymbol = `${GUA_SYMBOLS[hu.shang]}${GUA_SYMBOLS[hu.xia]}`;
 
-  // 变卦：动爻所在之卦，爻变（阴变阳，阳变阴）
-  let bianShang = shangIndex;
-  let bianXia = xiaIndex;
-  if (dongYaoNum <= 3) {
-    // 上卦中第dongYaoNum爻变
-    bianShang = shangIndex; // 简化：变动上卦
-  } else {
-    bianXia = xiaIndex; // 简化：变动下卦
-  }
-  // 简化变卦处理：互卦作为变卦参考
-  const bianName = getHexagramName(bianShang, bianXia);
-  const bianSymbol = `${GUA_SYMBOLS[bianShang]}${GUA_SYMBOLS[bianXia]}`;
+  const bian = getBianGua(shangIndex, xiaIndex, dongYaoNum);
+  const bianName = getHexagramName(bian.shang, bian.xia);
+  const bianSymbol = `${GUA_SYMBOLS[bian.shang]}${GUA_SYMBOLS[bian.xia]}`;
 
   const tiYong = getTiYong(shangIndex, xiaIndex, dongYaoNum);
   const tiWx = GUA_WUXING[tiYong.ti];
   const yongWx = GUA_WUXING[tiYong.yong];
   const wxRel = getWuxingRelation(tiWx, yongWx);
+
+  // 变卦参断：动爻在用卦，变卦同位置之卦即"用卦变出之卦"，其对体卦的生克定结局
+  const bianYongIndex = dongYaoNum <= 3 ? bian.xia : bian.shang;
+  const bianYongWx = GUA_WUXING[bianYongIndex];
+  const bianRel = getWuxingRelation(tiWx, bianYongWx);
 
   return {
     shangGua: shangNum,
@@ -164,15 +186,43 @@ export function calcMeiHua(num1: number, num2: number, num3: number): MeiHuaResu
     yongWuxing: yongWx,
     relation: wxRel.relation,
     judgement: wxRel.judgement,
+    bianYongWuxing: bianYongWx,
+    bianRelation: bianRel.relation,
+    bianJudgement: bianRel.judgement,
   };
 }
 
-export function calcMeiHuaFromDate(): MeiHuaResult {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  return calcMeiHua(year, month, day);
+/**
+ * 手动数字起卦：num1 求上卦、num2 求下卦、num3 求动爻（各按先天卦数取余）。
+ */
+export function calcMeiHua(num1: number, num2: number, num3: number): MeiHuaResult {
+  const shangNum = getGuaFromNum(num1);
+  const xiaNum = getGuaFromNum(num2);
+  const dongYaoNum = num3 % 6 === 0 ? 6 : num3 % 6;
+  return buildResult(shangNum, xiaNum, dongYaoNum);
+}
+
+/**
+ * 标准梅花时间起卦（农历年月日时）：
+ * 上卦 = (年支数 + 月数 + 日数) ÷ 8 取余
+ * 下卦 = (年支数 + 月数 + 日数 + 时支数) ÷ 8 取余
+ * 动爻 = (年支数 + 月数 + 日数 + 时支数) ÷ 6 取余
+ * 年支数：子1丑2…亥12；月日按农历；时支数同年支数。
+ */
+export function calcMeiHuaFromDate(date: Date = new Date()): MeiHuaResult {
+  const lunar = Lunar.fromDate(date);
+  const yearZhi = lunar.getYearInGanZhi().charAt(1);
+  const yearNum = ZHI_ORDER.indexOf(yearZhi) + 1;
+  const monthNum = Math.abs(lunar.getMonth()); // 闰月取正值
+  const dayNum = lunar.getDay();
+  const hourNum = ZHI_ORDER.indexOf(lunar.getTimeZhi()) + 1;
+
+  const shangNum = getGuaFromNum(yearNum + monthNum + dayNum);
+  const xiaNum = getGuaFromNum(yearNum + monthNum + dayNum + hourNum);
+  const total = yearNum + monthNum + dayNum + hourNum;
+  const dongYaoNum = total % 6 === 0 ? 6 : total % 6;
+
+  return buildResult(shangNum, xiaNum, dongYaoNum);
 }
 
 export { GUA_NAMES, GUA_SYMBOLS, GUA_WUXING };

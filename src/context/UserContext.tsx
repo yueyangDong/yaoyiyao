@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { getNameByCode } from 'cn-division';
+import { Lunar } from 'lunar-typescript';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -457,6 +458,8 @@ export function getCityLng(province: string, city: string, district?: string): n
  * 真太阳时校正：平太阳时（标准时 + 经度差 4 分钟/度）+ 均时差（Equation of Time，±16 分钟）。
  * 返回 dayOffset：校正跨越午夜时日历日的偏移（-1/0/1），调用方必须同步平移出生日期，
  * 否则日柱会排错一天（如乌鲁木齐 00:10 → 真太阳时为前一日 22:00 左右）。
+ * 注意：必须先对总分钟数取整再拆 hour/minute——若先拆再对 minute 四舍五入，
+ * 边界会产出 minute=60（如 11:59.6 → hour=11,minute=60），lunar-typescript 会抛 "wrong minute 60"。
  * @param date 公历出生日期（用于计算均时差；不传则忽略均时差，仅做经度校正）
  */
 export function getTrueSolarHour(hour: number, minute: number, lng: number, date?: Date): { hour: number; minute: number; dayOffset: number } {
@@ -469,8 +472,36 @@ export function getTrueSolarHour(hour: number, minute: number, lng: number, date
     const B = (2 * Math.PI * (dayOfYear - 81)) / 364;
     eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
   }
-  const total = hour * 60 + minute + offsetMinutes + eot;
+  // 先取整再拆分：保证 hour/minute/dayOffset 三者永远自洽，minute ∈ [0,59]
+  const total = Math.round(hour * 60 + minute + offsetMinutes + eot);
   const dayOffset = Math.floor(total / (24 * 60));
   const within = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
-  return { hour: Math.floor(within / 60), minute: Math.round(within % 60), dayOffset };
+  return { hour: Math.floor(within / 60), minute: within % 60, dayOffset };
+}
+
+/**
+ * 真太阳时校正统一入口（八字/紫微/合盘共用，避免各页复制分叉）：
+ * - 农历输入先换算为公历日再算均时差（EoT 只与公历日期有关，直接拿农历数字当公历会偏 1~3 分钟）；
+ * - 均时差与经度无关，lng=120（或城市库未命中回退 120）只要调用本函数就会校正 EoT；
+ * - 返回的 dayOffset 由调用方同步平移出生日期（Solar/Lunar.next(dayOffset)）。
+ */
+export function correctSolarTime(params: {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  lng: number;
+  calendar?: 'solar' | 'lunar';
+  isLeap?: boolean;
+}): { hour: number; minute: number; dayOffset: number } {
+  const { year, month, day, hour, minute, lng, calendar = 'solar', isLeap = false } = params;
+  let solarDate: Date;
+  if (calendar === 'lunar') {
+    const s = Lunar.fromYmdHms(year, isLeap ? -month : month, day, 12, 0, 0).getSolar();
+    solarDate = new Date(s.getYear(), s.getMonth() - 1, s.getDay());
+  } else {
+    solarDate = new Date(year, month - 1, day);
+  }
+  return getTrueSolarHour(hour, minute, lng, solarDate);
 }

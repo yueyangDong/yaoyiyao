@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
+import { useDailyQuota } from '../hooks/useDailyQuota';
 import {
   Card, Select, Button, Typography, Space, Divider,
   Tag, Row, Col, Descriptions, InputNumber, Radio, Alert,
@@ -53,6 +54,7 @@ function calcMingGua(year: number, gender: 'male' | 'female'): { guaNum: number;
 
 export default function Fengshui() {
   const { currentUser, addHistory } = useUser();
+  const { tryConsume, quotaModal } = useDailyQuota('fengshui');
   const [sitting, setSitting] = useState<string | null>(null);
   const [door, setDoor] = useState<Direction | null>(null);
   const [bedroom, setBedroom] = useState<Direction | null>(null);
@@ -89,8 +91,9 @@ export default function Fengshui() {
     };
   }, [result, ownerMingGua]);
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
     if (!sitting || !door || !bedroom || !kitchen) return;
+    if (!(await tryConsume())) return;
     const res = calcFengshui(sitting, door, bedroom, kitchen);
     setResult(res);
     addHistory({
@@ -375,6 +378,7 @@ export default function Fengshui() {
           </Card>
         </>
       )}
+      {quotaModal}
     </div>
   );
 }

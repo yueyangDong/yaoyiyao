@@ -12,6 +12,7 @@
 //   3. 交换不变性由单元测试保证（hepan.test.ts 交换输入用例）。
 import type { PillarData } from '../pages/Bazi';
 import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
+import { DAY_MASTER_ESSENCE, getDayMasterTitle } from './baziPersonality';
 
 // ========== 紫微合盘：星性分组与经典配对 ==========
 // 中州派星性三分：领导贵气型 / 智谋支援型 / 开创行动型
@@ -98,6 +99,14 @@ export interface HePanResult {
   loveAdvice?: PartyLoveAdvice;
   /** 双向视角明细：分数对称（交换输入不变），文字视角随人走 */
   perspectives?: { mine: string; partner: string };
+  /** 双方日主性格双画像 + 互动动力学 */
+  personalityDuet?: {
+    mineTitle: string;
+    mineEssence: string;
+    partnerTitle: string;
+    partnerEssence: string;
+    dynamic: string;
+  };
   partnerDisplay?: {
     name: string;
     birth: string;
@@ -418,5 +427,29 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     partner: `${pLabel}视角：${wxRelText(pWx, mWx, pLabel, mLabel)}；${mineHelps ? `对方日主${mWx}正补${pLabel}的喜用神，${pLabel}在这段关系里运势更受益` : `对方日主${mWx}不在${pLabel}喜用之列，${pLabel}的获益更依赖日常经营`}。`,
   };
 
-  return { totalScore, level, items, summary, loveAdvice, partnerDisplay, perspectives };
+  // 双方日主性格双画像 + 互动动力学
+  let dynamicText: string;
+  if (WX_SHENG[mWx] === pWx) {
+    dynamicText = `${mLabel}的${mWx}生${pLabel}的${pWx}——这段关系里${mLabel}天然地想照顾${pLabel}，付出是${mLabel}表达爱的方式。好处是${pLabel}会被滋养得很舒服；风险是${mLabel}的付出久了容易变成"理所当然"。${pLabel}要记得：看见并回应这份好，是这段关系最重要的保养。`;
+  } else if (WX_SHENG[pWx] === mWx) {
+    dynamicText = `${pLabel}的${pWx}生${mLabel}的${mWx}——${pLabel}天生愿意滋养${mLabel}，和${pLabel}在一起，${mLabel}会有一种"被托住"的踏实。但${mLabel}要注意：被照顾是福气，不是权利。一句"谢谢你一直都在"，能让这份流动一直转下去。`;
+  } else if (mWx === pWx) {
+    dynamicText = `两人同为${mWx}——你们像照镜子：对方的优点你欣赏，因为那也是你；对方的毛病你着急，因为那也是你。同频让你们默契十足，但遇到分歧时容易"谁也不让谁"。记住：赢了争论，输的是气氛，你们是队友不是对手。`;
+  } else if (WX_KE[mWx] === pWx) {
+    dynamicText = `${mLabel}的${mWx}克${pLabel}的${pWx}——相处中${mLabel}相对强势，节奏和规矩多半由${mLabel}定。这不是坏事，${pLabel}很多时候也愿意被引领；但${mLabel}要警惕把"主导"过成"做主"——家是讲爱的地方，不是讲服从的地方。`;
+  } else if (WX_KE[pWx] === mWx) {
+    dynamicText = `${pLabel}的${pWx}克${mLabel}的${mWx}——这段关系里${pLabel}气场更强，${mLabel}更多时候在配合和包容。适度的让是爱，长久的委屈是伤。${mLabel}要学会把"不舒服"说出口——真正爱你的人，会愿意为你调低音量。`;
+  } else {
+    dynamicText = `两人的五行没有直接生克——你们更像两个独立的星球，各有轨道、彼此照亮。这种关系的好处是没有消耗，要注意的是别让"各自精彩"变成"渐行渐远"，刻意制造共同的节奏很重要。`;
+  }
+
+  const personalityDuet = {
+    mineTitle: getDayMasterTitle(mine.dayGan),
+    mineEssence: DAY_MASTER_ESSENCE[mine.dayGan] || '',
+    partnerTitle: getDayMasterTitle(partner.dayGan),
+    partnerEssence: DAY_MASTER_ESSENCE[partner.dayGan] || '',
+    dynamic: dynamicText,
+  };
+
+  return { totalScore, level, items, summary, loveAdvice, partnerDisplay, perspectives, personalityDuet };
 }

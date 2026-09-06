@@ -11,6 +11,7 @@ import { guanyinLots, type LotData as GuanyinLot } from '../data/guanyinLots';
 import { guandiLots } from '../data/guandiLots';
 import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
 import { useUser } from '../context/UserContext';
+import { useDailyQuota } from '../hooks/useDailyQuota';
 import CollapsibleCard from '../components/CollapsibleCard';
 // @ts-ignore - canvas-confetti types not available
 import confetti from 'canvas-confetti';
@@ -70,6 +71,7 @@ type DrawPhase = 'idle' | 'praying' | 'shaking' | 'confirming' | 'revealing' | '
 
 export default function Lingqian() {
   const { currentUser, addHistory } = useUser();
+  const { tryConsume, quotaModal } = useDailyQuota('lingqian');
   const [lotType, setLotType] = useState<string>('guanyin');
   const [phase, setPhase] = useState<DrawPhase>('idle');
   const [progress, setProgress] = useState(0);
@@ -86,7 +88,8 @@ export default function Lingqian() {
     };
   }, []);
 
-  const startDraw = useCallback(() => {
+  const startDraw = useCallback(async () => {
+    if (!(await tryConsume())) return;
     if (lotType === 'zhuge') {
       if (!zhugeWords.w1 || !zhugeWords.w2 || !zhugeWords.w3) {
         message.warning('请输入三个汉字');
@@ -164,7 +167,7 @@ export default function Lingqian() {
         }, 100);
       }
     }, 80);
-  }, [lotType, zhugeWords, currentLots, currentUser?.id, addHistory]);
+  }, [lotType, zhugeWords, currentLots, currentUser?.id, addHistory, tryConsume]);
 
   const resetDraw = () => {
     setPhase('idle');
@@ -603,6 +606,7 @@ export default function Lingqian() {
         </div>
       )}
 
+      {quotaModal}
     </div>
   );
 }

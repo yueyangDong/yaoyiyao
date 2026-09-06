@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
-import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
+import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
 import {
@@ -16,11 +16,13 @@ import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
+import PayWall from '../components/PayWall';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport } from '../utils/ziweiAnalysis';
+import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -352,16 +354,18 @@ export default function Ziwei() {
     try {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
-      // 真太阳时校正（仿八字页 handleCalc；跨午夜时同步平移日期）
+      // 真太阳时校正（有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT；跨午夜同步平移日期）
       let calcHour = hour;
       let calcMinute = minute || 0;
       let lng = 120;
       let tsDayOffset = 0;
       if (birthplace && birthplace.length >= 2) {
         lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
-      }
-      if (lng !== 120) {
-        const trueSolar = getTrueSolarHour(hour, minute || 0, lng, new Date(year, month - 1, day));
+        const trueSolar = correctSolarTime({
+          year, month, day, hour, minute: minute || 0, lng,
+          calendar: calendarType === 'lunar' ? 'lunar' : 'solar',
+          isLeap: isLeapMonth,
+        });
         calcHour = trueSolar.hour;
         calcMinute = trueSolar.minute;
         tsDayOffset = trueSolar.dayOffset || 0;
@@ -509,6 +513,8 @@ export default function Ziwei() {
         mingGe: ge,
         solarDate: solarDateStr,
         lunisolarDate: lunisolarDateStr,
+        // 命盘指纹：付费权益绑定用（公历归一 + 真太阳时校正后时间，稳定唯一）
+        chartKey: `ziwei:${sol.getYear()}-${sol.getMonth()}-${sol.getDay()}-${calcHour}-${calcMinute}-${gender || 'male'}`,
         fiveElementName: result.fiveElementName,
         ziweiBranch: result.ziweiBranch,
         gender: gender || 'male',
@@ -549,6 +555,17 @@ export default function Ziwei() {
     const highlight = summarized.highlights[0] || null;
     return generateZiweiPlainConclusion(summarized.overall, highlight);
   }, [summarized]);
+
+  // 命宫性格画像（主星 1-2 颗；空宫借迁移宫主星论）
+  const mingPersonality = useMemo(() => {
+    if (!ziweiData) return null;
+    const ming = ziweiData.gongData.find((g: any) => g.name === '命宫');
+    if (!ming) return null;
+    const stars = (ming.majorStars || []).map((s: any) => s.name);
+    const qianyi = ziweiData.gongData.find((g: any) => g.name === '迁移');
+    const borrow = (qianyi?.majorStars || []).map((s: any) => s.name);
+    return analyzeZiweiPersonality(stars, borrow);
+  }, [ziweiData]);
 
   const getStarColor = (star: any): string => {
     if (star.sihua) return SIHUA_COLORS[star.sihua] || 'var(--text-secondary)';
@@ -923,6 +940,38 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             </PlainConclusionCard>
           )}
 
+          {/* ========== 深度解读（付费） ========== */}
+          <PayWall
+            product="report_ziwei"
+            targetKey={ziweiData.chartKey}
+            benefits={[
+              '命宫性格画像：主星特质、内心世界、盲区提醒，说中你自己都没意识到的那一面',
+              '命盘总评 + 格局分析：四化联动、成格破格，看懂这手牌怎么打',
+              '十二宫白话详批：每个宫位人生领域逐项展开',
+              '权益绑定当前命盘，永久有效，随时回看',
+            ]}
+          >
+          {/* 命宫性格画像 */}
+          {mingPersonality && (
+            <Card style={{ marginBottom: 16, border: '1px solid var(--border-light)', borderLeft: '3px solid var(--wx-water)' }}>
+              <Title level={5} style={{ color: 'var(--text-primary)', marginTop: 0 }}>
+                🪞 命宫性格画像 · {mingPersonality.title}
+              </Title>
+              {mingPersonality.core.split('\n\n').map((p, i) => (
+                <Paragraph key={`core-${i}`} style={{ fontSize: 14, color: 'var(--text-body)' }}>{i === 0 ? <Text strong>核心性格：</Text> : null}{p}</Paragraph>
+              ))}
+              {mingPersonality.inner.split('\n\n').map((p, i) => (
+                <Paragraph key={`inner-${i}`} style={{ fontSize: 14, color: 'var(--text-body)' }}>{i === 0 ? <Text strong>内心世界：</Text> : null}{p}</Paragraph>
+              ))}
+              {mingPersonality.blindSpot.split('\n\n').map((p, i) => (
+                <Paragraph key={`blind-${i}`} style={{ fontSize: 14, color: 'var(--text-body)' }}>{i === 0 ? <Text strong style={{ color: 'var(--wx-fire)' }}>盲区提醒：</Text> : null}{p}</Paragraph>
+              ))}
+              {mingPersonality.interaction.split('\n\n').map((p, i) => (
+                <Paragraph key={`rel-${i}`} style={{ fontSize: 14, color: 'var(--text-body)' }}>{i === 0 ? <Text strong>人际与感情：</Text> : null}{p}</Paragraph>
+              ))}
+            </Card>
+          )}
+
           {/* 命盘总评 — 一句话看懂好坏 */}
           {(() => {
             const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
@@ -1279,6 +1328,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             </Row>
           </Card>
             </CollapsibleCard>
+          </PayWall>
 
           {/* 四化说明 */}
           <CollapsibleCard title="四化星说明" summary="禄权科忌在各宫位的影响" accordionGroup="ziwei-analysis">

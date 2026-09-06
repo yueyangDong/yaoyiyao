@@ -5,11 +5,13 @@ import {
 import { Lunar, Solar } from 'lunar-typescript';
 import { ziwei } from '@ziweijs/core';
 import { pcaCode } from 'cn-division';
-import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
+import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan } from '../utils/hepan';
+import PayWall from '../components/PayWall';
+import { hepanTargetKey } from '../lib/payment';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
 
 const { Title, Text, Paragraph } = Typography;
@@ -85,43 +87,37 @@ export default function HePan() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof analyzeHePan> | null>(null);
+  const [chartKey, setChartKey] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
 
   const mine = (() => {
     if (!currentUser) return null;
-    // 按档案记录的历法解析（档案暂不存闰月标记，农历按平月处理）
-    const isLunarProfile = currentUser.birthCalendar === 'lunar';
-    const lunar = isLunarProfile
-      ? Lunar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0)
-      : Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0).getLunar();
-    const solarForZiwei = isLunarProfile
-      ? lunar.getSolar()
-      : Solar.fromYmdHms(currentUser.birthYear, currentUser.birthMonth, currentUser.birthDay, currentUser.birthHour, currentUser.birthMinute || 0, 0);
-    const myGender = currentUser.gender === '男' ? 'male' : 'female';
-    const ec = lunar.getEightChar();
-    const pillars = [
-      { pillar: '年柱', ganZhi: ec.getYear(), tianGan: ec.getYearGan(), diZhi: ec.getYearZhi(), cangGan: ec.getYearHideGan(), shiShen: ec.getYearShiShenGan(), shiShenZhi: (ec.getYearShiShenZhi() || []).join('/'), nayin: ec.getYearNaYin() },
-      { pillar: '月柱', ganZhi: ec.getMonth(), tianGan: ec.getMonthGan(), diZhi: ec.getMonthZhi(), cangGan: ec.getMonthHideGan(), shiShen: ec.getMonthShiShenGan(), shiShenZhi: (ec.getMonthShiShenZhi() || []).join('/'), nayin: ec.getMonthNaYin() },
-      { pillar: '日柱', ganZhi: ec.getDay(), tianGan: ec.getDayGan(), diZhi: ec.getDayZhi(), cangGan: ec.getDayHideGan(), shiShen: ec.getDayShiShenGan(), shiShenZhi: (ec.getDayShiShenZhi() || []).join('/'), nayin: ec.getDayNaYin() },
-      { pillar: '时柱', ganZhi: ec.getTime(), tianGan: ec.getTimeGan(), diZhi: ec.getTimeZhi(), cangGan: ec.getTimeHideGan(), shiShen: ec.getTimeShiShenGan(), shiShenZhi: (ec.getTimeShiShenZhi() || []).join('/'), nayin: ec.getTimeNaYin() },
-    ];
-    const dayGan = ec.getDayGan();
-    const dayWx = TG_WX[dayGan] || '';
-    const biJie = pillars.filter(p => ['比肩', '劫财'].includes(p.shiShen)).length;
-    const yongShen = biJie >= 2 ? [WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean) : [WX_SHENG[dayWx], dayWx];
-    return {
-      name: currentUser.name,
-      gender: myGender,
-      dayGan,
-      dayWx,
-      dayZhi: pillars[2].diZhi,
-      pillars,
-      zodiac: lunar.getYearShengXiao(),
-      nayin: ec.getDayNaYin(),
-      yongShen: [...new Set(yongShen)],
-      ziwei: buildZiweiChart(solarForZiwei, myGender),
-      birthInfo: `${currentUser.birthYear}年${currentUser.birthMonth}月${currentUser.birthDay}日 ${currentUser.birthHour}:${String(currentUser.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`,
-    };
+    const u = currentUser;
+    // 按档案记录的历法解析
+    const isLunarProfile = u.birthCalendar === 'lunar';
+    const isLeapProfile = isLunarProfile && u.isLeapMonth === true;
+    const myGender = u.gender === '男' ? 'male' : 'female';
+    // 真太阳时校正（与对方同一口径：档案有出生地即按经度 + 均时差校正，跨午夜同步平移日期）
+    let calcHour = u.birthHour;
+    let calcMinute = u.birthMinute || 0;
+    let tsDayOffset = 0;
+    if (u.birthplace?.province) {
+      const r = correctSolarTime({
+        year: u.birthYear, month: u.birthMonth, day: u.birthDay,
+        hour: u.birthHour, minute: u.birthMinute || 0,
+        lng: u.birthplace.longitude || 120,
+        calendar: isLunarProfile ? 'lunar' : 'solar',
+        isLeap: isLeapProfile,
+      });
+      calcHour = r.hour;
+      calcMinute = r.minute;
+      tsDayOffset = r.dayOffset || 0;
+    }
+    // 复用 buildPerson：四柱/用神/紫微盘构造与对方完全同构，避免两套口径
+    const p = buildPerson(u.birthYear, u.birthMonth, u.birthDay, calcHour, calcMinute, myGender, tsDayOffset, isLunarProfile ? 'lunar' : 'solar', isLeapProfile);
+    p.name = u.name;
+    p.birthInfo = `${u.birthYear}年${u.birthMonth}月${u.birthDay}日 ${u.birthHour}:${String(u.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`;
+    return p;
   })();
 
   const handleCalc = async () => {
@@ -148,23 +144,18 @@ export default function HePan() {
       return;
     }
 
-    // 真太阳时校正（对方若有出生地，则按当地经度 + 均时差校正；跨午夜时同步平移日期）
-    // 均时差需要公历日期：农历输入先换算为对应公历日
+    // 真太阳时校正（对方有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT；跨午夜同步平移日期）
     let calcHour = hour;
     let calcMinute = minute || 0;
     let tsDayOffset = 0;
     const partnerLng = (birthplace && birthplace.length >= 2)
       ? getCityLng(birthplace[0], birthplace[1], birthplace[2])
       : 120;
-    if (partnerLng !== 120) {
-      let eotDate: Date;
-      if (calendar === 'lunar') {
-        const s = Lunar.fromYmdHms(year, isLeap ? -month : month, day, 12, 0, 0).getSolar();
-        eotDate = new Date(s.getYear(), s.getMonth() - 1, s.getDay());
-      } else {
-        eotDate = new Date(year, month - 1, day);
-      }
-      const trueSolar = getTrueSolarHour(hour, minute || 0, partnerLng, eotDate);
+    if (birthplace && birthplace.length >= 2) {
+      const trueSolar = correctSolarTime({
+        year, month, day, hour, minute: minute || 0, lng: partnerLng,
+        calendar, isLeap,
+      });
       calcHour = trueSolar.hour;
       calcMinute = trueSolar.minute;
       tsDayOffset = trueSolar.dayOffset || 0;
@@ -186,6 +177,8 @@ export default function HePan() {
       (partner as any).longitude = partnerLng;
       const r = analyzeHePan({ mine, partner });
       setResult(r);
+      // 权益指纹：绑定"这两人这一盘"，换人/换盘需重新解锁
+      setChartKey(hepanTargetKey(mine.pillars, partner.pillars));
       // 保存合盘记录
       addHistory({
         userId: currentUser?.id || '',
@@ -260,8 +253,19 @@ export default function HePan() {
         </Form>
       </Card>
 
-      {/* 结果 */}
+      {/* 结果（整份报告付费解锁） */}
       {result && (
+        <PayWall
+          product="report_hepan"
+          targetKey={chartKey}
+          previewHeight={180}
+          benefits={[
+            '缘分总评与五维评分：五行互补、日主关系、生肖纳音、紫微互动逐项打分',
+            '性格互动双画像：你们各自是什么"物种"，在一起会怎样互相影响',
+            '双向视角：同一份缘分，你和 TA 的两种真实感受',
+            '分别致双方的相处建议，权益绑定本次合盘，永久回看',
+          ]}
+        >
         <div ref={resultRef}>
           <Card title="合盘结果" size="small">
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -282,6 +286,24 @@ export default function HePan() {
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 4 }}>{it.desc}</Text>
             </div>
           ))}
+          {/* 性格互动双画像 */}
+          {result.personalityDuet && (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(44,90,142,0.04)', border: '1px solid rgba(44,90,142,0.15)' }}>
+              <Text strong style={{ fontSize: 14, color: '#2C5A8E', display: 'block', marginBottom: 8 }}>🪞 你们的性格互动</Text>
+              <div style={{ marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>「{mine?.name || '我'}」· {result.personalityDuet.mineTitle}</Text>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 2, marginBottom: 0 }}>{result.personalityDuet.mineEssence}</Paragraph>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>「{result.partnerDisplay?.name || '对方'}」· {result.personalityDuet.partnerTitle}</Text>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 2, marginBottom: 0 }}>{result.personalityDuet.partnerEssence}</Paragraph>
+              </div>
+              <div style={{ borderTop: '1px dashed rgba(44,90,142,0.2)', paddingTop: 8 }}>
+                <Text strong style={{ fontSize: 13, color: '#2C5A8E' }}>互动动力学：</Text>
+                <Paragraph style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7, marginTop: 2, marginBottom: 0 }}>{result.personalityDuet.dynamic}</Paragraph>
+              </div>
+            </div>
+          )}
           {/* 双向视角（对称合盘 v2：分数与输入顺序无关，视角文字分属两人） */}
           {result.perspectives && (
             <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
@@ -318,6 +340,7 @@ export default function HePan() {
             />
           </div>
         </div>
+        </PayWall>
       )}
     </div>
   );

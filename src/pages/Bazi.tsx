@@ -6,9 +6,12 @@ import {
   Progress, Alert, Divider, Cascader, Tooltip, Popover, Select,
 } from 'antd';
 import { Solar, Lunar } from 'lunar-typescript';
-import { useUser, getCityLng, getTrueSolarHour } from '../context/UserContext';
+import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
-import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview } from '../utils/baziAnalysis';
+import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength } from '../utils/baziAnalysis';
+import PayWall from '../components/PayWall';
+import { chartTargetKey } from '../lib/payment';
+import { analyzePersonality } from '../utils/baziPersonality';
 import CollapsibleCard from '../components/CollapsibleCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
@@ -280,80 +283,9 @@ function calcWuxingStats(pillars: any[]): Record<string, { count: number; level:
   return result;
 }
 
-// 日主强弱判断
-function analyzeDayMasterStrength(dayGan: string, monthZhi: string, pillars: any[]): {
-  score: number; level: string; details: string[];
-} {
-  const tgWx: Record<string, string> = {
-    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-  };
-  const dayWx = tgWx[dayGan];
-  const wxOrder = ['木', '火', '土', '金', '水'];
-  const wxSeason: Record<string, string[]> = {
-    '春': ['寅', '卯'], '夏': ['巳', '午'], '秋': ['申', '酉'], '冬': ['亥', '子'],
-  };
-
-  let score = 2; // 基础分
-  const details: string[] = [];
-
-  // 得令：月支与日主五行相同
-  const dzWx: Record<string, string> = {
-    '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
-    '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
-  };
-  const monthWx = dzWx[monthZhi];
-  if (monthWx === dayWx) {
-    score += 2;
-    details.push(`✅ 得令：日主${dayGan}(${dayWx})生于${monthZhi}月，月令与日主同五行，得月令之气，力量最强。`);
-  } else if (wxOrder[(wxOrder.indexOf(monthWx) + 1) % 5] === dayWx) {
-    score += 1;
-    details.push(`🟡 得令(次)：日主${dayGan}(${dayWx})生于${monthZhi}月(${monthWx})，月令生日主，虽不得正令但有生助。`);
-  } else {
-    details.push(`❌ 失令：日主${dayGan}(${dayWx})生于${monthZhi}月(${monthWx})，不得月令之助。`);
-  }
-
-  // 得地：地支中与日主同五行的数量
-  let diCount = 0;
-  for (const p of pillars) {
-    if (dzWx[p.diZhi] === dayWx) diCount++;
-    if (p.cangGan) {
-      for (const cg of p.cangGan) {
-        if (tgWx[cg.charAt(0)] === dayWx) diCount += 0.5;
-      }
-    }
-  }
-  if (diCount >= 2) { score += 2; details.push(`✅ 得地：地支中${dayWx}旺，根深蒂固（地支同五行≥2）。`); }
-  else if (diCount >= 1) { score += 1; details.push(`🟡 得地：地支中有${dayWx}根，但不深厚。`); }
-  else { details.push(`❌ 失地：地支中无${dayWx}根，根基不稳。`); }
-
-  // 得生：是否有印星（生我者）
-  const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-  const shengWx = wxSheng[dayWx];
-  let shengCount = 0;
-  for (const p of pillars) {
-    if (tgWx[p.tianGan] === shengWx) shengCount++;
-    if (dzWx[p.diZhi] === shengWx) shengCount += 0.5;
-  }
-  if (shengCount >= 2) { score += 2; details.push(`✅ 得生：印星(${shengWx})充足，有贵人长辈扶持。`); }
-  else if (shengCount >= 1) { score += 1; details.push(`🟡 得生：有少许印星相助。`); }
-  else { details.push(`❌ 失生：缺乏印星(${shengWx})生助，缺少贵人扶持。`); }
-
-  // 得助：比肩劫财
-  let biCount = 0;
-  for (const p of pillars) {
-    if (tgWx[p.tianGan] === dayWx) biCount++;
-    if (dzWx[p.diZhi] === dayWx) biCount += 0.5;
-  }
-  if (biCount >= 2) { score += 1; details.push(`✅ 得助：有比劫帮身，朋友同事能帮到你。`); }
-  else if (biCount >= 1) { score += 0.5; details.push(`🟡 得助：少许比劫帮扶。`); }
-
-  let level = '中和';
-  if (score >= 6) level = '身强';
-  else if (score <= 3) level = '身弱';
-
-  return { score, level, details };
-}
+// 日主强弱判断：统一使用 baziAnalysis.ts 的五档实现（身极强/身强/中和/身弱/身极弱）。
+// 校准说明：此前本文件另有一份本地简化版（基础分2、只加不减，永远输出三档），
+// 与 baziAnalysis 版本规则漂移，且导致 mingGe 专旺格/从格在生产中无法触发——已删除。
 
 // 推荐用神
 function recommendYongShen(dayWx: string, strengthLevel: string, wxStats: Record<string, { count: number; level: string }>): {
@@ -848,16 +780,18 @@ export default function Bazi() {
     try {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
-      // 真太阳时校正
+      // 真太阳时校正（有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT）
       let calcHour = hour;
       let calcMinute = minute || 0;
       let lng = 120;
       let tsDayOffset = 0; // 真太阳时校正跨午夜时的日历日偏移（必须同步平移出生日期，否则日柱错一天）
       if (birthplace && birthplace.length >= 2) {
         lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
-      }
-      if (lng !== 120) {
-        const trueSolar = getTrueSolarHour(hour, minute || 0, lng, new Date(year, month - 1, day));
+        const trueSolar = correctSolarTime({
+          year, month, day, hour, minute: minute || 0, lng,
+          calendar: inputMode === 'lunar' ? 'lunar' : 'solar',
+          isLeap: leapMonth === month,
+        });
         calcHour = trueSolar.hour;
         calcMinute = trueSolar.minute;
         tsDayOffset = trueSolar.dayOffset || 0;
@@ -1253,6 +1187,11 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     if (!baziData) return null;
     return analyzeSocial(baziData.pillars, baziData.shenSha, baziData.dayGan);
   }, [baziData]);
+
+  const personality = useMemo(() => {
+    if (!baziData || !strengthAnalysis) return null;
+    return analyzePersonality(baziData.dayGan, baziData.pillars[1].diZhi, strengthAnalysis.level);
+  }, [baziData, strengthAnalysis]);
 
   const fortuneOverview = useMemo(() => {
     if (!baziData || !strengthAnalysis || !yongShenRec || !wxStats) return null;
@@ -1824,7 +1763,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             <CollapsibleCard
               title="日主强弱分析"
               icon={<span style={{ color: WX_COLORS[baziData.dayWx], fontSize: 16 }}>{WX_ICON[baziData.dayWx]}</span>}
-              summary={`日主${baziData.dayGan}(${baziData.dayWx})：${strengthAnalysis.level}（得分${strengthAnalysis.score}/8）`}
+              summary={`日主${baziData.dayGan}(${baziData.dayWx})：${strengthAnalysis.level}（得分${strengthAnalysis.score}/11）`}
             >
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
               <Row gutter={16}>
@@ -1834,9 +1773,9 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                     <Tag color={strengthAnalysis.level === '身强' ? 'red' : strengthAnalysis.level === '身弱' ? 'blue' : 'green'} style={{ marginLeft: 8, fontSize: 16 }}>
                       {strengthAnalysis.level}
                     </Tag>
-                    <Text type="secondary">（得分：{strengthAnalysis.score} / 8）</Text>
+                    <Text type="secondary">（得分：{strengthAnalysis.score} / 11）</Text>
                   </Paragraph>
-                  {strengthAnalysis.details.map((d, i) => (
+                  {Object.values(strengthAnalysis.details).map((d, i) => (
                     <Paragraph key={i} style={{ fontSize: 13, marginBottom: 4 }}>{d}</Paragraph>
                   ))}
                 </Col>
@@ -2096,10 +2035,42 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
           </Card>
             </CollapsibleCard>
 
-          {/* ========== 六大领域分析 ========== */}
+          {/* ========== 六大领域分析（付费详批） ========== */}
+          <PayWall
+            product="report_bazi"
+            targetKey={chartTargetKey('bazi', baziData.pillars, baziData.birthGender)}
+            benefits={[
+              '性格画像：核心性格、内心世界、盲区提醒，说中你自己都没意识到的那一面',
+              '六大领域详解：爱情婚姻、事业财运、健康、家庭、社交逐项展开',
+              '运势总览：人生各阶段走势、一生课题、幸运元素',
+              '权益绑定当前命盘，永久有效，随时回看',
+            ]}
+          >
           <Divider orientation="left" style={{ marginTop: 24 }}>
             <Title level={4} style={{ margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-title)' }}>六大人生领域分析</Title>
           </Divider>
+
+          {/* 性格画像 */}
+          {personality && (
+            <CollapsibleCard
+              title={`🪞 性格画像 · ${personality.title}`}
+              summary={personality.core}
+            >
+            <Card
+              style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
+              styles={{ body: { background: 'rgba(44,90,142,0.02)' } }}
+            >
+              <Paragraph><Text strong>核心性格：</Text>{personality.core}</Paragraph>
+              <Paragraph><Text strong>内心世界：</Text>{personality.inner}</Paragraph>
+              <Paragraph><Text strong style={{ color: 'var(--wx-fire)' }}>盲区提醒：</Text>{personality.blindSpot}</Paragraph>
+              <Paragraph><Text strong>人际与感情：</Text>{personality.interaction}</Paragraph>
+              {personality.monthFlavor && (
+                <Paragraph><Text strong>月令染色：</Text>{personality.monthFlavor}</Paragraph>
+              )}
+              <Paragraph style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{personality.strengthTone}</Paragraph>
+            </Card>
+            </CollapsibleCard>
+          )}
 
           {/* 爱情婚姻 */}
           {loveAnalysis && (
@@ -2228,6 +2199,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             </Card>
             </CollapsibleCard>
           )}
+          </PayWall>
         </>
       )}
     </div>

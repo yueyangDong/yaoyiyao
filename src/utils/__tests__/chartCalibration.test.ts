@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { Solar } from 'lunar-typescript';
 import { ziwei } from '@ziweijs/core';
-import { getTrueSolarHour } from '../../context/UserContext';
+import { getTrueSolarHour, correctSolarTime } from '../../context/UserContext';
 
 const GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -98,6 +98,32 @@ describe('真太阳时校正（getTrueSolarHour）', () => {
     expect(withEot.minute).toBeGreaterThanOrEqual(15);
     const noEot = getTrueSolarHour(12, 0, 120);
     expect(noEot.minute).toBe(0);
+  });
+
+  it('舍入边界：分钟四舍五入不得产出 minute=60（南京 118.8°E，2 月中旬 EoT≈-14 分，12:19）', () => {
+    // 旧实现先拆 hour 再 round(minute)：719.71 分 → hour=11, minute=60，lunar-typescript 直接抛 "wrong minute 60"
+    const r = getTrueSolarHour(12, 19, 118.8, new Date(2024, 1, 20));
+    expect(r.minute).toBeGreaterThanOrEqual(0);
+    expect(r.minute).toBeLessThan(60);
+    // 总分钟数 719.71 先取整为 720 → 12:00（hour 同步进位，三者自洽）
+    expect(r.hour).toBe(12);
+    expect(r.minute).toBe(0);
+    expect(r.dayOffset).toBe(0);
+  });
+
+  it('correctSolarTime：lng=120（经度差为 0）均时差仍然生效——EoT 与经度无关', () => {
+    const r = correctSolarTime({ year: 2024, month: 11, day: 3, hour: 12, minute: 0, lng: 120 });
+    expect(r.hour).toBe(12);
+    expect(r.minute).toBeGreaterThanOrEqual(15);
+  });
+
+  it('correctSolarTime：农历输入按对应公历日算 EoT（农历 2000-7-17 ≙ 公历 2000-8-16）', () => {
+    const viaLunar = correctSolarTime({ year: 2000, month: 7, day: 17, hour: 12, minute: 0, lng: 120, calendar: 'lunar' });
+    const viaSolar = getTrueSolarHour(12, 0, 120, new Date(2000, 7, 16));
+    expect(viaLunar).toEqual(viaSolar);
+    // 反例：若错把农历 7-17 当公历 7-17，EoT 不同（-3.66 分 vs -5.88 分）
+    const wrong = getTrueSolarHour(12, 0, 120, new Date(2000, 6, 17));
+    expect(viaLunar.minute).not.toBe(wrong.minute);
   });
 });
 

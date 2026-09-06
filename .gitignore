@@ -3,11 +3,17 @@ dist/
 *.log
 .DS_Store
 .env
+.env.local
+.env.*.local
 
 # 工具与私有配置
 .reasonix/
 project.private.config.json
 .worktrees/
+
+# 构建工具临时产物与本地导出
+*.timestamp-*.mjs
+outputs/
 
 # 工作区记忆（本地 workspace memory，不入库）
 .workbuddy/

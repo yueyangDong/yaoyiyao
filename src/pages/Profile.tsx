@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, getCityLng } from '../context/UserContext';
 import type { StoredUser } from '../context/UserContext';
 import ModuleCompare from '../components/ModuleCompare';
+import EntitlementCard from '../components/EntitlementCard';
 import ShareButton from '../components/ShareButton';
 import LogModal from '../components/LogModal';
 import { pcaCode } from 'cn-division';
@@ -178,6 +179,9 @@ export default function Profile() {
       </div>
 
       {/* 云端同步状态（登录功能暂隐藏，仅保留本地档案） */}
+
+      {/* 我的权益 + 兑换码入口 */}
+      <EntitlementCard />
 
       {users.length === 0 && !editing && (
         <Alert
