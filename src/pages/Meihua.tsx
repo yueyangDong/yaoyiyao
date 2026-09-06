@@ -103,6 +103,15 @@ function getThreeGuaStory(benName: string, huName: string, bianName: string, don
   return story;
 }
 
+// 体用关系 → 颜色（吉绿/凶红/中性蓝）
+const RELATION_COLORS: Record<string, string> = {
+  '体用比和': 'var(--wx-wood)',
+  '用生体': 'var(--wx-wood)',
+  '体克用': 'var(--wx-water)',
+  '体生用': 'var(--color-warn)',
+  '用克体': 'var(--wx-fire)',
+};
+
 // 详细体用生克白话
 const TIYONG_DETAIL: Record<string, { title: string; desc: string; advice: string }> = {
   '体用比和': {
@@ -283,7 +292,7 @@ export default function Meihua() {
                     </Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label="体用关系">
-                    <Text strong style={{ fontSize: 18, color: result.relation.includes('吉') ? 'var(--wx-wood)' : 'var(--wx-fire)' }}>
+                    <Text strong style={{ fontSize: 18, color: RELATION_COLORS[result.relation] || 'var(--text-primary)' }}>
                       {result.relation}
                     </Text>
                   </Descriptions.Item>

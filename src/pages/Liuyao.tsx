@@ -4,11 +4,12 @@ import {
   Row, Col, Radio, message, Alert, Collapse, Select, Descriptions,
 } from 'antd';
 import { Sparkles, RefreshCw, HelpCircle } from 'lucide-react';
-import { dayan, decodePan, threeNumberQiGua, manualQiGua } from 'iching-shifa';
+import { dayan, decodePan, threeNumberQiGua, manualQiGua, ganZhiToWuXing } from 'iching-shifa';
 import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 import { useUser } from '../context/UserContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 import { generateLiuyaoPlainConclusion } from '../utils/plainConclusion';
+import { guaShortToFull } from '../utils/liuyaoTexts';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { useDailyQuota } from '../hooks/useDailyQuota';
@@ -219,7 +220,19 @@ export default function Liuyao() {
     const yongYao = pan.benGua.yaoList.find((y: any) => y.liuQin === targetLiuQin);
 
     if (!yongYao) {
-      setYongShenAnalysis(`用神「${targetLiuQin}」在本卦中没有出现（伏藏于飞神之下）。\n\n建议：1. 查看本卦的伏神列表（如有），看用神是否飞伏在某一爻。2. 伏藏代表事情目前"藏而不露"，还需等待时机。3. 到大运流年冲动伏神之时，事情才会显现。`);
+      // 用神不上卦时查伏神（iching-shifa 在用神不现时提供伏神数据）
+      const fu = (pan.fuShen || []).find((f: any) => f.fuLiuQin === targetLiuQin);
+      if (fu) {
+        const hostYao = pan.benGua.yaoList.find((y: any) => y.position === fu.hostPosition);
+        setYongShenAnalysis(
+          `用神「${targetLiuQin}」不上卦，伏藏于第${fu.hostPosition}爻飞神之下。\n\n` +
+          `[伏神] 伏神「${fu.fuLiuQin}」纳甲「${fu.fuNaJia}」，五行属${fu.fuWuXing}；飞神为本卦第${fu.hostPosition}爻的「${hostYao?.liuQin || '?'}」（${hostYao?.naJia || '?'}）。\n\n` +
+          `伏藏代表你所问的事情目前"藏而不露"——实力或机会是有的，只是暂时被压制、还没到露头的时候。飞神「${hostYao?.liuQin || '?'}」压在用神之上，说明眼前有别的因素占据主导。\n\n` +
+          `断法：伏神得日月生扶、飞神衰弱谓之"伏克飞曰出暴"，出头较快；飞神旺而伏神衰则需久待。待流日、流月冲克飞神或生扶伏神之时，事情才会显现。`
+        );
+      } else {
+        setYongShenAnalysis(`用神「${targetLiuQin}」在本卦中没有出现（伏藏于飞神之下）。\n\n建议：1. 查看本卦的伏神列表（如有），看用神是否飞伏在某一爻。2. 伏藏代表事情目前"藏而不露"，还需等待时机。3. 到大运流年冲动伏神之时，事情才会显现。`);
+      }
       return;
     }
 
@@ -250,11 +263,20 @@ export default function Liuyao() {
       }
     }
 
-    // 旺衰判断
+    // 旺衰判断（月建取地支，按旺相休囚死判定）
     if (pan.monthJian) {
-      const monthZhi = pan.monthJian;
+      const monthZhi = pan.monthJian.slice(-1);
+      const monthWx = ganZhiToWuXing(monthZhi);
       const wx = yongYao.wuXing;
-      parts.push(`[月建] 当前月建为「${monthZhi}」，用神五行属「${wx}」。月建对用神的影响需要结合具体生克关系来定——月建生用神则旺，克用神则衰。`);
+      const wxSheng: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+      const wxKe: Record<string, string> = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
+      let status: string, rel: string;
+      if (monthWx === wx) { status = '旺'; rel = '与月建同气，当令得时'; }
+      else if (wxSheng[monthWx] === wx) { status = '相'; rel = '月建生扶，次旺'; }
+      else if (wxSheng[wx] === monthWx) { status = '休'; rel = '用神生月建，力量外泄'; }
+      else if (wxKe[wx] === monthWx) { status = '囚'; rel = '用神克月建，反受牵制'; }
+      else { status = '死'; rel = '月建克制，最受压制'; }
+      parts.push(`[月建] 月建「${monthZhi}」属${monthWx}，用神五行属「${wx}」，${rel}——用神处「${status}」之地。${status === '旺' || status === '相' ? '得月令之气，事情当前时机有利，可积极作为。' : '失令于月建，时机不利，宜积蓄等待、不宜强攻。'}`);
     }
 
     // 六兽信息
@@ -446,7 +468,7 @@ export default function Liuyao() {
               <Descriptions.Item label="干支年">{pan.ganZhiYear.gz}</Descriptions.Item>
               <Descriptions.Item label="干支月">{pan.ganZhiMonth.gz}</Descriptions.Item>
               <Descriptions.Item label="干支日">{pan.ganZhiDay.gz}</Descriptions.Item>
-              <Descriptions.Item label="月建">{pan.monthJian}</Descriptions.Item>
+              <Descriptions.Item label="月建">{pan.monthJian?.slice(-1)}</Descriptions.Item>
               <Descriptions.Item label="日空">{pan.dayKong}</Descriptions.Item>
               <Descriptions.Item label="节气">{pan.solarTerm}</Descriptions.Item>
             </Descriptions>
@@ -542,9 +564,9 @@ export default function Liuyao() {
           >
             <Paragraph style={{ fontSize: 15, lineHeight: 2, color: 'var(--text-body)', fontStyle: 'italic' }}>
               {(() => {
-                const guaName = pan.benGua.guaName;
+                const guaName = guaShortToFull(pan.benGua.guaName);
                 const dongCount = pan.dongYaoCount;
-                const zhiName = pan.zhiGua?.guaName;
+                const zhiName = pan.zhiGua ? guaShortToFull(pan.zhiGua.guaName) : undefined;
 
                 // 大师解读：150-300字
                 const readings: Record<string, string> = {
@@ -681,7 +703,7 @@ export default function Liuyao() {
                   <div style={{ marginTop: 12 }}>
                     <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                       参考资料：本卦「{pan.benGua.guaName}」{pan.dongYaoCount > 0 ? `有${pan.dongYaoCount}个动爻` : '无动爻'}
-                      | 月建「{pan.monthJian}」| 日空「{pan.dayKong}」
+                      | 月建「{pan.monthJian?.slice(-1)}」| 日空「{pan.dayKong}」
                     </Text>
                   </div>
                 )}
@@ -698,10 +720,14 @@ export default function Liuyao() {
                 {(() => {
                   const targetLiuQin = YONGSHEN_MAP[yongShenType];
                   const yongYao = pan.benGua.yaoList.find((y: any) => y.liuQin === targetLiuQin);
-                  if (!yongYao) return '用神伏藏，事情还需等待合适的时机。建议先做好准备工作，等时机成熟再行动。';
+                  if (!yongYao) {
+                    const fu = (pan.fuShen || []).find((f: any) => f.fuLiuQin === targetLiuQin);
+                    return fu
+                      ? `综合来看，用神「${targetLiuQin}」不上卦，伏藏于第${fu.hostPosition}爻飞神之下（${fu.fuNaJia}，属${fu.fuWuXing}）。事情目前藏而不露——底子是有的，只是还没到出头的时候。待流日流月冲开飞神、生扶伏神之时方有转机，眼下宜做准备、不宜强求。`
+                      : '用神伏藏，事情还需等待合适的时机。建议先做好准备工作，等时机成熟再行动。';
+                  }
 
                   let summary = '';
-                  const isGood = yongYao.shiYing === '世' || !yongYao.isMoving;
 
                   if (yongYao.shiYing === '世') {
                     summary += `综合来看，问「${yongShenType}」之事，用神「${targetLiuQin}」持世，主动权在你手中。`;

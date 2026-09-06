@@ -403,12 +403,14 @@ export default function Lingqian() {
                 <Title level={1} style={{ color: LEVEL_COLORS[result.level], margin: '8px 0', fontSize: 48 }}>
                   第 {result.index} 签
                 </Title>
-                <Tag
-                  color={LEVEL_COLORS[result.level]}
-                  style={{ fontSize: 20, padding: '8px 28px', borderRadius: 20 }}
-                >
-                  {result.level}
-                </Tag>
+                {result.level && (
+                  <Tag
+                    color={LEVEL_COLORS[result.level]}
+                    style={{ fontSize: 20, padding: '8px 28px', borderRadius: 20 }}
+                  >
+                    {result.level}
+                  </Tag>
+                )}
               </div>
               <Title level={3} style={{ color: 'var(--text-primary)', marginTop: 12 }}>
                 {result.name}

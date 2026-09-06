@@ -846,3 +846,15 @@ export const HEXAGRAM_TEXTS: Record<string, HexagramText> = {
 export function getHexagramText(name: string): HexagramText | null {
   return HEXAGRAM_TEXTS[name] || null;
 }
+
+// 卦名简称 → 全名映射（"乾"→"乾为天"、"泰"→"地天泰"）
+const FULL_BY_SHORT: Record<string, string> = {};
+for (const key of Object.keys(HEXAGRAM_TEXTS)) {
+  // 八纯卦全名含"为"（乾为天），取首字为简称；其余全名前两字为上下卦象，如"地天泰"简称"泰"
+  FULL_BY_SHORT[key.includes('为') ? key[0] : key.slice(2)] = key;
+}
+
+/** 卦名简称转全名，如 "乾"→"乾为天"、"既济"→"水火既济"；未知时原样返回 */
+export function guaShortToFull(short: string): string {
+  return FULL_BY_SHORT[short] || short;
+}
