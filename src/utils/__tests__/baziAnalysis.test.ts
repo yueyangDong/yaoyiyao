@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analyzeLove, analyzeCareer, analyzeHealth, analyzeSocial } from '../baziAnalysis';
+import { analyzeLove, analyzeCareer, analyzeHealth, analyzeSocial, recommendYongShen } from '../baziAnalysis';
 import type { PillarData } from '../../pages/Bazi';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, shiShen: string): PillarData => ({
@@ -78,5 +78,71 @@ describe('八字五维解读差异化', () => {
   it('桃花按地支差异化：桃花落午柱 → 午火桃花描述', () => {
     const r = analyzeLove(pillarsJia, [{ name: '桃花', pillar: '日柱' }], 'male', '甲', '午', []);
     expect(r.peachBlossom).toContain('午火桃花');
+  });
+});
+
+describe('喜用神调候（穷通宝鉴逐月）', () => {
+  it('癸水逐月喜用与穷通宝鉴提要一致', () => {
+    // 用户提供的《穷通宝鉴》癸水逐月提要校验
+    const cases: Record<string, string[]> = {
+      '寅': ['金', '火'],
+      '卯': ['金'],
+      '辰': ['火', '金', '木'],
+      '巳': ['金'],
+      '午': ['金', '水'],
+      '未': ['金', '水'],
+      '申': ['火', '木'],
+      '酉': ['金', '火'],
+      '戌': ['金', '木', '水'],
+      '亥': ['金', '土', '火'],
+      '子': ['火', '金'],
+      '丑': ['火'],
+    };
+    for (const [month, expected] of Object.entries(cases)) {
+      const r = recommendYongShen('水', '中和', undefined, '癸', month);
+      // 调候用神必须全部出现
+      for (const y of expected) {
+        expect(r.yongShen).toContain(y);
+      }
+      // 描述中应包含调候说明
+      expect(r.desc).toContain('调候');
+    }
+  });
+
+  it('癸水生于巳月（夏）：调候用神为金，辛金女可补', () => {
+    // 核心场景：男癸水生于夏季，喜用神必须含金
+    const r = recommendYongShen('水', '身强', undefined, '癸', '巳');
+    expect(r.yongShen).toContain('金');
+    // 即使身强扶抑喜火土，调候金仍优先出现
+    expect(r.yongShen).toContain('金');
+  });
+
+  it('合盘场景：癸水男（巳月生）+ 辛金女 → 女方日主补男方喜用', () => {
+    const male = recommendYongShen('水', '中和', undefined, '癸', '巳');
+    // 男方喜用含金 → 辛金（金）日主正好补充
+    expect(male.yongShen).toContain('金');
+    const femaleDayWx = '金'; // 辛金
+    expect(male.yongShen.includes(femaleDayWx)).toBe(true);
+  });
+
+  it('调候优先于扶抑：癸水午月身强仍喜金水（不被火土覆盖）', () => {
+    const r = recommendYongShen('水', '身强', undefined, '癸', '午');
+    // 调候：金水；扶抑身强：火（财）、土（官杀）
+    expect(r.yongShen).toContain('金');
+    expect(r.yongShen).toContain('水');
+  });
+
+  it('不传 dayGan/monthZhi 时回退到纯扶抑（兼容旧调用）', () => {
+    const r = recommendYongShen('水', '身弱');
+    // 身弱水扶抑喜金（印）水（比劫）
+    expect(r.yongShen).toContain('金');
+    expect(r.yongShen).toContain('水');
+  });
+
+  it('辛金逐月调候：夏生喜水金、冬生喜火土', () => {
+    const summer = recommendYongShen('金', '中和', undefined, '辛', '午');
+    expect(summer.yongShen).toContain('水');
+    const winter = recommendYongShen('金', '中和', undefined, '辛', '子');
+    expect(winter.yongShen).toContain('火');
   });
 });

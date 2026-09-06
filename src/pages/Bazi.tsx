@@ -843,7 +843,7 @@ export default function Bazi() {
       const strengthLevelGe = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;
       const wxStatsCalc = calcWuxingStats(pillars);
       const mingGe = analyzeMingGeDetailed(pillars, dayGan, strengthLevelGe, wxStatsCalc);
-      const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc);
+      const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc, dayGan, pillars[1].diZhi);
       mingGe.details = [...mingGe.details, ...analyzeTouGan(pillars, yongRec.yongShen, yongRec.xiShen)];
 
       // 空亡
@@ -1065,7 +1065,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
 
   const yongShenRec = useMemo(() => {
     if (!baziData || !strengthAnalysis) return null;
-    return recommendYongShen(baziData.dayWx, strengthAnalysis.level, wxStats || {});
+    return recommendYongShen(baziData.dayWx, strengthAnalysis.level, wxStats || {}, baziData.dayGan, baziData.pillars[1].diZhi);
   }, [baziData, strengthAnalysis, wxStats]);
 
   const relationAnalysis = useMemo(() => {

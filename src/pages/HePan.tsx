@@ -67,7 +67,7 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
   // recommendYongShen 据此取用神。校准：旧版"比劫≥2 即身强"不看月令根气，
   // 且身弱喜用误取 WX_SHENG（我生者=食伤，泄身之物），应为印星（生我者）。
   const strength = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars);
-  const yongRec = recommendYongShen(dayWx, strength.level);
+  const yongRec = recommendYongShen(dayWx, strength.level, undefined, dayGan, pillars[1].diZhi);
   return {
     name: gender === 'male' ? '男方' : '女方',
     gender,
