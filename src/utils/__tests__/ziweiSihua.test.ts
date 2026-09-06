@@ -6,7 +6,9 @@ import {
   generateSummarizedReport,
   generatePalaceReading,
   normalizeAstrolabeData,
+  analyzeHoroscopeSihua,
 } from '../ziweiAnalysis';
+import { ziwei } from '@ziweijs/core';
 
 const GONGS = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'];
 
@@ -123,5 +125,60 @@ describe('辅星四化保留与体用分层', () => {
     );
     expect(r.reading).toContain('迁移宫坐廉贞化禄');
     expect(r.reading).toContain('离心自化忌');
+  });
+});
+
+describe('大限/流年四化飞星', () => {
+  // 参考盘：2000-08-16 寅时 男（庚辰年生，木三局 3 岁起运，阳男大限顺行）
+  const palaces = (() => {
+    const r = ziwei.bySolar({ name: '', gender: 'male', date: new Date(2000, 7, 16, 4, 0, 0), language: 'zh-CN' } as any);
+    return r.palaces.map((p: any) => ({
+      name: p.name,
+      stem: p.stem,
+      branch: p.branch,
+      majorStars: (p.majorStars || []).map((s: any) => ({ name: s.name })),
+      minorStars: (p.minorStars || []).map((s: any) => ({ name: s.name })),
+      horoscopeRanges: p.horoscopeRanges as [number, number] | undefined,
+    }));
+  })();
+
+  it('大限定位：木三局 3 岁起命宫大限；2026 虚岁 27 顺行至福德宫（甲干 [23,32]）', () => {
+    const r3 = analyzeHoroscopeSihua(palaces as any, 2000, 2002); // 2002 虚岁 3
+    expect(r3.virtualAge).toBe(3);
+    expect(r3.decadal?.palaceName).toBe('命宫');
+    const r = analyzeHoroscopeSihua(palaces as any, 2000, 2026); // 2026 虚岁 27
+    expect(r.decadal?.palaceName).toBe('福德');
+    expect(r.decadal?.stem).toBe('甲');
+    expect(r.decadal?.ageRange).toEqual([23, 32]);
+  });
+
+  it('大限甲干四化飞星：廉贞禄入官禄、破军权入福德、武曲科入财帛、太阳忌入子女', () => {
+    const r = analyzeHoroscopeSihua(palaces as any, 2000, 2026);
+    const items = r.decadal!.items;
+    expect(items.find(i => i.hua === '化禄')).toMatchObject({ star: '廉贞', palaceName: '官禄' });
+    expect(items.find(i => i.hua === '化权')).toMatchObject({ star: '破军', palaceName: '福德' });
+    expect(items.find(i => i.hua === '化科')).toMatchObject({ star: '武曲', palaceName: '财帛' });
+    expect(items.find(i => i.hua === '化忌')).toMatchObject({ star: '太阳', palaceName: '子女' });
+  });
+
+  it('流年 2026 丙干：天同禄入疾厄、天机权入兄弟、文昌科入福德、廉贞忌入官禄', () => {
+    const r = analyzeHoroscopeSihua(palaces as any, 2000, 2026);
+    expect(r.yearly?.year).toBe(2026);
+    expect(r.yearly?.stem).toBe('丙');
+    const items = r.yearly!.items;
+    expect(items.find(i => i.hua === '化禄')).toMatchObject({ star: '天同', palaceName: '疾厄' });
+    expect(items.find(i => i.hua === '化权')).toMatchObject({ star: '天机', palaceName: '兄弟' });
+    expect(items.find(i => i.hua === '化科')).toMatchObject({ star: '文昌', palaceName: '福德' });
+    expect(items.find(i => i.hua === '化忌')).toMatchObject({ star: '廉贞', palaceName: '官禄' });
+  });
+
+  it('每条飞星都有落宫与白话解读，summary 点出禄/忌方向', () => {
+    const r = analyzeHoroscopeSihua(palaces as any, 2000, 2026);
+    for (const it of r.decadal!.items) {
+      expect(it.palaceName).toBeTruthy();
+      expect(it.desc).toContain('宫');
+    }
+    expect(r.decadal!.summary).toContain('禄入官禄');
+    expect(r.decadal!.summary).toContain('忌入子女');
   });
 });

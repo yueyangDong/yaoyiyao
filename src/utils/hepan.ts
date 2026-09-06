@@ -62,6 +62,8 @@ export interface HePanInput {
     zodiac: string;
     nayin: string;
     yongShen: string[];
+    /** 日主强弱五档（身极强/身强/中和/身弱/身极弱），与八字页 analyzeDayMasterStrength 同口径 */
+    strengthLevel?: string;
     ziwei?: any[];
   };
   partner: {
@@ -73,6 +75,7 @@ export interface HePanInput {
     zodiac: string;
     nayin: string;
     yongShen: string[];
+    strengthLevel?: string;
     ziwei?: any[];
     birthInfo?: string;
     birthplace?: string[];

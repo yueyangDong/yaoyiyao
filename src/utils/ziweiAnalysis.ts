@@ -1,6 +1,8 @@
 // ========== 紫微斗数十二宫白话解读生成器 ==========
 // 兼容 @ziweijs/core v0.3.0 的排盘结果
 
+import { Solar } from 'lunar-typescript';
+
 // ========== 类型定义 ==========
 
 /**
@@ -69,6 +71,148 @@ export function inferBirthStem(entries: { star: string; sihua: string }[]): stri
   return bestScore >= 2 ? best : null;
 }
 
+// ========== 大限 / 流年四化飞星 ==========
+
+/** 十二宫人生领域（四化落宫解读用） */
+const GONG_DOMAIN: Record<string, string> = {
+  '命宫': '自身状态与心态',
+  '兄弟': '兄弟朋友与合作伙伴',
+  '夫妻': '感情与婚姻',
+  '子女': '子女、晚辈与创作表达',
+  '财帛': '收入与理财',
+  '疾厄': '身体健康',
+  '迁移': '外出、远行与外在舞台',
+  '交友': '朋友、下属与人脉',
+  '官禄': '事业与学业',
+  '田宅': '家庭与房产',
+  '福德': '精神享受与福报',
+  '父母': '父母、长辈与体制贵人',
+};
+
+/** 单条四化飞星 */
+export interface HoroscopeSihuaItem {
+  hua: '化禄' | '化权' | '化科' | '化忌';
+  star: string;
+  palaceName: string;
+  desc: string;
+}
+
+/** 大限/流年四化结果 */
+export interface HoroscopeSihuaResult {
+  virtualAge: number;
+  decadal: {
+    palaceName: string;
+    stem: string;
+    branch?: string;
+    ageRange: [number, number];
+    items: HoroscopeSihuaItem[];
+    summary: string;
+  } | null;
+  yearly: {
+    year: number;
+    stem: string;
+    items: HoroscopeSihuaItem[];
+    summary: string;
+  } | null;
+}
+
+/** 找某颗星在本命十二宫的落宫（主星、辅星都查） */
+function findStarPalace(palaces: PalaceData[], starName: string): PalaceData | undefined {
+  return palaces.find(p => {
+    const names = [
+      ...(p.majorStars || []).map(s => (typeof s === 'string' ? s : s.name)),
+      ...(p.minorStars || []).map(s => (typeof s === 'string' ? s : s.name)),
+    ];
+    return names.includes(starName);
+  });
+}
+
+/** 某天干四化飞星落宫 + 白话逐条 */
+function sihuaFlyItems(palaces: PalaceData[], stem: string, scope: string): HoroscopeSihuaItem[] {
+  const t = STEM_SIHUA_TABLE[stem];
+  if (!t) return [];
+  const order: Array<{ key: 'lu' | 'quan' | 'ke' | 'ji'; hua: HoroscopeSihuaItem['hua'] }> = [
+    { key: 'lu', hua: '化禄' }, { key: 'quan', hua: '化权' }, { key: 'ke', hua: '化科' }, { key: 'ji', hua: '化忌' },
+  ];
+  return order.map(({ key, hua }) => {
+    const star = t[key];
+    const palace = findStarPalace(palaces, star);
+    const gongName = palace ? palace.name.replace(/宫$/, '') : '';
+    const domain = palace ? (GONG_DOMAIN[palace.name] || palace.name) : '';
+    let desc: string;
+    if (!palace) {
+      desc = `${star}${hua}未落本命十二宫（星曜借盘或数据缺失），仅供参考`;
+    } else if (hua === '化禄') {
+      desc = `${star}化禄入${gongName}宫——${scope}在${domain}上有资源、机会与进账，是收获的方向`;
+    } else if (hua === '化权') {
+      desc = `${star}化权入${gongName}宫——${scope}在${domain}上掌握主动权、承担责任，能干但也容易忙累`;
+    } else if (hua === '化科') {
+      desc = `${star}化科入${gongName}宫——${scope}在${domain}上得名声、贵人与体面，利考试、文书与口碑`;
+    } else {
+      desc = `${star}化忌入${gongName}宫——${scope}在${domain}上容易牵挂、卡顿或遇到功课，宜守不宜冲，提前留意`;
+    }
+    return { hua, star, palaceName: palace ? palace.name : '', desc };
+  });
+}
+
+function flySummary(items: HoroscopeSihuaItem[]): string {
+  const lu = items.find(i => i.hua === '化禄');
+  const ji = items.find(i => i.hua === '化忌');
+  const parts: string[] = [];
+  if (lu?.palaceName) parts.push(`禄入${lu.palaceName.replace(/宫$/, '')}（机会所在）`);
+  if (ji?.palaceName) parts.push(`忌入${ji.palaceName.replace(/宫$/, '')}（功课所在）`);
+  return parts.length ? parts.join('，') + '。' : '';
+}
+
+/**
+ * 大限（十年运）+ 流年四化飞星分析。
+ * - 大限命宫：按 @ziweijs/core 的 horoscopeRanges（虚岁区间）定位，大限天干即该宫宫干；
+ * - 流年天干：目标年的农历年干（以立春为界，取该年六月所在年干）；
+ * - 四化落宫：天干四化星在本命十二宫的位置，体（生年）为根，限运（用）为引动。
+ * @param palaces 本命十二宫（需带 stem/name/majorStars/minorStars/horoscopeRanges）
+ * @param birthYear 出生公历年
+ * @param targetYear 要查看的公历年（默认当前年）
+ */
+export function analyzeHoroscopeSihua(
+  palaces: PalaceData[],
+  birthYear: number,
+  targetYear: number = new Date().getFullYear()
+): HoroscopeSihuaResult {
+  const virtualAge = targetYear - birthYear + 1;
+
+  // 大限：虚岁落在哪个宫的 horoscopeRanges
+  const decadalPalace = palaces.find(
+    p => p.horoscopeRanges && virtualAge >= p.horoscopeRanges[0] && virtualAge <= p.horoscopeRanges[1]
+  );
+  let decadal: HoroscopeSihuaResult['decadal'] = null;
+  if (decadalPalace?.stem && decadalPalace.horoscopeRanges) {
+    const items = sihuaFlyItems(palaces, decadalPalace.stem, '这十年');
+    decadal = {
+      palaceName: decadalPalace.name,
+      stem: decadalPalace.stem,
+      branch: decadalPalace.branch,
+      ageRange: decadalPalace.horoscopeRanges,
+      items,
+      summary: `大限走${decadalPalace.name.replace(/宫$/, '')}宫（${decadalPalace.stem}干，虚岁${decadalPalace.horoscopeRanges[0]}-${decadalPalace.horoscopeRanges[1]}）：${flySummary(items)}`,
+    };
+  }
+
+  // 流年：目标年农历年干（六月必在立春后，年干稳定）
+  const yearStem = Solar.fromYmd(targetYear, 6, 1).getLunar().getYearGan();
+  let yearly: HoroscopeSihuaResult['yearly'] = null;
+  if (yearStem) {
+    const items = sihuaFlyItems(palaces, yearStem, '这一年');
+    yearly = {
+      year: targetYear,
+      stem: yearStem,
+      items,
+      summary: `${targetYear}年（${yearStem}干年）流年四化：${flySummary(items)}`,
+    };
+  }
+
+  return { virtualAge, decadal, yearly };
+}
+
 /**
  * 宫位数据（兼容层）
  */
@@ -81,6 +225,7 @@ export interface PalaceData {
   isLaiYin?: boolean;             // 是否来因宫
   isShenGong?: boolean;           // 是否身宫
   index?: number;                  // 宫位索引 0-11
+  horoscopeRanges?: [number, number];  // 该宫作为大限命宫的虚岁区间（来自 @ziweijs/core）
 }
 
 /**

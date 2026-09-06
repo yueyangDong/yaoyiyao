@@ -10,6 +10,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan } from '../utils/hepan';
+import { analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import PayWall from '../components/PayWall';
 import { hepanTargetKey } from '../lib/payment';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
@@ -20,8 +21,6 @@ const TG_WX: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
 };
-const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
-const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
 
 /**
  * 为合盘双方排紫微命盘（轻量版：只保留合盘需要的宫位名/主星/生年四化）。
@@ -64,9 +63,11 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
   ];
   const dayGan = ec.getDayGan();
   const dayWx = TG_WX[dayGan] || '';
-  const biJie = pillars.filter(p => ['比肩', '劫财'].includes(p.shiShen)).length;
-  const strengthLevel = biJie >= 2 ? '身强' : '身弱';
-  const yongShen = strengthLevel === '身强' ? [WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean) : [WX_SHENG[dayWx], dayWx];
+  // 身强身弱与八字页完全同一口径：analyzeDayMasterStrength 五维评分（月令/根气/印星/比劫/克泄）五档，
+  // recommendYongShen 据此取用神。校准：旧版"比劫≥2 即身强"不看月令根气，
+  // 且身弱喜用误取 WX_SHENG（我生者=食伤，泄身之物），应为印星（生我者）。
+  const strength = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars);
+  const yongRec = recommendYongShen(dayWx, strength.level);
   return {
     name: gender === 'male' ? '男方' : '女方',
     gender,
@@ -76,7 +77,8 @@ function buildPerson(year: number, month: number, day: number, hour: number, min
     pillars,
     zodiac: lunar.getYearShengXiao(),
     nayin: ec.getDayNaYin(),
-    yongShen: [...new Set(yongShen)],
+    strengthLevel: strength.level,
+    yongShen: yongRec.yongShen,
     ziwei: buildZiweiChart(solar, gender),
     birthInfo: `${year}年${month}月${day}日 ${hour}:${String(minute).padStart(2, '0')}`,
   };

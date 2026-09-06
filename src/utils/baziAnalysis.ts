@@ -391,6 +391,51 @@ export function analyzeDayMasterStrength(
   };
 }
 
+/**
+ * 推荐用神（八字页 / 合盘共用的唯一口径，禁止在调用方另写判法）：
+ * 身强宜克泄耗——财（我克）、官杀（克我）；身弱宜生扶——印（生我）、比劫（同我）；中和印财兼顾。
+ * 五行表方向：WX_KE=我克(财)、WX_BEI_KE=克我(官杀)、WX_SHENG=生我者(印)。
+ * wxStats 预留给后续按全局五行统计微调，当前不参与计算。
+ */
+export function recommendYongShen(
+  dayWx: string,
+  strengthLevel: string,
+  _wxStats?: Record<string, { count: number; level: string }>
+): { yongShen: string[]; xiShen: string[]; desc: string } {
+  let yongShen: string[] = [];
+  let xiShen: string[] = [];
+  let desc = '';
+
+  if (strengthLevel.includes('强')) {
+    // 身强/身极强宜克泄耗
+    yongShen = [WX_KE[dayWx], WX_BEI_KE[dayWx]]; // 我克的（财）和克我的（官）
+    xiShen = [dayWx];
+    desc = `你的日主偏强，就像一个人力气太大需要释放。你需要"克泄耗"来平衡——`;
+    if (WX_KE[dayWx]) desc += `喜${WX_KE[dayWx]}（财星，你克的，赚钱花钱让你消耗精力），`;
+    if (WX_BEI_KE[dayWx]) desc += `喜${WX_BEI_KE[dayWx]}（官杀，克你的，有压力才有动力）。`;
+    // 印星 = 生我者，反查我生表（WX_SHENG_CHU[x]=dayWx 的 x）
+    const yinWx = Object.entries(WX_SHENG_CHU).find(([, v]) => v === dayWx)?.[0];
+    if (yinWx) desc += `不太需要${yinWx}（印星，生你的，再多就更强了）和${dayWx}（比劫，帮你的，人多了更闹）。`;
+  } else if (strengthLevel.includes('弱')) {
+    // 身弱/身极弱宜生扶
+    yongShen = [WX_SHENG[dayWx], dayWx]; // 生我的（印）和同我的（比劫）
+    xiShen = [WX_KE[dayWx]];
+    desc = `你的日主偏弱，就像小树苗需要阳光雨露。你需要"生助"来加强——`;
+    if (WX_SHENG[dayWx]) desc += `最喜${WX_SHENG[dayWx]}（印星，生你的，给你力量和贵人），`;
+    desc += `喜${dayWx}（比劫，帮你的，朋友多了路好走）。`;
+    desc += `需要注意的是${WX_KE[dayWx]}（财星，你克的，花钱会让你更虚）和${WX_BEI_KE[dayWx]}（官杀，克你的，压力会让你吃不消）。`;
+  } else {
+    yongShen = [WX_SHENG[dayWx], WX_KE[dayWx]];
+    desc = `你的日主中和，比较平衡。正常补${WX_SHENG[dayWx]}（印星）和${WX_KE[dayWx]}（财星）都可以，看具体运势调整。`;
+  }
+
+  // 去重
+  yongShen = [...new Set(yongShen.filter(Boolean))];
+  xiShen = [...new Set(xiShen.filter(Boolean))];
+
+  return { yongShen, xiShen, desc };
+}
+
 // ========== 辅助函数 ==========
 
 /** 根据十神名称确认该十神出现在哪些柱 */

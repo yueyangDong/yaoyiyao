@@ -8,7 +8,7 @@ import {
 import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
-import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength } from '../utils/baziAnalysis';
+import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import PayWall from '../components/PayWall';
 import { chartTargetKey } from '../lib/payment';
 import { analyzePersonality } from '../utils/baziPersonality';
@@ -287,45 +287,7 @@ function calcWuxingStats(pillars: any[]): Record<string, { count: number; level:
 // 校准说明：此前本文件另有一份本地简化版（基础分2、只加不减，永远输出三档），
 // 与 baziAnalysis 版本规则漂移，且导致 mingGe 专旺格/从格在生产中无法触发——已删除。
 
-// 推荐用神
-function recommendYongShen(dayWx: string, strengthLevel: string, wxStats: Record<string, { count: number; level: string }>): {
-  yongShen: string[]; xiShen: string[]; desc: string;
-} {
-  const wxKe: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
-  const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-  const wxBeiKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-
-  let yongShen: string[] = [];
-  let xiShen: string[] = [];
-  let desc = '';
-
-  if (strengthLevel === '身强') {
-    // 身强宜克泄耗
-    yongShen = [wxKe[dayWx], wxBeiKe[dayWx]]; // 我克的（财）和克我的（官）
-    xiShen = [dayWx]; // 再遇到比劫反而不利（但这里xiShen存喜神）
-    desc = `你的日主偏强，就像一个人力气太大需要释放。你需要"克泄耗"来平衡——`;
-    if (wxKe[dayWx]) desc += `喜${wxKe[dayWx]}（财星，你克的，赚钱花钱让你消耗精力），`;
-    if (wxBeiKe[dayWx]) desc += `喜${wxBeiKe[dayWx]}（官杀，克你的，有压力才有动力）。`;
-    const wxDayKe = Object.entries(wxKe).find(([, v]) => v === dayWx)?.[0];
-    if (wxDayKe) desc += `不太需要${wxDayKe}（印星，生你的，再多就更强了）和${dayWx}（比劫，帮你的，人多了更闹）。`;
-  } else if (strengthLevel === '身弱') {
-    yongShen = [wxSheng[dayWx], dayWx]; // 生我的（印）和同我的（比劫）
-    xiShen = [wxKe[dayWx]];
-    desc = `你的日主偏弱，就像小树苗需要阳光雨露。你需要"生助"来加强——`;
-    if (wxSheng[dayWx]) desc += `最喜${wxSheng[dayWx]}（印星，生你的，给你力量和贵人），`;
-    desc += `喜${dayWx}（比劫，帮你的，朋友多了路好走）。`;
-    desc += `需要注意的是${wxKe[dayWx]}（财星，你克的，花钱会让你更虚）和${wxBeiKe[dayWx]}（官杀，克你的，压力会让你吃不消）。`;
-  } else {
-    yongShen = [wxSheng[dayWx], wxKe[dayWx]];
-    desc = `你的日主中和，比较平衡。正常补${wxSheng[dayWx]}（印星）和${wxKe[dayWx]}（财星）都可以，看具体运势调整。`;
-  }
-
-  // 去重
-  yongShen = [...new Set(yongShen.filter(Boolean))];
-  xiShen = [...new Set(xiShen.filter(Boolean))];
-
-  return { yongShen, xiShen, desc };
-}
+// 推荐用神：统一使用 baziAnalysis.ts 的 recommendYongShen（合盘 buildPerson 同口径，禁止另写判法）。
 
 // 刑冲合害分析 —— 结构化结果
 interface RelationItem {
@@ -748,7 +710,7 @@ export default function Bazi() {
 
   const handleCalc = async () => {
     const values = form.getFieldsValue();
-    const { year, month, day, hour, minute, gender, birthplace } = values;
+    const { year, month, day, hour, minute, gender, birthplace, ziShiSect } = values;
 
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的出生时间');
@@ -808,6 +770,8 @@ export default function Bazi() {
       }
 
       const eightChar = lunar.getEightChar();
+      // 晚子时流派：sect=2（默认）晚子时日柱算当天；sect=1 日柱算次日。必须在取柱/起运前设置。
+      if (ziShiSect === 1) eightChar.setSect(1);
 
       // getYun参数：1=男 0=女，内部自动根据阳年/阴年判断顺逆排
       const yunParam = gender === 'male' ? 1 : 0;
@@ -1327,9 +1291,18 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                 <Cascader options={pcaCode} fieldNames={{ label: 'n', value: 'c', children: 'ch' }} placeholder="请选择省市区（可选）" changeOnSelect style={{ width: '100%' }} />
               </Form.Item>
             </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="ziShiSect" label="晚子时流派（23:00–24:00 出生才相关）" initialValue={2}>
+                <Radio.Group>
+                  <Radio value={2}>日柱算当天</Radio>
+                  <Radio value={1}>日柱算次日</Radio>
+                </Radio.Group>
+              </Form.Item>
+            </Col>
           </Row>
           <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
             默认东经120°（北京时间）。选择出生地后将自动做真太阳时校正（每差1°校正4分钟）。
+            晚子时（23:00–24:00）两派对日柱归属不同：「算当天」为通行流派，「算次日」为早子夜子分日派；两派时柱结论一致，仅日柱可能差一天。
           </Text>
 
           <Button type="primary" onClick={handleCalc} size="large">排盘</Button>

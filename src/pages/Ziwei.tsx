@@ -21,7 +21,7 @@ import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
-import { generateSummarizedReport } from '../utils/ziweiAnalysis';
+import { generateSummarizedReport, analyzeHoroscopeSihua } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
 
 const { Title, Text, Paragraph } = Typography;
@@ -423,6 +423,7 @@ export default function Ziwei() {
         branch: p.branch,
         isLaiYin: p.isLaiYin,
         isShenGong: p.branch === shenGongBranch,
+        horoscopeRanges: p.horoscopeRanges as [number, number] | undefined,
         majorStars: (p.majorStars || []).map((s: any) => ({
           name: s.name,
           type: s.type,
@@ -508,9 +509,12 @@ export default function Ziwei() {
       if (warnings.length === 0) warnings.push('各宫整体格局较好，无特别需要警惕之处');
 
       const ge = analyzeZiweiGe(gongData);
+      // 大限（十年运）+ 流年四化飞星：大限宫按库的 horoscopeRanges 虚岁区间定位，宫干飞四化
+      const horoscopeSihua = analyzeHoroscopeSihua(gongData as any, sol.getYear());
       setZiweiData({
         gongData,
         mingGe: ge,
+        horoscopeSihua,
         solarDate: solarDateStr,
         lunisolarDate: lunisolarDateStr,
         // 命盘指纹：付费权益绑定用（公历归一 + 真太阳时校正后时间，稳定唯一）
@@ -1075,6 +1079,39 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                     ))}
                   </div>
                 )}
+              </Card>
+            </CollapsibleCard>
+          )}
+
+          {/* 大限·流年四化飞星 */}
+          {ziweiData?.horoscopeSihua && (ziweiData.horoscopeSihua.decadal || ziweiData.horoscopeSihua.yearly) && (
+            <CollapsibleCard
+              title="大限·流年四化"
+              summary={ziweiData.horoscopeSihua.decadal?.summary || ziweiData.horoscopeSihua.yearly?.summary || ''}
+              defaultOpen
+            >
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+                {[
+                  { label: `🕐 当前大限（虚岁 ${ziweiData.horoscopeSihua.virtualAge}）`, data: ziweiData.horoscopeSihua.decadal },
+                  { label: `📅 ${ziweiData.horoscopeSihua.yearly?.year || ''} 流年`, data: ziweiData.horoscopeSihua.yearly },
+                ].filter(sec => sec.data).map((sec, si) => (
+                  <div key={si} style={{ marginBottom: si === 0 ? 16 : 0 }}>
+                    <Title level={5} style={{ marginBottom: 4 }}>{sec.label}</Title>
+                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>{sec.data!.summary}</Text>
+                    {sec.data!.items.map((it: any, i: number) => (
+                      <div key={i} style={{ marginBottom: 6 }}>
+                        <Tag color={it.hua === '化禄' ? 'green' : it.hua === '化权' ? 'blue' : it.hua === '化科' ? 'gold' : 'red'} style={{ marginRight: 8 }}>
+                          {it.star}{it.hua}
+                        </Tag>
+                        <Text style={{ fontSize: 13 }}>入{it.palaceName.replace(/宫$/, '')}宫</Text>
+                        <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>{it.desc.split('——')[1] || ''}</Text>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                  大限主十年趋势（大限宫干飞化），流年主当年引动（流年天干飞化）；生年四化为「体」，限运四化为「用」。
+                </Text>
               </Card>
             </CollapsibleCard>
           )}

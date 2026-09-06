@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { Solar } from 'lunar-typescript';
 import { ziwei } from '@ziweijs/core';
 import { getTrueSolarHour, correctSolarTime } from '../../context/UserContext';
+import { analyzeDayMasterStrength, recommendYongShen } from '../../utils/baziAnalysis';
 
 const GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -166,5 +167,29 @@ describe('紫微排盘校准（@ziweijs/core）', () => {
     const monthPalaceIdx = (2 + 7 - 1) % 12;               // 农历七月 → 申(8)
     const shenBranch = ZHI_ORDER[(monthPalaceIdx + ZHI_ORDER.indexOf('寅')) % 12];
     expect(shenBranch).toBe('戌');
+  });
+});
+
+describe('身强身弱与用神口径（八字页/合盘共用同一规则源）', () => {
+  // 甲木日主生申月（金旺），官杀（庚）透干，地支无木根、无水印 → 身弱
+  const pillars = [
+    { pillar: '年柱', ganZhi: '庚申', tianGan: '庚', diZhi: '申', shiShen: '七杀' },
+    { pillar: '月柱', ganZhi: '甲申', tianGan: '甲', diZhi: '申', shiShen: '比肩' },
+    { pillar: '日柱', ganZhi: '甲午', tianGan: '甲', diZhi: '午', shiShen: '日主' },
+    { pillar: '时柱', ganZhi: '庚午', tianGan: '庚', diZhi: '午', shiShen: '七杀' },
+  ];
+
+  it('甲木生申月、金多无印根 → 判定身弱', () => {
+    const s = analyzeDayMasterStrength('甲', '申', pillars as any);
+    expect(['身弱', '身极弱']).toContain(s.level);
+  });
+
+  it('身弱用神 = 印星（生我者=水）+ 比劫（同我者=木），绝不含食伤（我生者=火）', () => {
+    const s = analyzeDayMasterStrength('甲', '申', pillars as any);
+    const rec = recommendYongShen('木', s.level);
+    expect(rec.yongShen).toContain('水');  // 印星
+    expect(rec.yongShen).toContain('木');  // 比劫
+    expect(rec.yongShen).not.toContain('火'); // 食伤泄身——旧合盘 bug 误取此方向
+    expect(rec.yongShen).not.toContain('金'); // 官杀克身
   });
 });
