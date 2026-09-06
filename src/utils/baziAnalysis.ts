@@ -123,6 +123,156 @@ const TG_YIN_YANG: Record<string, string> = {
   '己': '阴', '庚': '阳', '辛': '阴', '壬': '阳', '癸': '阴',
 };
 
+// ========== 个性化差异化引擎 ==========
+// 目的：让五维解读（爱情/事业/健康/家庭/社交）随命局不同而显著不同。
+// 六层锚点：日主天干(10) × 日支夫妻宫(12) × 配偶星天干(10) × 桃花地支(4) × 月令调候(12) × 十神主气(10)
+
+/** 日主十天干性格底色（比五行更细一倍的个性锚） */
+const DAY_GAN_PROFILE: Record<string, { core: string; love: string; social: string; family: string }> = {
+  '甲': {
+    core: '你是甲木日主——像一棵直挺的大树，正直有担当，认准的事不轻易回头',
+    love: '你在感情中是"扛事型"伴侣：对方遇到困难你第一个站出来，但也要小心把"讲道理"当成解决问题的唯一方式——伴侣有时要的是共情不是方案',
+    social: '你在朋友圈里是"主心骨"型——大家有事愿意找你拿主意，但你习惯照顾所有人，容易把自己累到',
+    family: '你在家里习惯当"顶梁柱"，家人依赖你，但你也容易把责任全揽在自己身上',
+  },
+  '乙': {
+    core: '你是乙木日主——像藤蔓花草，柔韧灵活，善于借势而上，打不垮也压不弯',
+    love: '你在感情中擅长以柔克刚：不硬碰硬，但心里有自己的算盘。注意别把不满憋成"冷战"，你有本事让对方察觉不到你生气',
+    social: '你社交中八面玲珑，能在不同圈子之间穿梭，但真正交心的朋友屈指可数——你防备心其实不低',
+    family: '你是家里的"润滑剂"，擅长调和矛盾，但自己的委屈常常留到最后才说',
+  },
+  '丙': {
+    core: '你是丙火日主——像太阳一样光明磊落，热情大方，走到哪里都自带光和热',
+    love: '你爱起来轰轰烈烈、掏心掏肺，但热度来得快也可能降温快——你要找的是能接得住你热情又不被灼伤的人',
+    social: '你是天生的"场暖机"，聚会因为有你才热闹；但热闹散场后的空虚感，是你少数不愿示人的角落',
+    family: '你对家人大方慷慨，家里有你在气氛就不冷场，但偶尔强势——"我都是为你们好"是你的口头禅',
+  },
+  '丁': {
+    core: '你是丁火日主——像烛火灯芯，温柔细腻，外柔内热，越在黑暗处越显出你的光',
+    love: '你的爱是细水长流型的：记得对方的喜好和纪念日，用细节表达心意。但你敏感，容易把对方一句无心的话放大成"他不在乎我"',
+    social: '你不是人群中最吵的那个，却是最会照顾个别情绪的那个——朋友向你倾诉过一次，就会把你当树洞',
+    family: '你和家人相处温柔体贴，但你心里藏着的事往往不愿说出来，家人未必真正懂你',
+  },
+  '戊': {
+    core: '你是戊土日主——像高山城墙，厚重沉稳，说到做到，是天生的"信用担当"',
+    love: '你谈恋爱慢热但极其专一，认定了就不改；缺点是浪漫细胞少——你觉得"我在就行"就是爱，对方却可能想要仪式感',
+    social: '你的朋友是一年一年沉淀下来的，不靠嘴甜靠靠谱。别人托你办的事，你办不到就不会答应',
+    family: '你是家里的"定海神针"，家人有事第一个想到你；但你不太表达感情，爱都藏在做的事里',
+  },
+  '己': {
+    core: '你是己土日主——像田园沃土，包容务实，能屈能伸，善于把平凡的日子过出滋味',
+    love: '你在感情里是"过日子型"选手：把对方的生活照顾得妥妥帖帖。但你容易操心过头，把伴侣惯成"甩手掌柜"然后自己委屈',
+    social: '你人缘好在于"让人觉得没负担"——你从不强人所难。但你也因此常常是迁就的那一方',
+    family: '你是家里的实际操持者，柴米油盐你最上心；记得也给自己留点松快时间，别把自己活成了后勤部长',
+  },
+  '庚': {
+    core: '你是庚金日主——像刀剑矿石，果敢刚毅，爱恨分明，是"讲原则"三个字的化身',
+    love: '你在感情里直来直去，讨厌猜来猜去；你的爱体现为"护短"——外人不能说你伴侣半句不好。但你的硬话有时候像刀子，记得包一层糖',
+    social: '你交朋友讲义气，答应的事赴汤蹈火；但你看不惯的人连装都懒得装，社交圈两极分化明显',
+    family: '你对家人管得多也护得狠，嘴上不饶人心里全是牵挂——典型的"刀子嘴豆腐心"',
+  },
+  '辛': {
+    core: '你是辛金日主——像珠玉首饰，精致敏锐，自尊心强，对品质和细节有天然的挑剔',
+    love: '你对感情的要求是"精神共鸣"——聊不来的人条件再好也没用。你嘴上爱挑剔对方，但谁说你伴侣不好你跟谁急',
+    social: '你在社交中优雅有分寸，第一印象极好；但你内心有把尺子，达不到标准的人很难真正走进你的圈子',
+    family: '你在家里看似好说话，其实很有主见；家人可能觉得你"讲究多"，其实你只是想把日子过得有质感',
+  },
+  '壬': {
+    core: '你是壬水日主——像江河奔流，聪明通透，适应力极强，心里装着远方和更大的世界',
+    love: '你在感情里需要"智性吸引"——对方要能跟你聊到一块。你讨厌被管束，伴侣管得越紧你跑得越快，放养反而拴得住你',
+    social: '你是天生的消息枢纽，什么圈子都认识人；但你的交情来得快淡得也快，真正留在心里的没几个',
+    family: '你理想远、跑得远，家里可能觉得你"心野"；其实你挣面子、寄钱回家，用的是自己的方式孝顺',
+  },
+  '癸': {
+    core: '你是癸水日主——像雨露泉水，心思细腻，直觉敏锐，表面安静内心千回百转',
+    love: '你在感情里重感觉、爱得深，但不容易开口——总希望对方"懂我"。学会把需求直接说出来，是你感情幸福的必修课',
+    social: '你安静低调，是人群中的观察者；你以为自己没存在感，其实很多人默默觉得你"靠谱又舒服"',
+    family: '你跟家人情感联结深但不善表达，把关心藏在行动里；偶尔一句"我想你们"，胜过你做的十件事',
+  },
+};
+
+/** 12日支夫妻宫画像：坐支不同，感情模式与择偶倾向显著不同 */
+const SPOUSE_PALACE_PROFILE: Record<string, string> = {
+  '子': '你的夫妻宫坐子水——你内心向往聪明机灵、聊得来的伴侣，喜欢"智性恋"。另一半大概率思路清晰、点子多，但情绪像水一样起伏，你需要接得住TA偶尔的敏感',
+  '丑': '你的夫妻宫坐丑土——你渴望踏实过日子的伴侣，不追求轰轰烈烈但求细水长流。另一半可能话不多、慢热务实，婚后是"把日子越过越好"的类型，但你要主动制造情趣',
+  '寅': '你的夫妻宫坐寅木——你容易被有冲劲、有事业心的人吸引。另一半上进心强、说干就干，但也可能聚少离多或脾气急；你们更像事业同盟，互相成就',
+  '卯': '你的夫妻宫坐卯木——你的理想伴侣是温和儒雅、有审美有品位的人。另一半大概率外形清秀、人缘好，感情模式偏浪漫；但TA人缘太好，你要注意经营安全感',
+  '辰': '你的夫妻宫坐辰土——你倾向找包容大度、能兜底的人。另一半成熟稳重、有库存有积累，是"能扛事"的类型；相处像老友，激情不多但风雨同舟',
+  '巳': '你的夫妻宫坐巳火——你欣赏聪明外向、有才华有表现力的人。另一半能说会道、社交面广，跟TA在一起不无聊；但两人都急脾气时容易一点就着，要学会降温',
+  '午': '你的夫妻宫坐午火——你向往热烈浪漫的爱情，要的是心动而不是凑合。另一半热情开朗、爱憎分明，恋爱体验感强；但激情需要管理，学会把热烈转化为细水长流',
+  '未': '你的夫妻宫坐未土——你要的是温暖包容的家人型伴侣。另一半体贴顾家、心思细腻，会把你照顾得很好；但TA也可能多思多虑，需要你多给确定的回应',
+  '申': '你的夫妻宫坐申金——你被聪明伶俐、执行力强的人吸引。另一半脑子活、动手能力强，属于"方法总比困难多"的类型；你们在一起效率高，但注意别把日子过成纯理性合作',
+  '酉': '你的夫妻宫坐酉金——你的择偶眼光高，看重气质、品味和原则性。另一半往往形象气质佳、对自己要求严；但两人都爱较真时容易起摩擦，小事别争对错',
+  '戌': '你的夫妻宫坐戌土——你倾向于忠诚可靠的伴侣，"忠诚"在你的择偶标准里排第一。另一半重情重义、说一不二；但TA认定的事不太好说服，家里大事要商量着来',
+  '亥': '你的夫妻宫坐亥水——你向往灵魂伴侣式的感情，要的是懂得和包容。另一半心软善良、有奉献精神，对你掏心掏肺；但TA情绪需要出口，你要做TA的定心丸',
+};
+
+/** 配偶星按具体天干的10种画像（替代原5行笼统版） */
+const SPOUSE_GAN_TRAITS: Record<string, string> = {
+  '甲': '对方大概率身材挺拔、性格正直，是"能扛事"的类型——有原则、有点倔，认准的道理九头牛拉不回',
+  '乙': '对方大概率身形清瘦灵活、性格温和韧性强——表面随和好说话，实际心里有数、打不垮',
+  '丙': '对方大概率外向开朗、精神气足，像小太阳——热情大方爱交朋友，但性子急、来去都快',
+  '丁': '对方大概率斯文细腻、心思敏感——外在安静温和，内心炽热专一，容易多想，需要你给足安全感',
+  '戊': '对方大概率体格厚实、沉稳可靠——话不多但说到做到，是"闷葫芦型"的靠谱，浪漫细胞少',
+  '己': '对方大概率随和包容、擅长持家——好相处、会照顾人，但容易操心唠叨，也容易委屈自己',
+  '庚': '对方大概率轮廓分明、性格果决——爱恨分明讲义气，脾气来得快去得也快，吃软不吃硬',
+  '辛': '对方大概率形象气质出众、精致讲究——对自己要求高，有点完美主义，说话带刺但心不坏',
+  '壬': '对方大概率聪明机灵、见多识广——主意多、朋友多、闲不住，讨厌被管束，需要给彼此空间',
+  '癸': '对方大概率温柔安静、直觉敏锐——外表柔弱内心有主见，感情细腻爱幻想，需要被理解多于被说教',
+};
+
+/** 桃花按具体地支的四种子差异（子午卯酉） */
+const PEACH_DZ_TRAITS: Record<string, string> = {
+  '子': '子水桃花偏"智性浪漫"型——你容易被聪明有趣的人吸引，也容易因为聊天投机而动心，注意别把"聊得来"直接当成"适合在一起"',
+  '午': '午火桃花偏"热烈外放"型——你的魅力是明晃晃的，容易一见钟情也容易被人一见钟情，感情来得快，热恋期轰轰烈烈，要学会在热度过后看人品',
+  '卯': '卯木桃花偏"温和吸粉"型——你不是主动出击的类型，但温和干净的气质让人如沐春风，往往是别人先动心；你的烂桃花少，正缘质量高',
+  '酉': '酉金桃花偏"气质高冷"型——你的吸引力来自品味和距离感，欣赏你的人往往默默关注很久才敢开口；你的麻烦不在没人追，而在门槛太高错过对的人',
+};
+
+/** 月令调候健康要点（按月支12条）——出生季节决定体质底色的经典调候思路 */
+const SEASON_HEALTH: Record<string, string> = {
+  '寅': '你生于初春（寅月），春寒料峭、木气萌动——体质底色偏"寒湿未散"，注意保暖驱寒、少食生冷，肝气容易郁结，情绪疏导对你格外重要',
+  '卯': '你生于仲春（卯月），木气正旺——肝阳容易偏亢，注意春季易怒、偏头痛和睡眠问题；春天多踏青疏肝，少熬夜',
+  '辰': '你生于暮春（辰月），土湿渐重——脾胃偏湿是你的底色，少吃甜腻寒凉，梅雨季注意关节和肠胃',
+  '巳': '你生于初夏（巳月），火气渐旺——心火容易偏亢，注意失眠、口舌生疮和血压问题；入夏后少辛辣、多补水',
+  '午': '你生于仲夏（午月），火气最烈——体质偏燥热，心脑血管和情绪管理是终生课题；盛夏防中暑，平时少熬夜上火食物',
+  '未': '你生于长夏（未月），湿热交蒸——脾胃湿热是你的底色，皮肤和消化容易报警；饮食清淡祛湿，绿豆冬瓜是你的好朋友',
+  '申': '你生于初秋（申月），金气渐肃——肺和大肠是你的敏感带，换季时呼吸道容易先出问题；秋天注意润燥',
+  '酉': '你生于仲秋（酉月），金气最旺——肺气偏亢，皮肤干燥、呼吸道敏感是常见困扰；多食白色润肺食物，防秋燥',
+  '戌': '你生于暮秋（戌月），燥土当令——脾胃偏燥，注意消化和皮肤保湿；深秋防寒胃，少吃烧烤辛辣',
+  '亥': '你生于初冬（亥月），水气渐旺——体质偏寒，肾气和腰腿保暖是终生课题；冬天泡脚驱寒，少食冷饮',
+  '子': '你生于仲冬（子月），水气最盛、天寒地冻——阳气体质偏弱，特别怕冷；补肾阳、护腰膝、冬天晒背，比吃任何补品都有效',
+  '丑': '你生于隆冬腊月（丑月），寒湿凝滞——脾胃虚寒加肾阳不足是你的底色；忌生冷，冬天注意腰腹保暖，姜茶是你的日常饮品',
+};
+
+/** 十神主气特质：命局数量最多的十神，决定一个人的主导气质 */
+const SHISHEN_SIGNATURE: Record<string, string> = {
+  '正官': '你命局主气是正官——规则感、责任感刻在骨子里，做事有底线有章法，天生的"体制内气质"',
+  '七杀': '你命局主气是七杀——你身上有股狠劲和狼性，压力越大反弹越大，危机感是你的燃料',
+  '正印': '你命局主气是正印——书卷气和学习力是你的底色，你相信知识改变命运，也确实如此',
+  '偏印': '你命局主气是偏印——你的思维方式总与常人差一个角度，冷门领域和非常规路径反而是你的主场',
+  '正财': '你命局主气是正财——你务实本分，一分耕耘一分收获是你的信仰，你也确实靠踏实积累了成果',
+  '偏财': '你命局主气是偏财——你嗅觉灵、出手快，对机会有天然的敏感度，钱在你的手里是流动的活水',
+  '食神': '你命局主气是食神——你懂生活、有才艺、心态松弛，"会玩"背后是天生的审美和表达力',
+  '伤官': '你命局主气是伤官——你才华外露、思维犀利，看问题一针见血；锋芒是你的武器，也要小心伤己',
+  '比肩': '你命局主气是比肩——你独立要强，凡事习惯靠自己，同行和朋友既是你的伙伴也是你的镜子',
+  '劫财': '你命局主气是劫财——你行动力强、敢想敢干，人生字典里没有"怂"字；但冲动消费和义气用事是你的暗坑',
+};
+
+/** 统计命局十神，返回数量最多的"主气"十神（至少出现2次才算） */
+function dominantShiShen(pillars: PillarData[]): { name: string; count: number } | null {
+  const cnt: Record<string, number> = {};
+  for (const p of pillars) {
+    if (p.shiShen) cnt[p.shiShen] = (cnt[p.shiShen] || 0) + 1;
+  }
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [k, v] of Object.entries(cnt)) {
+    if (v > bestN) { best = k; bestN = v; }
+  }
+  return best && bestN >= 2 ? { name: best, count: bestN } : null;
+}
+
 // ========== 综合日主强弱分析（新版） ==========
 
 export interface DayMasterStrengthResult {
@@ -498,6 +648,8 @@ export function analyzeLove(
   const dayWx = TG_WX[dayGan];
   const spouseStarName = gender === 'male' ? '正财' : '正官';
   const spouseStarPlain = gender === 'male' ? '正财（代表妻子和稳定收入）' : '正官（代表丈夫和事业规则）';
+  const dayGanProfile = DAY_GAN_PROFILE[dayGan];
+  const spousePalace = SPOUSE_PALACE_PROFILE[dayZhi] || '';
 
   // ===== 配偶特征 =====
   const spousePillars = findShiShenPillars(pillars, spouseStarName);
@@ -506,6 +658,7 @@ export function analyzeLove(
   const secondarySpousePillars = findShiShenPillars(pillars, secondarySpouseName);
 
   let spouseFeature = '';
+  const loveAnchor = dayGanProfile ? `${dayGanProfile.core}。${dayGanProfile.love}。\n\n` : '';
 
   if (spousePillars.length > 0) {
     const sp = spousePillars[0];
@@ -536,8 +689,13 @@ export function analyzeLove(
       spouseFeature += `配偶星在时柱，姻缘来得比较晚（${ageStart}岁以后）。虽然等得久，但晚婚反而更稳定幸福，因为你在心智更成熟时才遇到对的人。`;
     }
 
-    // 配偶五行特质
-    spouseFeature += `从五行看，配偶${spWx}性特质明显：${wxSpouseTraits[spWx] || '有其独特的个人魅力'}。`;
+    // 配偶五行特质（细化到具体天干）
+    spouseFeature += `从五行看，配偶${spWx}性特质明显：${SPOUSE_GAN_TRAITS[sp.tianGan] || wxSpouseTraits[spWx] || '有其独特的个人魅力'}。`;
+
+    // 夫妻宫坐支画像（12地支专属）
+    if (spousePalace) {
+      spouseFeature += `${spousePalace}。`;
+    }
 
     // 如果偏财/七杀也在，说明还有"偏缘"
     if (spouseStarName === '正财' && pillars.some(p => p.shiShen === '偏财')) {
@@ -555,11 +713,20 @@ export function analyzeLove(
     const ssPlain = gender === 'male' ? '偏财（偏缘/桃花）' : '七杀（偏官/压力型缘分）';
 
     spouseFeature = `你命局中${spouseStarPlain}不显，但${ssPlain}出现在${ssp.pillar}（${ssp.ganZhi}，${ssWx}）。这意味着你的正缘可能不那么明显，婚姻更依赖偏缘或非传统方式认识。`;
-    spouseFeature += `你的日支（夫妻宫）是${dayZhi}（${DZ_WX[dayZhi]}），夫妻宫的气质代表你内心对伴侣的真实需求——喜欢${DZ_WX[dayZhi]}性特质的人。建议在交友和相亲中留意这种气质的人。`;
+    if (spousePalace) {
+      spouseFeature += `${spousePalace}。建议在交友和相亲中留意这种气质的人。`;
+    }
   } else {
     spouseFeature = `你命局中${spouseStarPlain}不显，代表婚姻宫信息比较含蓄，你的姻缘更多看大运流年何时触发。`;
-    spouseFeature += `你的日支（夫妻宫）是${dayZhi}（${DZ_WX[dayZhi] || '未知'}），代表你内心真正被吸引的是有${DZ_WX[dayZhi] || ''}性特质的人。`;
+    if (spousePalace) {
+      spouseFeature += `${spousePalace}。`;
+    }
     spouseFeature += `不必担心，配偶星不显不等于没有婚姻，而是你的姻缘模式不走寻常路，可能通过特殊机缘认识。`;
+  }
+
+  // 拼回日主个性锚：开篇锚定"你这个人"在感情中的底色
+  if (loveAnchor) {
+    spouseFeature = loveAnchor + spouseFeature;
   }
 
   // ===== 婚姻质量 =====
@@ -631,6 +798,14 @@ export function analyzeLove(
     const peachDetails = allPeach.map(s => `${s.name}在${s.pillar}（${getPillarLifeStage(s.pillar)}）`).join('、');
     peachBlossom = `你命中桃花神煞较多：${peachDetails}。你的异性缘很旺，从小到大身边都不缺追求者，在人群中容易成为被关注的对象。`;
 
+    // 桃花地支子差异（子午卯酉四种桃花气质）
+    const peachDzList = allPeach
+      .map(s => pillars.find(p => p.pillar === s.pillar)?.diZhi)
+      .filter((d): d is string => !!d && ['子', '午', '卯', '酉'].includes(d));
+    if (peachDzList.length > 0 && PEACH_DZ_TRAITS[peachDzList[0]]) {
+      peachBlossom += `从桃花落宫看，${PEACH_DZ_TRAITS[peachDzList[0]]}。`;
+    }
+
     // 桃花在年柱 = 早恋倾向
     if (allPeach.some(s => s.pillar === '年柱')) {
       peachBlossom += '桃花在年柱代表你从小就讨人喜欢，青春期就可能有不少异性关注。但早年的桃花多半不太成熟，20岁前不建议投入太深。';
@@ -646,6 +821,11 @@ export function analyzeLove(
     peachBlossom = `你命中带有${peachDetail}，代表你有不错的异性缘和魅力。`;
     const stage = getPillarLifeStage(allPeach[0].pillar);
     peachBlossom += `这颗桃花出现在你的${stage}，说明这段时期你的异性缘会比较活跃，是谈恋爱的高峰期。`;
+    // 桃花地支子差异
+    const peachDz = pillars.find(p => p.pillar === allPeach[0].pillar)?.diZhi;
+    if (peachDz && PEACH_DZ_TRAITS[peachDz]) {
+      peachBlossom += `${PEACH_DZ_TRAITS[peachDz]}。`;
+    }
     peachBlossom += '桃花不在多而在于精——遇到对的人比谈很多恋爱更重要。';
   } else {
     // 虽然没有明显的桃花煞，但可以看日支和配偶星
@@ -653,7 +833,7 @@ export function analyzeLove(
     // 看日支是不是桃花位
     const peachDz = ['子', '午', '卯', '酉'];
     if (peachDz.includes(dayZhi)) {
-      peachBlossom += `但你的日支${dayZhi}本身属于四正桃花位，说明你骨子里其实有浪漫的一面——只是不会轻易表现出来。遇到对的人时，你的魅力会自然散发。`;
+      peachBlossom += `但你的夫妻宫坐${dayZhi}，本身就在四正桃花位——${PEACH_DZ_TRAITS[dayZhi]}。遇到对的人时，你的魅力会自然散发。`;
     }
     peachBlossom += '这种配置的好处是：一旦进入感情，反而更专一、更持久。桃花少不代表没人爱，而是你不把精力浪费在浅层关系上。';
   }
@@ -683,7 +863,12 @@ export function analyzeLove(
     }
   }
   if (!adviceItems.length) {
-    adviceItems.push('感情中最重要的是真诚和沟通。找到让你能做自己的人，比任何算命都重要');
+    // 无冲无刑无偏星时，基于日主+夫妻宫生成个性化建议，而非万能句
+    if (dayGanProfile && spousePalace) {
+      adviceItems.push(`${dayGanProfile.love}；${spousePalace.split('——')[1] || spousePalace}`);
+    } else {
+      adviceItems.push('你的感情底色平稳，重点在于经营：把对方放在"队友"的位置而不是"对手"，感情自然长久');
+    }
   }
 
   return {
@@ -736,6 +921,13 @@ export function analyzeCareer(
   // ===== 事业方向 =====
   let direction = '';
 
+  // 命局主气锚：数量最多的十神决定主导气质
+  const dominant = dominantShiShen(pillars);
+  let dominantAnchor = '';
+  if (dominant && SHISHEN_SIGNATURE[dominant.name]) {
+    dominantAnchor = `${SHISHEN_SIGNATURE[dominant.name]}（${dominant.count}处，为全局最旺）。这是你职业气质的底色——找方向时优先匹配这种特质的工作，你会比别人干得更顺、更出成绩。\n\n`;
+  }
+
   if (hasGuan && hasYin) {
     const guanInfo = allGuanPillars.map(p => `${p.ganZhi}在${p.pillar}`).join('、');
     const yinInfo = allYinPillars.map(p => `${p.ganZhi}在${p.pillar}`).join('、');
@@ -764,15 +956,25 @@ export function analyzeCareer(
     direction = `你的八字财星（${caiInfo}）和比劫（${bijieInfo}）并存，这在命理中叫"比劫夺财"的配置——既想赚钱又有竞争压力。`;
     direction += '这意味着你赚钱需要靠团队、靠合作——自己单干可能不如抱团发展。适合依靠人脉和团队协作的行业：销售团队、合伙创业、社群运营、渠道开发等。但要注意合伙中的利益分配一定要清晰。';
   } else {
-    // 根据五行日主推荐
-    const wxDirections: Record<string, string> = {
-      '木': '你的日主为木，木主生发、教育、文化、环保——适合教师、培训师、园艺设计、出版编辑、心理咨询等有"培育"性质的职业',
-      '火': '你的日主为火，火主热情、传播、科技、娱乐——适合互联网、媒体、演艺、餐饮、能源等需要热情和创意的职业',
-      '土': '你的日主为土，土主稳定、积累、中介、服务——适合房地产、金融、农业、建筑、咨询等需要稳扎稳打的职业',
-      '金': '你的日主为金，金主义气、决断、法律、精密——适合法律、金融、机械制造、军警、珠宝鉴定等需要精准和原则的职业',
-      '水': '你的日主为水，水主智慧、流通、沟通、贸易——适合物流、贸易、旅游、传媒、心理咨询等需要灵活应变的职业',
+    // 根据日主天干个性化推荐（10种，替代原5行五行版）
+    const ganCareer: Record<string, string> = {
+      '甲': '你的日主是甲木——大树型人格，适合"越长越大"的平台型赛道：教育、法务、工程管理、大型项目负责人。给你一片天，你就能撑起一片荫',
+      '乙': '你的日主是乙木——藤蔓型人格，适合借势发展的赛道：品牌运营、公共关系、花艺设计、跨境贸易。跟对平台和贵人，你爬得比谁都稳',
+      '丙': '你的日主是丙火——太阳型人格，适合被看见的赛道：主播、培训讲师、市场品牌、餐饮门店。你的热情本身就是生产力',
+      '丁': '你的日主是丁火——烛火型人格，适合精细深耕的赛道：研发、财务、心理咨询、内容写作。安静的地方才是你发光的地方',
+      '戊': '你的日主是戊土——高山型人格，适合重资产重信用的赛道：地产建筑、金融信贷、供应链、制造业。你的靠谱就是你的招牌',
+      '己': '你的日主是己土——田园型人格，适合服务与运营的赛道：人力行政、电商运营、母婴家政、农业生鲜。把平凡的事做细就是你的护城河',
+      '庚': '你的日主是庚金——刀剑型人格，适合硬碰硬的赛道：军警执法、外科医疗、机械重工、竞技体育。怕苦别选这行，选了这行没人比你狠',
+      '辛': '你的日主是辛金——珠玉型人格，适合高精尖高审美的赛道：珠宝设计、精工制造、审计、医美口腔。你的挑剔就是你的专业',
+      '壬': '你的日主是壬水——江河型人格，适合流动性的赛道：贸易物流、旅游出行、投资、传媒。哪里有流动，哪里就有你的机会',
+      '癸': '你的日主是癸水——雨露型人格，适合滋养型赛道：护理医疗、教育培训、茶饮咖啡、数据分析。润物无声的功夫，别人替代不了',
     };
-    direction = wxDirections[dayWx] || '综合来看，你的八字格局比较灵活，职业选择面较宽。建议根据自己的兴趣和实际技能来选择，而非盲目跟风。';
+    direction = ganCareer[dayGan] || '综合来看，你的八字格局比较灵活，职业选择面较宽。建议根据自己的兴趣和实际技能来选择，而非盲目跟风。';
+  }
+
+  // 拼回主气锚
+  if (dominantAnchor) {
+    direction = dominantAnchor + direction;
   }
 
   // ===== 赚钱方式 =====
@@ -962,6 +1164,29 @@ export function analyzeHealth(
   // ===== 体质概况 =====
   let bodyOverview = `日主${dayGan}（${dayWx}）代表你自身的能量核心。你的八字五行分布中「${strongest[0]}」最旺、「${weakest[0]}」最弱。`;
 
+  // 日主体质锚（10天干）
+  const ganHealth: Record<string, string> = {
+    '甲': '甲木之人精力底子好，但最怕"憋"——情绪和压力都往肝上压，疏解比进补重要',
+    '乙': '乙木之人韧性足恢复快，但耐力储备一般，属于"细水长流"型，硬拼爆发会透支',
+    '丙': '丙火之人气血旺盛面色好，但容易"烧过头"——上火、失眠、血压是你最该盯的指标',
+    '丁': '丁火之人外表柔弱内里有劲，神经系统敏感，睡眠质量决定了你第二天的状态',
+    '戊': '戊土之人底子厚实抗造，但脾胃是你的阿喀琉斯之踵——吃出来的问题最多',
+    '己': '己土之人消化吸收是强项，但思虑重，"想太多"会直接反映在胃口和肚子上',
+    '庚': '庚金之人骨架壮、肺气足，感冒发烧少；但一旦累了就是真累，别硬扛',
+    '辛': '辛金之人皮肤和呼吸道娇贵，对空气质量、温湿度变化反应比常人灵敏',
+    '壬': '壬水之人代谢快、好动坐不住，泌尿和腰部是你的薄弱带，多喝水也要多休息',
+    '癸': '癸水之人先天肾气敏感，怕冷、易疲劳是常态——保暖和规律作息是你的养生主旋律',
+  };
+  if (ganHealth[dayGan]) {
+    bodyOverview += `${ganHealth[dayGan]}。`;
+  }
+
+  // 月令调候锚：出生季节决定体质底色（12月支）
+  const monthZhi = pillars[1]?.diZhi;
+  if (monthZhi && SEASON_HEALTH[monthZhi]) {
+    bodyOverview += `${SEASON_HEALTH[monthZhi]}。`;
+  }
+
   if (strengthLevel === '身强') {
     bodyOverview += `你属于${strengthLevel}体质——就像一台发动机功率较大，精力比较充沛。但"过犹不及"，过旺的五行对应的身体部位容易出现功能亢进型问题。`;
     if (strongest[1].level === '旺' && strongest[0] !== dayWx) {
@@ -1094,6 +1319,10 @@ export function analyzeFamily(
   const hasYearHe = yearRelations.some(r => r.type === '合');
   const hasYearXing = yearRelations.some(r => r.type === '刑');
 
+  // 日主家庭角色锚
+  const dayGanProfile = DAY_GAN_PROFILE[dayGan];
+  const familyRole = dayGanProfile?.family || '';
+
   // 看年柱十神
   const yearShiShen = yearPillar.shiShen;
   const monthShiShen = monthPillar.shiShen;
@@ -1142,6 +1371,11 @@ export function analyzeFamily(
     if (monthShiShen === '正印' || monthShiShen === '偏印') {
       parentRelation += `月柱为印星（${monthPillar.ganZhi}，${monthShiShen}），代表你在成长关键期（${getPillarLifeStage('月柱')}）得到了很好的教育和引导。`;
     }
+  }
+
+  // 拼回家庭角色锚
+  if (familyRole) {
+    parentRelation = `${familyRole}。\n\n` + parentRelation;
   }
 
   // ===== 兄弟姐妹 =====
@@ -1207,7 +1441,16 @@ export function analyzeFamily(
     adviceItems.push('月柱七杀代表成长中压力较大，可能内心有些"小时候没被充分理解"的感受。成年后可以尝试和父母做一次坦诚的沟通——不是为了翻旧账，而是为了和解和放下');
   }
   if (!adviceItems.length) {
-    adviceItems.push('家庭是人生的起点但不是终点。感恩父母给予的基础，同时勇敢走自己的路——多给他们打电话，陪伴是最好的孝顺');
+    // 基于月柱十神动态生成建议，而非万能句
+    if (monthShiShen === '正印' || monthShiShen === '偏印') {
+      adviceItems.push('你的家庭给了你充分的学习支持——回馈的最好方式不是汇款，而是把日子过好让他们放心；多和他们聊聊你的近况，比买礼物更能让他们开心');
+    } else if (monthShiShen === '正财' || monthShiShen === '偏财') {
+      adviceItems.push('你的家庭偏务实，感情表达可能不多——试着主动打破"都不说"的默契，一句谢谢、一个拥抱，家里氛围会大不一样');
+    } else if (monthShiShen === '食神' || monthShiShen === '伤官') {
+      adviceItems.push('你和父母更像朋友，这是难得的缘分——但别忘了他们也在变老，偶尔也让他们"被你需要"一下，长辈的价值感很重要');
+    } else {
+      adviceItems.push('和家人保持定期联系的习惯：固定一个日子打电话或回家吃饭——仪式感不需要贵，需要的是稳定');
+    }
   }
 
   return { parentRelation, siblings, familyAtmosphere, advice: adviceItems.join('；') };
@@ -1239,11 +1482,22 @@ export function analyzeSocial(
   // ===== 社交特质 =====
   let socialTrait = '';
 
+  // 日主社交锚（10天干）
+  const dayGanProfile = DAY_GAN_PROFILE[dayGan];
+  // 命局主气锚
+  const dominant = dominantShiShen(pillars);
+  const dominantLead = dominant && SHISHEN_SIGNATURE[dominant.name]
+    ? `${SHISHEN_SIGNATURE[dominant.name]}。`
+    : '';
+
   if (hasShiShang && biJieCount >= 2) {
     const ssInfo = [...shiShenPs, ...shangGuanPs].map(p => `${p.shiShen}在${p.pillar}`).join('、');
     const bjInfo = [...biJianPs, ...jieCaiPs].map(p => `${p.shiShen}在${p.pillar}`).join('、');
-    socialTrait = `你的八字中食伤（${ssInfo}，代表口才和表达力）和比劫（${bjInfo}，代表朋友和圈子）都很旺。你在社交中是"核心人物"类型——有话题、有能量、有人缘。`;
+    socialTrait = `${dominantLead}你的八字中食伤（${ssInfo}，代表口才和表达力）和比劫（${bjInfo}，代表朋友和圈子）都很旺。你在社交中是"核心人物"类型——有话题、有能量、有人缘。`;
     socialTrait += '在各种场合你都能自然融入，朋友有什么活动都喜欢叫上你。但要注意，社交应酬多了也会累——学会偶尔拒绝也是对自己好。';
+    if (dayGanProfile) {
+      socialTrait += `另外，${dayGanProfile.social}——这是你在热闹之外的真实底色。`;
+    }
   } else if (hasShiShang) {
     const ssInfo = [...shiShenPs, ...shangGuanPs].map(p => `${p.shiShen}在${p.pillar}（${p.ganZhi}）`).join('、');
     socialTrait = `你的八字食伤较旺（${ssInfo}），代表你有不错的表达能力、才华和个人魅力。`;
@@ -1253,22 +1507,25 @@ export function analyzeSocial(
       socialTrait += '伤官型的社交风格是"锋芒毕露"——你有独到的见解和创意，说话有趣但有时候也容易得罪人。喜欢你的人很喜欢，不喜欢的人会觉得你太较真。';
     }
     socialTrait += '你不是那种靠"混脸熟"来社交的人，你是靠"内容"吸引人——做好自己的事情，社交网络会自然建立起来。';
+    if (dayGanProfile) {
+      socialTrait += `${dayGanProfile.social}。`;
+    }
   } else if (biJieCount >= 2) {
     const bjInfo = [...biJianPs, ...jieCaiPs].map(p => `${p.shiShen}在${p.pillar}（${p.ganZhi}）`).join('、');
-    socialTrait = `你的八字比劫较旺（${bjInfo}），比劫代表同辈朋友、伙伴、团队。你讲义气、重感情，朋友圈子广，是那种"兄弟/姐妹需要帮忙立马就到"的类型。`;
+    socialTrait = `${dominantLead}你的八字比劫较旺（${bjInfo}），比劫代表同辈朋友、伙伴、团队。你讲义气、重感情，朋友圈子广，是那种"兄弟/姐妹需要帮忙立马就到"的类型。`;
     if (hasJieCai) {
       socialTrait += '但比劫多（特别是劫财多）也意味着朋友之间的界限有时不太清晰——你帮别人很多，但别人未必能同等回报。需要学会筛选真正值得深交的人。';
     }
+    if (dayGanProfile) {
+      socialTrait += `${dayGanProfile.social}。`;
+    }
   } else {
-    // 根据日主五行分析
-    const wxTraits: Record<string, string> = {
-      '木': `日主${dayGan}为木，你的社交风格像一棵树——自己站稳了，自然会有人来乘凉。你在社交中比较真诚实在，不喜欢虚伪的客套。朋友一开始可能觉得你有点距离，但相处久了会发现你特别靠谱，是可以深交的人。`,
-      '火': `日主${dayGan}为火，你的社交风格像一团火——热情开朗，走到哪里都温暖一片。陌生人觉得你亲切，熟人都知道你可靠。你是聚会中"自来熟"但又有自己底线的类型。`,
-      '土': `日主${dayGan}为土，你的社交风格像大地一样稳重——不轻易交心，但交了就很真心。你给人的第一印象可能是"有点闷"，但相处久了会变成朋友的"定心丸"。你适合小圈子深交，而非大场面social。`,
-      '金': `日主${dayGan}为金，你的社交风格像金属一样有边界感——讲义气、有原则、不会烂交。朋友不多但质量高，是那种"平时不说话，但有难一定第一个到"的人。`,
-      '水': `日主${dayGan}为水，你的社交风格像水一样灵活——善于倾听、情商高、和谁都能聊几句。但内心深处你也需要独处的时间来"充电"。你不是社交中最亮眼的那个，但一定是最让人舒服的那个。`,
-    };
-    socialTrait = wxTraits[dayWx] || '你的社交风格比较自然随和——不是人群中最高调的那个，但有自己稳定的朋友圈子。';
+    // 根据日主天干个性化分析（10种，替代原5行五行版）
+    if (dayGanProfile) {
+      socialTrait = `${dominantLead}${dayGanProfile.core}。${dayGanProfile.social}。`;
+    } else {
+      socialTrait = '你的社交风格比较自然随和——不是人群中最高调的那个，但有自己稳定的朋友圈子。';
+    }
   }
 
   // ===== 朋友质量 =====
