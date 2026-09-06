@@ -4,7 +4,7 @@ import { GiftOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-des
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { PRODUCT_INFO, fetchEntitlements, redeemCode, type Entitlement } from '../lib/payment';
+import { PRODUCT_INFO, fetchEntitlements, redeemCode, FREE_MODE, type Entitlement } from '../lib/payment';
 
 /** 「我的权益」卡片：展示已解锁权益 + 通用兑换码入口（挂在个人档案页） */
 export default function EntitlementCard() {
@@ -48,6 +48,29 @@ export default function EntitlementCard() {
       setRedeeming(false);
     }
   };
+
+  if (FREE_MODE) {
+    return (
+      <Card
+        className="glass-card"
+        size="small"
+        style={{ marginBottom: 24, textAlign: 'center' }}
+        title={
+          <span>
+            <GiftOutlined style={{ color: 'var(--module-gold)', marginRight: 6 }} />
+            我的权益
+          </span>
+        }
+      >
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 6px' }}>
+          🎉 全站功能限时免费开放中
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.9 }}>
+          八字详批、紫微深度解读、情侣合盘报告，以及六爻、梅花、灵签、解梦、风水等全部功能，现在均可免费无限次使用，无需兑换码。
+        </div>
+      </Card>
+    );
+  }
 
   if (!supabase) return null;
 

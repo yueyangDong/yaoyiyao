@@ -12,6 +12,11 @@
  */
 import { supabase } from './supabase';
 
+// ---------- 全站免费开关 ----------
+// 运营期临时放开所有付费/配额限制：true = 全部功能免费（按次不计数、报告直接解锁）。
+// 恢复收费时只需改回 false，其余代码（权益/兑换/配额）原样生效。
+export const FREE_MODE = true;
+
 // ---------- 产品定义 ----------
 export type ProductCode = 'report_bazi' | 'report_ziwei' | 'report_hepan' | 'day_pass';
 
@@ -69,6 +74,7 @@ export function hasEntitlement(
   product: ProductCode,
   targetKey = '',
 ): boolean {
+  if (FREE_MODE) return true; // 全站免费期：报告类内容直接解锁
   const now = Date.now();
   return entitlements.some(e => {
     if (e.product_code !== product) return false;
@@ -147,6 +153,7 @@ export async function consumeDailyQuota(
   module: string,
   freeLimit = 1,
 ): Promise<boolean> {
+  if (FREE_MODE) return true; // 全站免费期：按次功能不限次、不计数
   if (supabase && userId) {
     try {
       const { data, error } = await supabase.rpc('consume_daily_quota', {
