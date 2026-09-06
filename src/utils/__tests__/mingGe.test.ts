@@ -108,6 +108,28 @@ describe('analyzeMingGeDetailed', () => {
     expect(r.geType).toBeTruthy();
     expect(['上等', '中上', '中等', '中下', '下等']).toContain(r.score);
   });
+
+  it('杂气月：本气非八格（比劫），余气透干取余气格', () => {
+    // 戊日主，月支辰（本气戊→比肩，不在八格）；余气乙（正官）透年干 → 正官格
+    // 辰藏干：戊（本气比肩）、乙（中气正官）、癸（余气正财）
+    const ps = pillars(['乙', '丙', '戊', '庚'], ['酉', '辰', '午', '申'],
+      [['辛'], ['戊', '乙', '癸'], ['丁', '己'], ['庚', '壬', '戊']],
+      ['正官', '比肩', '正印', '食神']);
+    ps[1].shiShenZhi = '比肩/正官/正财'; // 辰藏戊乙癸 → 比肩/正官/正财
+    const r = analyzeMingGeDetailed(ps, '戊', '中和', {});
+    expect(r.geName).toContain('正官格');
+    expect(r.geName).not.toContain('月令杂气');
+  });
+
+  it('杂气月：本气非八格且无余气透干 → 月令杂气', () => {
+    // 戊日主，月支辰（本气戊比肩），余气乙癸均不透干 → 月令杂气
+    const ps = pillars(['甲', '丙', '戊', '庚'], ['酉', '辰', '午', '申'],
+      [['辛'], ['戊', '乙', '癸'], ['丁', '己'], ['庚', '壬', '戊']],
+      ['七杀', '比肩', '正印', '食神']);
+    ps[1].shiShenZhi = '比肩/正官/正财';
+    const r = analyzeMingGeDetailed(ps, '戊', '中和', {});
+    expect(r.geName).toContain('月令杂气');
+  });
 });
 
 describe('analyzeTouGan', () => {

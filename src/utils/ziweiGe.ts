@@ -91,9 +91,10 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
       const rightGong = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 1) % 12]);
       const leftNames = (leftGong?.minorStars || []).map((s: any) => (typeof s === 'string' ? s : s.name));
       const rightNames = (rightGong?.minorStars || []).map((s: any) => (typeof s === 'string' ? s : s.name));
-      const yangLeft = leftNames.includes('擎羊') || rightNames.includes('擎羊');
-      const tuoRight = rightNames.includes('陀罗') || leftNames.includes('陀罗');
-      if (yangLeft && tuoRight && leftGong !== rightGong) {
+      // 必须分居两侧：左擎羊右陀罗 或 左陀罗右擎羊（同侧不算夹）
+      const yangLeftTuoRight = leftNames.includes('擎羊') && rightNames.includes('陀罗');
+      const tuoLeftYangRight = leftNames.includes('陀罗') && rightNames.includes('擎羊');
+      if ((yangLeftTuoRight || tuoLeftYangRight) && leftGong !== rightGong) {
         yangTuoJia = true;
         breakReasons.push('羊陀夹忌——命宫化忌又被擎羊陀罗两宫相夹，为重破之局，诸格遇此均打折论');
       }
@@ -227,9 +228,13 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
       }
     }
     if (left && right) {
-      const allMinor = [...starsOfGong(left), ...starsOfGong(right)].map((s) => s.name);
+      const leftMinor = starsOfGong(left).map((s) => s.name);
+      const rightMinor = starsOfGong(right).map((s) => s.name);
       const tryJiaGe = (name: string, a: string, b: string) => {
-        if (!(allMinor.includes(a) && allMinor.includes(b))) return;
+        // 必须分居两侧：左a右b 或 左b右a
+        const ab = leftMinor.includes(a) && rightMinor.includes(b);
+        const ba = leftMinor.includes(b) && rightMinor.includes(a);
+        if (!(ab || ba)) return;
         if (!hasLuQuanKe) { breakReasons.push(`${name}：缺少四化引动`); return; }
         geNames.push(name);
         reasons.push(`${name}：${a}${b}分居命宫两侧，且四化引动`);

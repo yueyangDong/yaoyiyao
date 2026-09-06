@@ -206,4 +206,32 @@ describe('analyzeZiweiGe', () => {
     expect(r.breakReasons.join()).toContain('羊陀夹忌');
     expect(r.geNames).toHaveLength(0);
   });
+
+  it('羊陀夹忌：擎羊陀罗同侧（未分居两侧）→ 不触发破格', () => {
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '武曲', sihua: '忌' }], minorStars: [] },
+      // 擎羊陀罗都在兄弟宫（巳），父母宫（未）无 → 不算夹
+      { name: '兄弟', branch: '巳', majorStars: [], minorStars: ['擎羊', '陀罗'] },
+      { name: '父母', branch: '未', majorStars: [], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.breakReasons.join()).not.toContain('羊陀夹忌');
+  });
+
+  it('杂耀夹格：昌曲同侧（未分居两侧）→ 不成夹格', () => {
+    // 文昌文曲都在父母宫（巳），兄弟宫（未）无 → 不算夹命
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '天机', sihua: '科' }], minorStars: [] },
+      { name: '父母', branch: '巳', majorStars: [], minorStars: ['文昌', '文曲'] },
+      { name: '兄弟', branch: '未', majorStars: [], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('昌曲夹命格');
+  });
 });

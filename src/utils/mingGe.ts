@@ -131,17 +131,17 @@ function baGe(pillars: PillarData[], dayGan: string): { name: string; type: stri
   if (geNames[benQiSS] && tgs.includes(benQiGan)) {
     return { name: geNames[benQiSS], type: '普通格', desc: `月令${month.diZhi}本气${benQiGan}（${benQiSS}）透干，取${geNames[benQiSS]}。`, detail: `本气${benQiGan}透干 → ${geNames[benQiSS]}` };
   }
-  // 余气透干
-  if (geNames[benQiSS]) {
-    for (let i = 1; i < cangGan.length; i++) {
-      if (tgs.includes(cangGan[i])) {
-        const ss = ssArr[i] || benQiSS;
-        if (geNames[ss]) {
-          return { name: geNames[ss], type: '普通格', desc: `月令${month.diZhi}本气未透，余气${cangGan[i]}（${ss}）透干，取${geNames[ss]}。`, detail: `余气${cangGan[i]}透干 → ${geNames[ss]}` };
-        }
+  // 余气透干（无论本气是否为八格，都必须检查余气——杂气月辰戌丑未本气常为比劫，需看余气取格）
+  for (let i = 1; i < cangGan.length; i++) {
+    if (tgs.includes(cangGan[i])) {
+      const ss = ssArr[i];
+      if (ss && geNames[ss]) {
+        return { name: geNames[ss], type: '普通格', desc: `月令${month.diZhi}本气未透，余气${cangGan[i]}（${ss}）透干，取${geNames[ss]}。`, detail: `余气${cangGan[i]}透干 → ${geNames[ss]}` };
       }
     }
-    // 本气未透：取月令本气
+  }
+  // 本气未透且无余气透干：若本气是八格则取本气，否则月令杂气
+  if (geNames[benQiSS]) {
     return { name: `${geNames[benQiSS]}（本气未透）`, type: '普通格', desc: `月令${month.diZhi}本气${benQiGan}（${benQiSS}）未透干，直接取月令本气为格。`, detail: `月令本气${benQiSS} → ${geNames[benQiSS]}` };
   }
   return null;
