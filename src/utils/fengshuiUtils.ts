@@ -61,6 +61,39 @@ export interface FengshuiResult {
   analysis: string;
 }
 
+// ========== 命卦（八宅游年法）==========
+export interface MingGuaResult {
+  guaNum: number; // 洛书九宫数（1-9；余5已按"男寄坤、女寄艮"转宫）
+  guaName: string;
+  type: '东四命' | '西四命';
+}
+
+/**
+ * 根据出生年份与性别计算命卦（东四命/西四命）。
+ * 公式（八宅明镜通行算法，取年份后两位）：
+ *   1900-1999年：男 (100 - 后两位) % 9，女 (后两位 - 4) % 9
+ *   2000-2099年：男 (99 - 后两位) % 9，女 (后两位 + 6) % 9
+ * 余数为0作9（离）；余数为5为五黄中宫无卦，男寄坤(2)、女寄艮(8)。
+ * 例：1990年男命 → (100-90)%9 = 1 → 坎命（东四命）
+ */
+export function calcMingGua(year: number, gender: 'male' | 'female'): MingGuaResult {
+  const yy = year % 100; // 年份后两位
+  const raw = gender === 'male'
+    ? (year >= 2000 ? 99 - yy : 100 - yy)
+    : (year >= 2000 ? yy + 6 : yy - 4);
+  let rem = ((raw % 9) + 9) % 9; // 归一化到 0-8
+  if (rem === 0) rem = 9;
+  if (rem === 5) rem = gender === 'male' ? 2 : 8; // 五黄：男寄坤、女寄艮
+
+  const guaNames: Record<number, string> = {
+    1: '坎', 2: '坤', 3: '震', 4: '巽', 6: '乾', 7: '兑', 8: '艮', 9: '离',
+  };
+  const eastTypes = [1, 3, 4, 9];
+  const guaName = guaNames[rem] || '未知';
+  const type: '东四命' | '西四命' = eastTypes.includes(rem) ? '东四命' : '西四命';
+  return { guaNum: rem, guaName, type };
+}
+
 export function calcFengshui(
   sitting: string,
   door: Direction,

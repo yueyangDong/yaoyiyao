@@ -826,8 +826,8 @@ export default function Bazi() {
           })
         : [];
 
-      // 神煞（自主计算，不依赖 lunar-typescript 的 getShenSha）
-      const shenSha = calcShenSha(pillars);
+      // 神煞（自主计算，不依赖 lunar-typescript 的 getShenSha；元辰/勾绞需性别）
+      const shenSha = calcShenSha(pillars, gender === 'female' ? 'female' : 'male');
 
       const solarDate = lunar.getSolar();
       const lunarInfo = `农历${lunar.getYearInChinese()}年 ${lunar.getMonthInChinese()}月 ${lunar.getDayInChinese()}日 ${lunar.getTimeZhi()}时`;

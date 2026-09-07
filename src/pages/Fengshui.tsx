@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import {
-  Card, Select, Button, Typography, Space, Divider,
-  Tag, Row, Col, Descriptions, InputNumber, Radio, Alert,
+  Card, Select, Button, Typography, Space,
+  Tag, Row, Col, Descriptions, InputNumber, Radio, Alert, Progress, Divider,
 } from 'antd';
-import { Compass, User } from 'lucide-react';
+import { Compass, User, MapPin, Home, Lightbulb } from 'lucide-react';
 import {
   HOUSE_DIRECTIONS, STAR_NAMES,
-  calcFengshui, Direction, FengshuiResult,
+  calcFengshui, calcMingGua, Direction, FengshuiResult,
 } from '../utils/fengshuiUtils';
 
 const { Title, Text, Paragraph } = Typography;
@@ -27,30 +27,45 @@ const STAR_DETAIL: Record<string, { desc: string; suitable: string }> = {
   '祸害': { desc: '第四凶星，五行属土。代表小人是非、慢性疾病、诸事不顺。虽然是最轻的凶星，但也不可小觑。', suitable: '适合做厕所、杂物间。不适合长期待的场所。' },
 };
 
-// 计算东四命/西四命
-function calcMingGua(year: number, gender: 'male' | 'female'): { guaNum: number; guaName: string; type: string } {
-  // 简化：用年份后两位之和
-  const yearStr = String(year);
-  let sum = 0;
-  for (const ch of yearStr) sum += parseInt(ch);
-  // 计算命卦：男命 (100 - 年份和) % 9，女命 (年份和 - 4) % 9
-  let guaNum: number;
-  if (gender === 'male') {
-    guaNum = (100 - sum) % 9;
-    if (guaNum === 0) guaNum = 9;
-  } else {
-    guaNum = (sum - 4) % 9;
-    if (guaNum === 0) guaNum = 9;
-    if (guaNum < 0) guaNum += 9;
-  }
+// 九星能量分（用于布局总评）
+const STAR_SCORE: Record<string, number> = {
+  '生气': 100, '延年': 92, '天医': 88, '伏位': 72,
+  '祸害': 45, '六煞': 35, '五鬼': 25, '绝命': 15,
+};
 
-  const guaNames: Record<number, string> = { 1: '坎', 2: '坤', 3: '震', 4: '巽', 5: '坤', 6: '乾', 7: '兑', 8: '艮', 9: '离' };
-  const eastTypes = [1, 3, 4, 9];
-  const guaName = guaNames[guaNum] || '未知';
-  const type = eastTypes.includes(guaNum) ? '东四命' : '西四命';
-
-  return { guaNum, guaName, type };
-}
+// 三大功能区逐项诊断话术
+const DIAGNOSIS: Record<'大门' | '主卧' | '厨房', Record<string, string>> = {
+  '大门': {
+    '生气': '大门开在生气方，纳的是全屋最强旺气——财源、人丁、事业都从这道门进来，是最理想的开门方位，保持门口明亮整洁即可。',
+    '天医': '大门开在天医方，纳健康与贵人之气，家人少病少灾，遇事常有人帮忙。',
+    '延年': '大门开在延年方，纳和谐稳定之气，家庭和睦、姻缘顺遂，适合已婚家庭。',
+    '伏位': '大门开在伏位方，气场平和守成，家运平顺但偏保守，适合求稳的家庭；想增旺可在门口养一盆圆叶绿植。',
+    '绝命': '大门开在绝命方（第一凶位），纳衰败之气，最伤财运与健康，是最需要调整的一项。首选改开吉方之门；无法改门时：门内加长门帘缓冲、门口常年保持明亮（可常亮一盏小灯）、门垫下放置五帝钱，门外忌堆杂物垃圾。',
+    '五鬼': '大门开在五鬼方，易招口舌是非、火盗虚惊。化解：门内加门帘、门口装长明灯，忌开门见灶、见镜子，玄关可放陶瓷摆件以土泄火。',
+    '六煞': '大门开在六煞方，易招烂桃花与人缘纠纷。化解：门内放圆叶绿植稳住气场，忌开门见水、见花，玄关保持简洁。',
+    '祸害': '大门开在祸害方，易犯小人、家运渐退。化解：门口常点灯增旺气，门垫下置五帝钱，大门油漆/门框有破损及时修补。',
+  },
+  '主卧': {
+    '生气': '主卧在生气方，住者精力充沛、事业财运两旺，孩子住也利学业成长，是卧室的最佳选择。',
+    '天医': '主卧在天医方，利睡眠与健康，长辈、病人住此康复快，是养身体的好房间。',
+    '延年': '主卧在延年方，利夫妻感情和睦、白头偕老，是夫妻房首选；单身者住也利正缘。',
+    '伏位': '主卧在伏位方，睡眠安稳、气场平和，适合喜静、压力大的人休养。',
+    '绝命': '主卧在绝命方（第一凶位），住者易生病、破财、出意外，强烈建议换到吉方房间。实在无法换房：床头改朝吉方、床下放铜葫芦或天然葫芦化病气，房间用暖色调（米黄、浅棕）增阳，少用黑白冷色。',
+    '五鬼': '主卧在五鬼方，住者心烦失眠、多争吵、易有火烛虚惊。化解：换房或床头朝吉方，房中少用红色，保持通风明亮，勿在房中堆放电器杂物。',
+    '六煞': '主卧在六煞方，感情易生变、情绪低落失眠。化解：换房或床头朝吉方，房内放圆叶绿植，忌摆粉水晶、鲜花等招桃花之物。',
+    '祸害': '主卧在祸害方，易有慢性病、小人纠缠。化解：床头朝吉方，房内保持整洁明亮，床头柜放天然葫芦化病气。',
+  },
+  '厨房': {
+    '生气': '厨房在生气方，火旺生机，家人食禄丰足、精力旺盛，饭香人旺。',
+    '天医': '厨房在天医方为最佳搭配——天医主健康，厨房管饮食，家人吃得营养、少生疾病。',
+    '延年': '厨房在延年方，利家宅和睦、老人长寿，饭菜养人。',
+    '伏位': '厨房在伏位方，平稳无咎，饮食安稳，注意保持洁净即可。',
+    '绝命': '厨房在绝命方：传统有"以燥火压凶"之说，凶性可被压制一部分，但仍建议灶台/操作台尽量朝向吉方，厨房保持洁净通风，多用黄色、米色（土色）装饰稳气。',
+    '五鬼': '厨房在五鬼方（五鬼属火），火上加火，最需注意用电用火安全，家人易口角。化解：灶台不正对厨房门，多用陶瓷、石器（土泄火气），灶台常备一壶水或蓝色装饰调候。',
+    '六煞': '厨房在六煞方影响较小，注意水槽排水通畅、地面保持干燥即可。',
+    '祸害': '厨房在祸害方，小病多从口入，注意饮食卫生与食材新鲜，灶台保持明亮、油污勤清理。',
+  },
+};
 
 export default function Fengshui() {
   const { currentUser, addHistory } = useUser();
@@ -79,7 +94,8 @@ export default function Fengshui() {
     if (!result || !ownerMingGua) return null;
     const houseType = result.house.type;
     const personType = ownerMingGua.type;
-    const isMatch = houseType === personType;
+    // 东四宅配东四命、西四宅配西四命
+    const isMatch = (houseType === '东四宅') === (personType === '东四命');
     return {
       isMatch,
       houseType,
@@ -104,6 +120,29 @@ export default function Fengshui() {
     });
   };
 
+  // 布局总评：大门纳气(35%) + 主卧养人(40%) + 厨房养命(25%)
+  const layoutScore = useMemo(() => {
+    if (!result || !door || !bedroom || !kitchen) return null;
+    const doorStar = result.starMap[door];
+    const bedStar = result.starMap[bedroom];
+    const kitchenStar = result.starMap[kitchen];
+    const total = Math.round(
+      (STAR_SCORE[doorStar] ?? 50) * 0.35 +
+      (STAR_SCORE[bedStar] ?? 50) * 0.40 +
+      (STAR_SCORE[kitchenStar] ?? 50) * 0.25
+    );
+    const rating = total >= 85
+      ? { label: '上吉', color: 'var(--wx-wood)', desc: '三大功能区基本都在吉位，家宅兴旺、住居顺遂，保持整洁明亮即可。' }
+      : total >= 70
+        ? { label: '吉利', color: 'var(--wx-wood)', desc: '整体布局较好，按下方建议微调个别房间即可。' }
+        : total >= 55
+          ? { label: '平顺', color: 'var(--wx-earth)', desc: '吉凶参半，重点调整位于凶方的卧室或大门。' }
+          : total >= 40
+            ? { label: '欠佳', color: 'var(--wx-fire)', desc: '多个功能区落在凶方，建议按下方化解法逐一调理。' }
+            : { label: '需调理', color: 'var(--wx-fire)', desc: '布局与宅卦冲突较大，优先调整卧室与大门，或考虑换房/改门。' };
+    return { total, doorStar, bedStar, kitchenStar, rating };
+  }, [result, door, bedroom, kitchen]);
+
   const getStarStyle = (starName: string) => {
     const star = STAR_NAMES[starName];
     if (!star) return {};
@@ -118,6 +157,52 @@ export default function Fengshui() {
         风水相宅
       </Title>
 
+      {/* 新手教学：3步测出自家风水 */}
+      <Card
+        size="small"
+        style={{ marginBottom: 16, background: 'rgba(107,154,122,0.04)', borderColor: 'rgba(107,154,122,0.15)' }}
+        title={<span><Lightbulb size={16} style={{ marginRight: 6, verticalAlign: 'middle', color: 'var(--wx-wood)' }} />新手入门：3步测准自家风水（手机自带指南针即可）</span>}
+      >
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={8}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: 'var(--wx-wood)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>1</div>
+              <div>
+                <Text strong>测房屋"坐向"</Text>
+                <Paragraph style={{ fontSize: 12.5, color: 'var(--text-body)', marginTop: 4, marginBottom: 0 }}>
+                  站在屋内大门处、<Text strong>面朝门外</Text>（就是人走出家门的方向），打开手机指南针：指针所指方向叫"<Text strong>向</Text>"，背后反方向叫"<Text strong>坐</Text>"。
+                  <br />例：出门往南走 → <Text strong>坐北朝南</Text>（坎宅）。
+                </Paragraph>
+              </div>
+            </div>
+          </Col>
+          <Col xs={24} sm={8}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: 'var(--wx-wood)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>2</div>
+              <div>
+                <Text strong>测房间方位</Text>
+                <Paragraph style={{ fontSize: 12.5, color: 'var(--text-body)', marginTop: 4, marginBottom: 0 }}>
+                  站在整套房子的<Text strong>中心点</Text>（约客厅中央），平举手机转一圈，分别看<Text strong>大门、主卧室、厨房</Text>落在哪个方位（东/南/西/北及四个角）。
+                  <br />公寓楼以自家入户门为准。
+                </Paragraph>
+              </div>
+            </div>
+          </Col>
+          <Col xs={24} sm={8}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: 'var(--wx-wood)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>3</div>
+              <div>
+                <Text strong>填宅主信息</Text>
+                <Paragraph style={{ fontSize: 12.5, color: 'var(--text-body)', marginTop: 4, marginBottom: 0 }}>
+                  填出生年份+性别，自动算出你的<Text strong>命卦</Text>（东四命/西四命）。宅型与命卦同类为"<Text strong>人宅相配</Text>"，住起来最顺。
+                  <br />测量时远离钢筋墙、电器，多测几次取稳定值。
+                </Paragraph>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </Card>
+
       {/* 宅主信息 */}
       <Card
         title={<span><User size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />宅主信息（选填，用于人宅匹配）</span>}
@@ -126,7 +211,7 @@ export default function Fengshui() {
       >
         <Space wrap>
           <Text>出生年份：</Text>
-          <InputNumber min={1940} max={2010} placeholder="1990" value={ownerYear} onChange={setOwnerYear} style={{ width: 100 }} />
+          <InputNumber min={1940} max={2026} placeholder="1990" value={ownerYear} onChange={setOwnerYear} style={{ width: 100 }} />
           <Text>性别：</Text>
           <Radio.Group value={ownerGender} onChange={(e) => setOwnerGender(e.target.value)}>
             <Radio.Button value="male">男</Radio.Button>
@@ -199,6 +284,30 @@ export default function Fengshui() {
               showIcon
               style={{ marginBottom: 16 }}
             />
+          )}
+
+          {/* 风水总评分 */}
+          {layoutScore && (
+            <Card style={{ marginBottom: 16 }}>
+              <Row align="middle" gutter={[16, 12]}>
+                <Col xs={24} sm={9} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 40, fontWeight: 800, color: layoutScore.rating.color, fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>
+                    {layoutScore.total}
+                    <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)' }}> /100</span>
+                  </div>
+                  <Tag style={{ marginTop: 6, fontSize: 14, padding: '2px 14px', borderRadius: 12,
+                    background: 'transparent', color: layoutScore.rating.color, borderColor: layoutScore.rating.color }}>
+                    {layoutScore.rating.label}
+                  </Tag>
+                </Col>
+                <Col xs={24} sm={15}>
+                  <Paragraph style={{ marginBottom: 10, color: 'var(--text-body)' }}>{layoutScore.rating.desc}</Paragraph>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                    评分依据：大门（纳气之口，权重35%）、主卧（停留最久，权重40%）、厨房（饮食养命，权重25%）各自落在吉位/凶位的九星能量。
+                  </div>
+                </Col>
+              </Row>
+            </Card>
           )}
 
           <Card title="宅卦信息" style={{ marginBottom: 16 }}>
@@ -299,6 +408,26 @@ export default function Fengshui() {
                           {star?.ji || '-'}
                         </text>
 
+                        {/* 大门/主卧/厨房位置标记（门=蓝、卧=绿、厨=黄） */}
+                        {[
+                          door === dir ? { ch: '门', color: '#3d5a73' } : null,
+                          bedroom === dir ? { ch: '卧', color: '#6b9a7a' } : null,
+                          kitchen === dir ? { ch: '厨', color: '#c9a96e' } : null,
+                        ].filter((m): m is { ch: string; color: string } => m !== null).map((m, k, arr) => {
+                          const off = (k - (arr.length - 1) / 2) * 15;
+                          const mr = degToRad(centerDeg + off);
+                          const badgeR = 138;
+                          const bx = cx + badgeR * Math.cos(mr);
+                          const by = cy + badgeR * Math.sin(mr);
+                          return (
+                            <g key={m.ch}>
+                              <circle cx={bx} cy={by} r={10} fill={m.color} stroke="var(--bg-card-solid)" strokeWidth={1.5} />
+                              <text x={bx} y={by + 0.5} textAnchor="middle" dominantBaseline="central"
+                                fontSize={9.5} fontWeight={700} fill="#fff">{m.ch}</text>
+                            </g>
+                          );
+                        })}
+
                         {/* 坐向标记 */}
                         {isSitting && (
                           <circle cx={cx + (outerR + 10) * Math.cos(midDeg)} cy={cy + (outerR + 10) * Math.sin(midDeg)}
@@ -346,7 +475,90 @@ export default function Fengshui() {
                 <line x1={18} y1={200} x2={382} y2={200} stroke="var(--border-light)" strokeWidth={0.5} />
               </svg>
             </div>
+            {/* 罗盘图例 */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#3d5a73', marginRight: 4, verticalAlign: 'middle' }} />大门</span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#6b9a7a', marginRight: 4, verticalAlign: 'middle' }} />主卧</span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#c9a96e', marginRight: 4, verticalAlign: 'middle' }} />厨房</span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--text-primary)', marginRight: 4, verticalAlign: 'middle' }} />坐方</span>
+            </div>
           </Card>
+
+          {/* 三大功能区逐项诊断 */}
+          {layoutScore && (
+            <Card title={<span><Home size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />大门 · 主卧 · 厨房 逐项诊断与调整建议</span>} style={{ marginBottom: 16 }}>
+              {([
+                { key: '大门' as const, dir: door, star: layoutScore.doorStar, weight: '纳气之口，主全家财运与对外人缘' },
+                { key: '主卧' as const, dir: bedroom, star: layoutScore.bedStar, weight: '停留时间最长，主健康、夫妻感情与精力' },
+                { key: '厨房' as const, dir: kitchen, star: layoutScore.kitchenStar, weight: '饮食养命之所，主家人健康与食禄' },
+              ]).map((item) => {
+                const isJi = STAR_NAMES[item.star]?.ji === '吉';
+                const score = STAR_SCORE[item.star] ?? 50;
+                return (
+                  <div key={item.key} style={{
+                    marginBottom: 14, padding: '12px 14px', borderRadius: 8,
+                    background: isJi ? 'rgba(107,154,122,0.04)' : 'rgba(194,59,43,0.04)',
+                    border: `1px solid ${isJi ? 'rgba(107,154,122,0.15)' : 'rgba(194,59,43,0.12)'}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <Text strong style={{ fontSize: 15 }}>{item.key}</Text>
+                        <Tag style={{ marginLeft: 8, background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 0 }}>
+                          {item.dir}方
+                        </Tag>
+                        <Tag color={isJi ? 'green' : 'red'} style={{ borderRadius: 10 }}>
+                          {item.star}·{isJi ? '吉星' : '凶星'}
+                        </Tag>
+                      </div>
+                      <Progress type="circle" size={48} percent={score}
+                        strokeColor={isJi ? '#6b9a7a' : '#c23b2b'} trailColor="var(--border-light)" />
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 6px' }}>{item.weight}</div>
+                    <Paragraph style={{ fontSize: 13, marginBottom: 0, color: 'var(--text-body)' }}>
+                      {DIAGNOSIS[item.key][item.star]}
+                    </Paragraph>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+
+          {/* 凶位利用与化解 */}
+          {result && (
+            <Card title={<span><MapPin size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />剩余方位怎么用：凶位压制与吉位利用</span>} style={{ marginBottom: 16 }}>
+              <Paragraph style={{ fontSize: 13, color: 'var(--text-body)' }}>
+                <Text strong style={{ color: 'var(--wx-fire)' }}>凶位（绝命/五鬼/六煞/祸害）</Text>不要安排卧室、大门、沙发等长时间停留的地方，
+                最适合做<Text strong>厕所、储藏室、衣柜、楼梯间</Text>——以"重物压凶、秽物制凶"，人不常待则凶气难发。
+              </Paragraph>
+              {DIRECTIONS.filter((d) => STAR_NAMES[result.starMap[d]]?.ji === '凶').map((d) => {
+                const starName = result.starMap[d];
+                const used = door === d ? '大门' : bedroom === d ? '主卧' : kitchen === d ? '厨房' : null;
+                return (
+                  <div key={d} style={{ fontSize: 13, padding: '6px 10px', marginBottom: 6, borderRadius: 6, background: 'rgba(194,59,43,0.03)' }}>
+                    <Text strong>{d}方 · {starName}</Text>
+                    {used
+                      ? <Text style={{ color: 'var(--wx-fire)' }}>　⚠ 当前为{used}所在，请优先参考上方"逐项诊断"中的化解法调整</Text>
+                      : <Text style={{ color: 'var(--text-secondary)' }}>　宜做厕所/储物/楼梯，人少停留即为化解</Text>}
+                  </div>
+                );
+              })}
+              <Divider style={{ margin: '10px 0' }} />
+              <Paragraph style={{ fontSize: 13, color: 'var(--text-body)', marginBottom: 0 }}>
+                <Text strong style={{ color: 'var(--wx-wood)' }}>吉位（生气/天医/延年/伏位）</Text>要留给人常用的地方：
+                {DIRECTIONS.filter((d) => STAR_NAMES[result.starMap[d]]?.ji === '吉').map((d) => {
+                  const starName = result.starMap[d];
+                  const used = door === d ? '大门' : bedroom === d ? '主卧' : kitchen === d ? '厨房' : null;
+                  return (
+                    <Tag key={d} style={{ marginTop: 4, borderRadius: 10,
+                      background: used ? 'rgba(107,154,122,0.12)' : 'rgba(107,154,122,0.05)',
+                      color: 'var(--wx-wood)', border: 'none' }}>
+                      {d}方·{starName}{used ? `（${used}✓）` : '（宜卧室/客厅/书房）'}
+                    </Tag>
+                  );
+                })}
+              </Paragraph>
+            </Card>
+          )}
 
           {/* 九星白话详解 */}
           <Card title="各方位九星详解（白话）" style={{ marginBottom: 16 }}>

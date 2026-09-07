@@ -63,6 +63,21 @@ export const SHENSHA_PLAIN: Record<string, string> = {
   '孤辰': '主孤独。男命尤忌，容易性格孤僻、不合群，婚姻来得晚或夫妻聚少离多。',
   '寡宿': '主孤独。女命尤忌，容易独守空房或性格清冷，但利于修行和研究型工作。',
   '空亡': '空亡不是说没有，而是"有名无实"——像水中月、镜中花。凡事多等待时机才能落实。',
+  '十灵日': '生于十灵日的人天生聪明灵秀、直觉敏锐，悟性高、记忆力好，与玄学、宗教、心理学有缘，学什么都比别人快半拍。',
+  '飞刃': '羊刃对冲之位，又称"飞刀"。与羊刃并见时主意外磕碰、手术血光，注意交通安全与利器；单独出现力量较轻。',
+  '亡神': '主深藏不露与谋略。命带亡神者心思深沉、城府较深，善策划但易多虑；逢吉则城府化为智谋，逢凶需防钻牛角尖。',
+  '三奇贵人': '罕见贵格——天干见甲戊庚（天上三奇）、乙丙丁（地下三奇）或壬癸辛（人中三奇）。主人精神卓越、才华出众，事业上常有奇遇和破格提拔。',
+  '天罗地网': '辰巳为地网、戌亥为天罗。命带罗网者一生多受约束、易遇官非或纠缠之事，不宜与人争执打官司；男忌天罗、女忌地网。',
+  '六秀日': '生于丙午、丁未、戊子、戊午、己丑、己未日。主聪明秀气、文采出众、气质不凡，事业上以才华见长。',
+  '日德': '生于甲寅、丙辰、戊辰、庚辰、壬戌日。本性慈悲善良、积德行善，待人宽厚，逢凶有贵人化解。',
+  '进神日': '生于甲子、甲午、己卯、己酉日（四正进神）。主上进心强、做事有始有进、自强不息，事业容易节节攀升。',
+  '丧门': '年支前两位为丧门。主孝服、忧愁之事，流年遇之家中长辈健康需多关心，不宜探病送丧。',
+  '吊客': '年支后两位为吊客。主丧服、惊扰、小病小灾，流年逢之注意家人健康与自身安全。',
+  '披麻': '年支前三位为披麻，与丧门同类。主忧愁伤心之事，逢之多关心家中长辈身体。',
+  '流霞': '又称"血煞"，主意外失血、产厄、手术。女命逢之生产注意安全，男命防酒色伤身；流年遇之避免高危活动。',
+  '元辰': '又名"大耗"，阳男阴女取冲位前一辰、阴男阳女取冲位后一辰。主破耗、不顺、钱财易散，逢之年理财宜守不宜攻，少与人争执。',
+  '八专': '甲寅、乙卯、己未、丁未、庚申、辛酉、戊戌、癸丑日。主情欲较旺、感情上容易投入过深，夫妻宫需多经营，避免烂桃花。',
+  '勾绞': '年支前三辰为勾、后三辰为绞。主是非纠缠、拖泥带水，做事易遇阻滞与小人纠缠，逢之宜果断处事。',
 };
 
 const TG_ORDER = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
@@ -92,7 +107,7 @@ export function getKongWang(dayGanZhi: string): string[] {
   return [DZ_ORDER[start], DZ_ORDER[(start + 1) % 12]];
 }
 
-export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
+export function calcShenSha(pillars: ShenShaPillarInput[], gender?: 'male' | 'female'): ShenShaItem[] {
   const results: ShenShaItem[] = [];
   const seen = new Set<string>();
   const push = (name: string, pillar: string, type: '吉' | '凶' | '平') => {
@@ -163,6 +178,14 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
       push('阴刃', pi, '平');
     }
 
+    // --- 飞刃（羊刃对冲之位，阳干查地支）---
+    const feiRenMap: Record<string, string> = {
+      '甲': '酉', '丙': '子', '戊': '子', '庚': '卯', '壬': '午',
+    };
+    if (feiRenMap[riGan] === dz[i]) {
+      push('飞刃', pi, '凶');
+    }
+
     // --- 桃花（年支/日支三合局查桃花位）---
     const taoHuaMap = buildSanHeMap(['酉', '卯', '午', '子']);
     if (sanHeTarget(dz[0], taoHuaMap) === dz[i] || sanHeTarget(dz[2], taoHuaMap) === dz[i]) {
@@ -197,6 +220,12 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
     const zaiShaMap = buildSanHeMap(['午', '子', '卯', '酉']);
     if (sanHeTarget(dz[0], zaiShaMap) === dz[i] || sanHeTarget(dz[2], zaiShaMap) === dz[i]) {
       push('灾煞', pi, '凶');
+    }
+
+    // --- 亡神（年支/日支三合局查：申子辰见亥、寅午戌见巳、巳酉丑见申、亥卯未见寅）---
+    const wangShenMap = buildSanHeMap(['亥', '巳', '申', '寅']);
+    if (sanHeTarget(dz[0], wangShenMap) === dz[i] || sanHeTarget(dz[2], wangShenMap) === dz[i]) {
+      push('亡神', pi, '平');
     }
 
     // --- 魁罡（仅日柱：庚辰、庚戌、壬辰、戊戌）---
@@ -261,6 +290,31 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
       push('孤鸾煞', pi, '平');
     }
 
+    // --- 十灵日（日柱：甲辰、乙亥、丙辰、丁酉、戊午、庚戌、庚寅、辛亥、壬寅、癸未）---
+    if (i === 2 && ['甲辰', '乙亥', '丙辰', '丁酉', '戊午', '庚戌', '庚寅', '辛亥', '壬寅', '癸未'].includes(gz[i])) {
+      push('十灵日', pi, '吉');
+    }
+
+    // --- 六秀日（日柱：丙午、丁未、戊子、戊午、己丑、己未）---
+    if (i === 2 && ['丙午', '丁未', '戊子', '戊午', '己丑', '己未'].includes(gz[i])) {
+      push('六秀日', pi, '吉');
+    }
+
+    // --- 日德（日柱：甲寅、丙辰、戊辰、庚辰、壬戌）---
+    if (i === 2 && ['甲寅', '丙辰', '戊辰', '庚辰', '壬戌'].includes(gz[i])) {
+      push('日德', pi, '吉');
+    }
+
+    // --- 进神日（日柱：甲子、甲午、己卯、己酉）---
+    if (i === 2 && ['甲子', '甲午', '己卯', '己酉'].includes(gz[i])) {
+      push('进神日', pi, '吉');
+    }
+
+    // --- 八专（日柱：甲寅、乙卯、己未、丁未、庚申、辛酉、戊戌、癸丑）---
+    if (i === 2 && ['甲寅', '乙卯', '己未', '丁未', '庚申', '辛酉', '戊戌', '癸丑'].includes(gz[i])) {
+      push('八专', pi, '平');
+    }
+
     // --- 红艳（日干查地支）---
     const hongYanMap: Record<string, string> = {
       '甲': '午', '乙': '申', '丙': '寅', '丁': '未', '戊': '辰',
@@ -268,6 +322,15 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
     };
     if (hongYanMap[riGan] === dz[i]) {
       push('红艳', pi, '平');
+    }
+
+    // --- 流霞（日干查地支：甲酉乙戌丙未丁申戊巳己午庚辰辛卯壬寅癸亥）---
+    const liuXiaMap: Record<string, string> = {
+      '甲': '酉', '乙': '戌', '丙': '未', '丁': '申', '戊': '巳',
+      '己': '午', '庚': '辰', '辛': '卯', '壬': '寅', '癸': '亥',
+    };
+    if (liuXiaMap[riGan] === dz[i]) {
+      push('流霞', pi, '凶');
     }
 
     // --- 金舆（日干查地支）---
@@ -380,6 +443,22 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
       push('天医', pi, '吉');
     }
 
+    // --- 丧门（年支顺数2位）、吊客（年支逆数2位）、披麻（年支顺数3位）---
+    const nianZhiIdx = DZ_ORDER.indexOf(dz[0]);
+    if (nianZhiIdx >= 0) {
+      const sangMen = DZ_ORDER[(nianZhiIdx + 2) % 12];
+      const diaoKe = DZ_ORDER[(nianZhiIdx + 10) % 12];
+      const piMa = DZ_ORDER[(nianZhiIdx + 3) % 12];
+      if (dz[i] === sangMen) push('丧门', pi, '凶');
+      if (dz[i] === diaoKe) push('吊客', pi, '凶');
+      if (dz[i] === piMa) push('披麻', pi, '凶');
+    }
+
+    // --- 天罗地网（仅年支/日支起查：戌亥为天罗、辰巳为地网）---
+    if ((i === 0 || i === 2) && ['戌', '亥', '辰', '巳'].includes(dz[i])) {
+      push('天罗地网', pi, '凶');
+    }
+
     // --- 孤辰（年支查地支）---
     const guChenMap: Record<string, string> = {
       '子': '寅', '丑': '寅', '寅': '巳', '卯': '巳',
@@ -404,6 +483,46 @@ export function calcShenSha(pillars: ShenShaPillarInput[]): ShenShaItem[] {
     const kongWang = getKongWang(gz[2]);
     if (kongWang.includes(dz[i])) {
       push('空亡', pi, '平');
+    }
+  }
+
+  // --- 三奇贵人（四柱天干见甲戊庚/乙丙丁/壬癸辛齐见）---
+  // 顺布于年月日时天干中三字齐见即为三奇（不限相邻）
+  const sanQiGroups = [
+    { gans: ['甲', '戊', '庚'], name: '甲戊庚天上三奇' },
+    { gans: ['乙', '丙', '丁'], name: '乙丙丁地下三奇' },
+    { gans: ['壬', '癸', '辛'], name: '壬癸辛人中三奇' },
+  ];
+  const tgSet = new Set(tg);
+  for (const grp of sanQiGroups) {
+    if (grp.gans.every((g) => tgSet.has(g))) {
+      // 以三奇中最先出现在年柱的位置标记（年柱起查，落在最先出现的柱）
+      const firstIdx = Math.min(...grp.gans.map((g) => tg.indexOf(g)).filter((x) => x >= 0));
+      push('三奇贵人', PL[firstIdx], '吉');
+    }
+  }
+
+  // --- 元辰（大耗）、勾绞：需性别 + 年支 ---
+  if (gender && dz[0]) {
+    const nianIdx = DZ_ORDER.indexOf(dz[0]);
+    if (nianIdx >= 0) {
+      const nianGan = tg[0];
+      const nianYang = ['甲', '丙', '戊', '庚', '壬'].includes(nianGan);
+      // 阳男阴女：冲位（六冲）前一辰（顺行）；阴男阳女：冲位后一辰（逆行）
+      const chongIdx = (nianIdx + 6) % 12;
+      const isForward = (gender === 'male' && nianYang) || (gender === 'female' && !nianYang);
+      const yuanChenIdx = isForward ? (chongIdx + 1) % 12 : (chongIdx + 11) % 12;
+      for (let i = 0; i < 4; i++) {
+        if (dz[i] === DZ_ORDER[yuanChenIdx]) {
+          push('元辰', PL[i], '凶');
+        }
+        // 勾绞：阳男阴女前三辰为勾、后三辰为绞；阴男阳女反之
+        const gouIdx = isForward ? (nianIdx + 3) % 12 : (nianIdx + 9) % 12;
+        const jiaoIdx = isForward ? (nianIdx + 9) % 12 : (nianIdx + 3) % 12;
+        if (dz[i] === DZ_ORDER[gouIdx] || dz[i] === DZ_ORDER[jiaoIdx]) {
+          push('勾绞', PL[i], '凶');
+        }
+      }
     }
   }
 

@@ -117,3 +117,92 @@ describe('calcShenSha 修正与扩充', () => {
     expect(names(r)).toContain('时柱桃花');
   });
 });
+
+describe('新增神煞：日格类（十灵/六秀/日德/进神/八专）', () => {
+  it('十灵日：甲辰日生人', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('甲辰'), P('乙丑')]);
+    expect(names(r)).toContain('日柱十灵日');
+  });
+
+  it('六秀日：丙午日生人', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('丙午'), P('乙丑')]);
+    expect(names(r)).toContain('日柱六秀日');
+  });
+
+  it('日德：丙辰日生人', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('丙辰'), P('乙丑')]);
+    expect(names(r)).toContain('日柱日德');
+  });
+
+  it('进神日：甲子日生人', () => {
+    const r = calcShenSha([P('甲戌'), P('乙亥'), P('甲子'), P('丙寅')]);
+    expect(names(r)).toContain('日柱进神日');
+  });
+
+  it('八专：庚申日生人', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚申'), P('乙丑')]);
+    expect(names(r)).toContain('日柱八专');
+  });
+});
+
+describe('新增神煞：地支查法类', () => {
+  it('飞刃+流霞：甲日见酉（羊刃对冲、血煞同位）', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('甲午'), P('癸酉')]);
+    expect(names(r)).toContain('时柱飞刃');
+    expect(names(r)).toContain('时柱流霞');
+  });
+
+  it('亡神：申子辰年见亥', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚午'), P('丁亥')]);
+    expect(names(r)).toContain('时柱亡神');
+  });
+
+  it('丧门/吊客/披麻：子年见寅(丧门)、卯(披麻)、戌(吊客)', () => {
+    const r = calcShenSha([P('甲子'), P('丙寅'), P('丁卯'), P('甲戌')]);
+    expect(names(r)).toContain('月柱丧门');
+    expect(names(r)).toContain('日柱披麻');
+    expect(names(r)).toContain('时柱吊客');
+  });
+
+  it('天罗地网：年支戌、日支辰均查', () => {
+    expect(names(calcShenSha([P('甲戌'), P('丙子'), P('庚午'), P('乙丑')]))).toContain('年柱天罗地网');
+    expect(names(calcShenSha([P('甲子'), P('丙子'), P('甲辰'), P('乙丑')]))).toContain('日柱天罗地网');
+    // 月支、时支不论罗网
+    expect(calcShenSha([P('甲子'), P('甲戌'), P('庚午'), P('乙丑')]).filter(x => x.name === '天罗地网')).toHaveLength(0);
+  });
+});
+
+describe('新增神煞：三奇贵人', () => {
+  it('天干齐见甲戊庚为天上三奇，标记在最先出现的年柱', () => {
+    const r = calcShenSha([P('甲子'), P('戊子'), P('庚午'), P('乙丑')]);
+    expect(names(r)).toContain('年柱三奇贵人');
+  });
+
+  it('天干不齐不见三奇', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚午'), P('乙丑')]);
+    expect(r.filter(x => x.name === '三奇贵人')).toHaveLength(0);
+  });
+});
+
+describe('新增神煞：元辰/勾绞（需性别）', () => {
+  it('元辰：阳男（甲子年）冲位午前一辰为未', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚午'), P('辛未')], 'male');
+    expect(names(r)).toContain('时柱元辰');
+  });
+
+  it('元辰：阳年女命（甲子年女）冲位午后一辰为巳', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚午'), P('辛巳')], 'female');
+    expect(names(r)).toContain('时柱元辰');
+  });
+
+  it('不传性别时不查元辰', () => {
+    const r = calcShenSha([P('甲子'), P('丙子'), P('庚午'), P('辛未')]);
+    expect(r.filter(x => x.name === '元辰')).toHaveLength(0);
+  });
+
+  it('勾绞：阳男（甲子年）卯为勾、酉为绞', () => {
+    const r = calcShenSha([P('甲子'), P('丁卯'), P('庚午'), P('癸酉')], 'male');
+    expect(names(r)).toContain('月柱勾绞');
+    expect(names(r)).toContain('时柱勾绞');
+  });
+});
