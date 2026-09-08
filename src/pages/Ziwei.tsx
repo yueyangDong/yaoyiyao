@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Form, Button, Typography, Row, Col,
-  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox, Cascader,
+  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox, Cascader, Segmented,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
@@ -23,6 +23,8 @@ import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, i
 import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
+import { enrichGongData } from '../utils/ziweiPalaceData';
+import { getAllSihuaDeepReadings } from '../utils/ziweiSihuaDeep';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -247,6 +249,155 @@ function StarChart({ gongData, mingGongName, shenGongName, solarDate, lunisolarD
   );
 }
 
+// 四化标块颜色（禄绿/权蓝/科黄/忌红）
+const SIHUA_HEX: Record<string, string> = {
+  '禄': '#5b8a72', '权': '#4a7a9b', '科': '#c9a96e', '忌': '#c23b2b',
+};
+
+// 传统田字格方盘（上南下北：巳午未申 / 辰-酉 / 卯-戌 / 寅丑子亥）
+function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, gender, solarDate, lunisolarDate }: {
+  gongData: any[]; mingZhu: string; shenZhu: string;
+  fiveElementName: string; gender: string; solarDate: string; lunisolarDate: string;
+}) {
+  const byBranch: Record<string, any> = {};
+  for (const g of gongData) byBranch[g.branch] = g;
+
+  const sihuaTag = (s: any, fontSize: number) => (
+    <>
+      {s.sihua && (
+        <span style={{
+          background: SIHUA_HEX[s.sihua], color: '#fff', fontSize: fontSize - 3,
+          padding: '0 3px', borderRadius: 2, lineHeight: '13px', fontWeight: 700, marginLeft: 2,
+        }}>{s.sihua}</span>
+      )}
+      {s.sihuaSelf && (
+        <span style={{
+          border: `1px solid ${SIHUA_HEX[s.sihuaSelf]}`, color: SIHUA_HEX[s.sihuaSelf],
+          fontSize: fontSize - 4, padding: '0 2px', borderRadius: 2, lineHeight: '11px',
+          fontWeight: 700, marginLeft: 2, whiteSpace: 'nowrap',
+        }}>自化{s.sihuaSelf}</span>
+      )}
+    </>
+  );
+
+  const renderCell = (branch: string) => {
+    const g = byBranch[branch];
+    if (!g) return <div />;
+    const isMing = g.name === '命宫';
+    const majors = g.majorStars || [];
+    const minors = g.minorStarDetails || [];
+    const brightColor = (b: string) => (b === '陷' || b === '不' ? 'var(--wx-fire)' : 'var(--text-secondary)');
+    return (
+      <div style={{
+        border: isMing ? '2px solid rgba(165,67,58,0.45)' : '1px solid var(--border-light)',
+        background: isMing ? 'rgba(165,67,58,0.03)' : 'var(--bg-card-solid)',
+        borderRadius: 4, padding: '5px 6px', minHeight: 150,
+        display: 'flex', flexDirection: 'column', gap: 1,
+      }}>
+        {/* 主星 */}
+        {majors.map((s: any) => (
+          <div key={s.name} style={{ fontSize: 12.5, fontWeight: 700, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: '16px' }}>
+            <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
+            {s.brightness && <span style={{ fontSize: 9, fontWeight: 400, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
+            {sihuaTag(s, 12.5)}
+          </div>
+        ))}
+        {majors.length === 0 && (
+          <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontStyle: 'italic' }}>空宫·借对宫论</div>
+        )}
+        {/* 辅星 */}
+        {minors.map((s: any) => (
+          <div key={s.name} style={{ fontSize: 11, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: '14px' }}>
+            <span style={{ color: 'var(--text-body)' }}>{s.name}</span>
+            {s.brightness && <span style={{ fontSize: 8.5, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
+            {sihuaTag(s, 11)}
+          </div>
+        ))}
+        {/* 流年/小限 */}
+        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', marginTop: 3, whiteSpace: 'nowrap' }}>
+          流年: {(g.liunianAges || []).join(',')}
+        </div>
+        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+          小限: {(g.xiaoxianAges || []).join(',')}
+        </div>
+        {/* 十二神小字 */}
+        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+          {[g.changsheng, g.boshi].filter(Boolean).join(' ')}
+        </div>
+        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+          {[g.suiqian, g.jiangqian].filter(Boolean).join(' ')}
+        </div>
+        {/* 大限 + 宫名 + 宫干支 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 3, borderTop: '1px dashed var(--border-light)' }}>
+          <span style={{ fontSize: 9.5, color: 'var(--text-body)' }}>{g.horoscopeRanges?.[0]}~{g.horoscopeRanges?.[1]}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 700,
+            background: isMing ? '#a5433a' : 'var(--text-primary)',
+            color: '#fff', padding: '0 5px', borderRadius: 2, lineHeight: '17px',
+          }}>{g.name}{g.isShenGong ? '·身' : ''}</span>
+          <span style={{ fontSize: 10, fontFamily: 'var(--font-display)', color: 'var(--text-body)', fontWeight: 600 }}>{g.stem}{g.branch}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // 中宫信息
+  const centerCell = (
+    <div style={{
+      gridColumn: '2 / span 2', gridRow: '2 / span 2',
+      border: '1px solid var(--border-light)', borderRadius: 4,
+      background: 'linear-gradient(135deg, rgba(196,164,90,0.05), rgba(255,255,255,0.4))',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 3, padding: 10, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>紫微斗数</div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-body)' }}>
+        {gender === 'female' ? '阴女' : '阳男'} · {fiveElementName}
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{solarDate}</div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{lunisolarDate}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>
+        命主：{mingZhu}　身主：{shenZhu}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 9.5, color: 'var(--text-secondary)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {(['禄', '权', '科', '忌'] as const).map((k) => (
+          <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ width: 11, height: 11, background: SIHUA_HEX[k], borderRadius: 2, display: 'inline-block' }} />
+            生年化{k}
+          </span>
+        ))}
+      </div>
+      <div style={{ fontSize: 9, color: 'var(--text-secondary)' }}>描边小方块 = 自化（宫内泄出）</div>
+    </div>
+  );
+
+  const CELLS: { branch: string; col: number; row: number }[] = [
+    { branch: '巳', col: 1, row: 1 }, { branch: '午', col: 2, row: 1 }, { branch: '未', col: 3, row: 1 }, { branch: '申', col: 4, row: 1 },
+    { branch: '辰', col: 1, row: 2 }, { branch: '酉', col: 4, row: 2 },
+    { branch: '卯', col: 1, row: 3 }, { branch: '戌', col: 4, row: 3 },
+    { branch: '寅', col: 1, row: 4 }, { branch: '丑', col: 2, row: 4 }, { branch: '子', col: 3, row: 4 }, { branch: '亥', col: 4, row: 4 },
+  ];
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: 560 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(4, auto)', gap: 4 }}>
+          {CELLS.map(({ branch, col, row }) => (
+            <div key={branch} style={{ gridColumn: col, gridRow: row }}>{renderCell(branch)}</div>
+          ))}
+          {centerCell}
+        </div>
+        {/* 方位标注（上南下北） */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: 'var(--text-secondary)', marginTop: 4, padding: '0 4px' }}>
+          <span>左：东</span>
+          <span>上：南（传统盘面方向）</span>
+          <span>右：西</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Ziwei() {
   const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
@@ -261,6 +412,7 @@ export default function Ziwei() {
   const [loading, setLoading] = useState(false);
   const [calendarType, setCalendarType] = useState<'solar' | 'lunar'>('solar');
   const [isLeapMonth, setIsLeapMonth] = useState(false);
+  const [chartView, setChartView] = useState<'grid' | 'circle'>('grid');
 
   // 自动填入档案
   useEffect(() => {
@@ -415,6 +567,15 @@ export default function Ziwei() {
       const mingGong = gongData.find((g: any) => g.name === '命宫');
       const shenGong = gongData.find((g: any) => (g as any).isShenGong);
 
+      // 补全宫位数据：星曜亮度、长生/博士/岁前/将前十二神、流年小限虚岁、命主身主
+      const yearGanZhi = lu.getYearInGanZhi();
+      const { mingZhu, shenZhu } = enrichGongData(gongData, {
+        fiveElementName: result.fiveElementName,
+        yearGan: yearGanZhi.charAt(0),
+        yearZhi: yearGanZhi.charAt(1),
+        gender: (gender === 'female' ? 'female' : 'male') as 'male' | 'female',
+      });
+
       // 生成命盘总结
       const highlights: string[] = [];
       const warnings: string[] = [];
@@ -491,6 +652,8 @@ export default function Ziwei() {
         gender: gender || 'male',
         mingGongName: mingGong ? `${mingGong.stem}${mingGong.branch}` : '—',
         shenGongName: shenGong ? `${(shenGong as any).stem}${(shenGong as any).branch}` : '—',
+        mingZhu,
+        shenZhu,
         highlights: highlights.length > 0 ? highlights : ['命盘格局清朗，各方面较为均衡'],
         warnings,
       });
@@ -526,6 +689,12 @@ export default function Ziwei() {
     const highlight = summarized.highlights[0] || null;
     return generateZiweiPlainConclusion(summarized.overall, highlight);
   }, [summarized]);
+
+  // 四化深度解读（生年四化 + 自化的分层剖析，仅对有故事可讲的宫生成）
+  const sihuaDeep = useMemo(() => {
+    if (!ziweiData) return [];
+    return getAllSihuaDeepReadings(ziweiData.gongData);
+  }, [ziweiData]);
 
   // 命宫性格画像（主星 1-2 颗；空宫借迁移宫主星论）
   const mingPersonality = useMemo(() => {
@@ -830,17 +999,40 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             </Card>
           </motion.div>
 
-          {/* SVG星图命盘 */}
-          <Card title={<span style={{ color: 'var(--text-primary)' }}>命盘星图</span>} style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}>
-            <StarChart
-              gongData={ziweiData.gongData}
-              mingGongName={ziweiData.mingGongName}
-              shenGongName={ziweiData.shenGongName}
-              solarDate={ziweiData.solarDate}
-              lunisolarDate={ziweiData.lunisolarDate}
-              fiveElementName={ziweiData.fiveElementName}
-              gender={ziweiData.gender}
-            />
+          {/* 命盘星图（方盘/圆盘切换） */}
+          <Card
+            title={<span style={{ color: 'var(--text-primary)' }}>命盘星图</span>}
+            style={{ marginBottom: 16, border: '1px solid var(--border-light)' }}
+            extra={
+              <Segmented
+                value={chartView}
+                onChange={(v) => setChartView(v as 'grid' | 'circle')}
+                options={[{ label: '方盘·详', value: 'grid' }, { label: '圆盘', value: 'circle' }]}
+                size="small"
+              />
+            }
+          >
+            {chartView === 'grid' ? (
+              <PalaceGrid
+                gongData={ziweiData.gongData}
+                mingZhu={ziweiData.mingZhu}
+                shenZhu={ziweiData.shenZhu}
+                fiveElementName={ziweiData.fiveElementName}
+                gender={ziweiData.gender}
+                solarDate={ziweiData.solarDate}
+                lunisolarDate={ziweiData.lunisolarDate}
+              />
+            ) : (
+              <StarChart
+                gongData={ziweiData.gongData}
+                mingGongName={ziweiData.mingGongName}
+                shenGongName={ziweiData.shenGongName}
+                solarDate={ziweiData.solarDate}
+                lunisolarDate={ziweiData.lunisolarDate}
+                fiveElementName={ziweiData.fiveElementName}
+                gender={ziweiData.gender}
+              />
+            )}
           </Card>
 
           {/* 一句话结论卡 */}
@@ -1252,6 +1444,58 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             })}
           </Card>
             </CollapsibleCard>
+
+          {/* 四化深度解读（生年四化 + 自化分层剖析） */}
+          {sihuaDeep.length > 0 && (
+            <CollapsibleCard
+              title="四化深度解读"
+              summary={`${sihuaDeep.length}个宫有四化故事：真实的处境、体面的面具、致命矛盾与健康影响`}
+              accordionGroup="ziwei-analysis"
+            >
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+                {sihuaDeep.map((r) => (
+                  <Card
+                    key={r.gongName}
+                    size="small"
+                    title={
+                      <span>
+                        <span style={{ fontWeight: 700 }}>{r.gongName}宫</span>
+                        <span style={{ margin: '0 6px', color: 'var(--text-secondary)' }}>·</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{r.starName}</span>
+                        {r.sihua && (
+                          <span style={{
+                            background: SIHUA_HEX[r.sihua], color: '#fff', fontSize: 11, fontWeight: 700,
+                            padding: '1px 5px', borderRadius: 3, marginLeft: 6,
+                          }}>化{r.sihua}</span>
+                        )}
+                        {r.sihuaSelf && (
+                          <span style={{
+                            border: `1px solid ${SIHUA_HEX[r.sihuaSelf]}`, color: SIHUA_HEX[r.sihuaSelf],
+                            fontSize: 10.5, fontWeight: 700, padding: '0 4px', borderRadius: 3, marginLeft: 4,
+                          }}>自化{r.sihuaSelf}</span>
+                        )}
+                      </span>
+                    }
+                    style={{
+                      marginBottom: 12,
+                      border: `1px solid ${r.sihua === '忌' ? 'rgba(194,59,43,0.15)' : 'rgba(107,154,122,0.15)'}`,
+                    }}
+                  >
+                    {r.sections.map((sec, i) => (
+                      <div key={i} style={{ marginBottom: i < r.sections.length - 1 ? 10 : 0 }}>
+                        <Text strong style={{ fontSize: 13, color: r.sihua === '忌' ? 'var(--wx-fire)' : 'var(--wx-wood)', display: 'block', marginBottom: 2 }}>
+                          {i + 1}. {sec.heading}
+                        </Text>
+                        <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
+                          {sec.text}
+                        </Text>
+                      </div>
+                    ))}
+                  </Card>
+                ))}
+              </Card>
+            </CollapsibleCard>
+          )}
 
           {/* 命盘总结 */}
           <CollapsibleCard title="星曜解读详情" summary={ziweiData.summary || '命盘总结与亮点分析'} accordionGroup="ziwei-analysis">
