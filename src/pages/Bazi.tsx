@@ -9,6 +9,7 @@ import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
+import { generateDomainDeepReadings, type DomainDeepReading } from '../utils/baziDomainDeep';
 import PayWall from '../components/PayWall';
 import { chartTargetKey } from '../lib/payment';
 import { analyzePersonality } from '../utils/baziPersonality';
@@ -616,6 +617,32 @@ export interface PillarData {
   nayin: string;
 }
 
+// 领域深度解读区块（干支 + 十神 + 神煞分层白话）
+function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string }) {
+  if (!d) return null;
+  return (
+    <div style={{
+      marginBottom: 12, padding: '10px 12px',
+      background: 'rgba(107,154,122,0.05)', borderRadius: 6,
+      border: `1px solid ${accent || 'rgba(107,154,122,0.2)'}`,
+    }}>
+      <Text strong style={{ fontSize: 13.5, color: 'var(--wx-wood)', display: 'block', marginBottom: 8 }}>
+        深度解读 · 干支与神煞
+      </Text>
+      {d.sections.map((sec, i) => (
+        <div key={i} style={{ marginBottom: i < d.sections.length - 1 ? 10 : 0 }}>
+          <Text strong style={{ fontSize: 12.5, color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>
+            {i + 1}. {sec.heading}
+          </Text>
+          <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
+            {sec.text}
+          </Text>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Bazi() {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -1125,6 +1152,25 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     if (!baziData) return {} as Record<string, string>;
     return getChangSheng12(baziData.dayGan, baziData.pillars);
   }, [baziData]);
+
+  // 六大领域深度解读（干支 + 十神 + 神煞分层白话）
+  const domainDeep = useMemo(() => {
+    if (!baziData || !yongShenRec) return [];
+    return generateDomainDeepReadings({
+      pillars: baziData.pillars,
+      shenSha: baziData.shenSha,
+      gender: baziData.birthGender,
+      dayGan: baziData.dayGan,
+      strengthLevel: strengthAnalysis?.level,
+      yongShen: yongShenRec.yongShen,
+      relations: relationAnalysis,
+    });
+  }, [baziData, yongShenRec, strengthAnalysis, relationAnalysis]);
+  const domainDeepMap = useMemo(() => {
+    const m: Record<string, DomainDeepReading> = {};
+    for (const d of domainDeep) m[d.domainKey] = d;
+    return m;
+  }, [domainDeep]);
 
   // 六大领域分析
   const loveAnalysis = useMemo(() => {
@@ -2055,6 +2101,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-fire)' }}
               styles={{ body: { background: 'rgba(194,59,43,0.02)' } }}
             >
+              <DomainDeepBlock d={domainDeepMap.love} accent="rgba(194,59,43,0.2)" />
               <Paragraph><Text strong>配偶特征：</Text>{loveAnalysis.spouseFeature}</Paragraph>
               <Paragraph><Text strong>婚姻质量：</Text>{loveAnalysis.marriageQuality}</Paragraph>
               <Paragraph><Text strong>桃花运势：</Text>{loveAnalysis.peachBlossom}</Paragraph>
@@ -2115,6 +2162,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
+              <DomainDeepBlock d={domainDeepMap.social} accent="rgba(166,166,166,0.3)" />
               <Paragraph><Text strong>社交特质：</Text>{socialAnalysis.socialTrait}</Paragraph>
               <Paragraph><Text strong>朋友质量：</Text>{socialAnalysis.friendQuality}</Paragraph>
               <Paragraph><Text strong>贵人类型：</Text>{socialAnalysis.nobleType}</Paragraph>
