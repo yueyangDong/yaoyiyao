@@ -737,33 +737,8 @@ function getPalaceSpecificContext(
     parts.push(`群星汇聚（${mainStars.join('、')}），能量强但需学会取舍聚焦。`);
   }
 
-  // 3. 四化分析（生年化为"体"主一生基调，自化为"用"主能量流动）
-  if (sihuaInfos.length > 0) {
-    for (const { star, sihua, source } of sihuaInfos) {
-      if (source === 'selfCF') {
-        parts.push(`${star}离心自化${sihua}——此宫的${sihua === '忌' ? '压力' : '能量'}有向外流失的倾向，得到的容易再失去，宜顺势而为、不执着于守成。`);
-        continue;
-      }
-      if (source === 'selfCP') {
-        parts.push(`${star}向心自化${sihua}——此宫能量向内汇聚，${sihua === '忌' ? '压力多由自身造成，反求诸己即可化解' : '外来机缘会主动靠拢，守得住比争得到更重要'}。`);
-        continue;
-      }
-      switch (sihua) {
-        case '禄':
-          parts.push(`${star}化禄——此领域是你的福气点，容易有收获、机遇和贵人相助。`);
-          break;
-        case '权':
-          parts.push(`${star}化权——此领域你有强大的掌控力和决策力，适合主动出击。`);
-          break;
-        case '科':
-          parts.push(`${star}化科——此领域有天然的魅力加成，容易获得名声与贵人赏识。`);
-          break;
-        case '忌':
-          parts.push(`${star}化忌——此领域容易遇到波折，但也是你成长最多的地方。`);
-          break;
-      }
-    }
-  }
+  // （本宫生年四化/自化的含义解释已移交"四化详解"内容库与四化深度解读，白话解读不再重复罗列；
+  //   对宫冲照与三合会照仍论四化互动，四化事实由主星句保留）
 
   // 4. 辅星（精简：只点关键助力与风险，不罗列全部描述）
   if (minorStars.length > 0) {

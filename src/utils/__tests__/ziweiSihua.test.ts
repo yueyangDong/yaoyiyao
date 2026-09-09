@@ -116,7 +116,7 @@ describe('辅星四化保留与体用分层', () => {
     expect(wenchang.sihua).toBe('忌');
   });
 
-  it('生年化与自化分层共存，不互相吞没', () => {
+  it('白话解读保留生年四化事实，含义解释移交四化详解（不再重复罗列）', () => {
     const r = generatePalaceReading(
       '迁移',
       [{ name: '廉贞', type: 'major', sihua: '禄', sihuaSelf: '忌', sihuaSelfKind: 'CF' }],
@@ -124,8 +124,9 @@ describe('辅星四化保留与体用分层', () => {
       null,
       null,
     );
-    expect(r.reading).toContain('迁移宫坐廉贞化禄');
-    expect(r.reading).toContain('离心自化忌');
+    expect(r.reading).toContain('迁移宫坐廉贞化禄'); // 四化事实由主星句保留
+    expect(r.reading).not.toContain('离心自化'); // 自化含义解释已移交"四化详解"内容库
+    expect(r.reading).not.toContain('此领域是你的福气点'); // 生年四化含义不再重复罗列
   });
 });
 
