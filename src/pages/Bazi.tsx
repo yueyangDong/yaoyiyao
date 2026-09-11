@@ -271,14 +271,18 @@ function calcWuxingStats(pillars: any[]): Record<string, { count: number; level:
     }
   }
 
-  const maxCount = Math.max(...Object.values(wxCount), 1);
+  const counts = Object.values(wxCount);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const avg = total / 5;
+  const maxCount = Math.max(...counts, 1);
   const result: Record<string, { count: number; level: string; desc: string }> = {};
   for (const [wx, count] of Object.entries(wxCount)) {
     let level = '适中';
     let desc = '';
     if (count === 0) { level = '缺'; desc = `命局中缺${wx}，不代表没有${wx}的能量，而是在大运流年中遇到${wx}时会特别明显。`; }
-    else if (count >= maxCount * 0.7) { level = '旺'; desc = `${wx}比较旺，注意不要过犹不及，追求平衡。`; }
-    else if (count <= 1 && maxCount >= 3) { level = '弱'; desc = `${wx}偏弱，需要对应的五行来补充和扶持。`; }
+    // 旧阈值 count >= maxCount*0.7 会让「五行均衡」的盘全部判旺；改为与全局均值比较。
+    else if (count === maxCount && count > avg * 1.2) { level = '旺'; desc = `${wx}比较旺，注意不要过犹不及，追求平衡。`; }
+    else if (count < avg * 0.7) { level = '弱'; desc = `${wx}偏弱，需要对应的五行来补充和扶持。`; }
     result[wx] = { count, level, desc };
   }
   return result;
@@ -293,7 +297,9 @@ function calcWuxingStats(pillars: any[]): Record<string, { count: number; level:
 // 刑冲合害分析 —— 结构化结果
 interface RelationItem {
   type: string;    // '合' | '冲' | '刑' | '害' | '破'
-  subtype: string; // 分类标签
+  subtype: string;
+  /** 涉及的柱位索引（0年/1月/2日/3时）——供结构化判断，勿再用 desc 字符串匹配 */
+  pillars: number[]; // 分类标签
   color: string;
   desc: string;
 }
@@ -322,7 +328,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
       if (tgHeMap[tgList[i]]?.he === tgList[j]) {
         const hua = tgHeMap[tgList[i]].hua;
         results.push({
-          type: '合', subtype: '天干五合', color: 'var(--wx-wood)',
+          type: '合', subtype: '天干五合', color: 'var(--wx-wood)', pillars: [i, j],
           desc: `${pn(i)}天干「${tgList[i]}」与${pn(j)}天干「${tgList[j]}」→ ${tgList[i]}${tgList[j]}合化${hua}。${pn(i)}和${pn(j)}之间有"化学反应"，两个层面的人事物会深度关联、相互影响。`,
         });
       }
@@ -343,7 +349,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
         const key = dzList[i] + dzList[j];
         const hua = dzLiuHeHua[key] || '';
         results.push({
-          type: '合', subtype: '地支六合', color: 'var(--wx-wood)',
+          type: '合', subtype: '地支六合', color: 'var(--wx-wood)', pillars: [i, j],
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}合化${hua}。两柱关系紧密和谐，互帮互助，事情容易达成共识。`,
         });
       }
@@ -360,12 +366,13 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     { names: ['巳', '酉', '丑'], hua: '金', desc: '巳酉丑三合金局' },
   ];
   for (const ju of sanHeJu) {
-    const matched = dzList.filter((dz) => ju.names.includes(dz));
-    if (matched.length >= 2) {
-      const pillars_ = matched.map((dz) => pn(dzList.indexOf(dz))).join('、');
-      const isFull = matched.length === 3 && ju.names.every((n) => dzList.includes(n));
+    // 去重：同一地支重复出现（如两个"子"）不构成半合——半合需两个不同的三合局成员
+    const uniqMatched = [...new Set(dzList.filter((dz) => ju.names.includes(dz)))];
+    if (uniqMatched.length >= 2) {
+      const pillars_ = uniqMatched.map((dz) => pn(dzList.indexOf(dz))).join('、');
+      const isFull = uniqMatched.length === 3 && ju.names.every((n) => dzList.includes(n));
       results.push({
-        type: '合', subtype: `地支三合${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)',
+        type: '合', subtype: `地支三合${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)', pillars: uniqMatched.map((dz) => dzList.indexOf(dz)),
         desc: `${pillars_}形成${ju.desc}${isFull ? '（全合）' : '（半合）'}。${isFull ? '三合局力量强大，相当于三柱抱团形成合力，该五行能量极强。' : '半合局也有一定力量，但不如全合完整，等待大运流年补齐第三个地支时会完全激活。'}`,
       });
     }
@@ -386,8 +393,8 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
       const pillars_ = matched.map((dz) => pn(dzList.indexOf(dz))).join('、');
       const isFull = matched.length === 3;
       results.push({
-        type: '合', subtype: `地支三会${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)',
-        desc: `${pillars_}形成${ju.dir}局${isFull ? '（全会）' : '（半会）'}。三会局是地支最强的合局，相当于三柱"抱团"形成超级区域性力量，比三合局力量更大。`,
+        type: '合', subtype: `地支三会${isFull ? '全' : '半'}局`, color: 'var(--wx-wood)', pillars: matched.map((dz) => dzList.indexOf(dz)),
+        desc: `${pillars_}形成${ju.dir}局${isFull ? '（全会）' : '（半会）'}。${isFull ? '三会局是地支最强的合局，相当于三柱抱团形成超级区域性力量，比三合局力量更大。' : '半会已有抱团之势，力量介于半合与全合之间，待大运流年补齐第三支即成全会。'}`,
       });
     }
   }
@@ -404,8 +411,8 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
         const wxB = chongWx[dzList[j]];
         const isSameWx = wxA === wxB;
         results.push({
-          type: '冲', subtype: '地支六冲', color: 'var(--wx-fire)',
-          desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}冲（${wxA}${wxB}${isSameWx ? '土土相冲' : '相冲'}）。${isSameWx ? '同类相冲为"比冲"，主内心矛盾和反复。' : '异类相冲代表两个领域之间的冲突和对立。'}冲代表变动和不安，${pn(i)}和${pn(j)}所代表的领域容易动荡、换环境或出现分离。`,
+          type: '冲', subtype: '地支六冲', color: 'var(--wx-fire)', pillars: [i, j],
+          desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}冲（${wxA}${wxB}${isSameWx ? '比冲' : '相冲'}）。${isSameWx ? '同类相冲为比冲，主内心矛盾和反复。' : '异类相冲代表两个领域之间的冲突和对立。'}冲代表变动和不安，${pn(i)}和${pn(j)}所代表的领域容易动荡、换环境或出现分离。`,
         });
       }
     }
@@ -415,9 +422,10 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   //  6. 地支相刑（橙色）
   // ==========================================
   // 无礼之刑：子卯
-  if (dzList.includes('子') && dzList.includes('卯')) {
+  const ziMaoIdx = dzList.map((dz, idx) => (dz === '子' || dz === '卯') ? idx : -1).filter((idx) => idx >= 0);
+  if (ziMaoIdx.length >= 2) {
     results.push({
-      type: '刑', subtype: '无礼之刑', color: 'var(--color-warn)',
+      type: '刑', subtype: '无礼之刑', color: 'var(--color-warn)', pillars: ziMaoIdx,
       desc: `子卯相刑（无礼之刑）：子水+卯木，看似相生实则相刑。容易因言行不当、礼节不周而得罪人，注意口舌是非和人际摩擦。`,
     });
   }
@@ -425,7 +433,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   const shiShiXing = ['寅', '巳', '申'].filter((n) => dzList.includes(n));
   if (shiShiXing.length >= 2) {
     results.push({
-      type: '刑', subtype: '恃势之刑', color: 'var(--color-warn)',
+      type: '刑', subtype: '恃势之刑', color: 'var(--color-warn)', pillars: shiShiXing.map((dz) => dzList.indexOf(dz)),
       desc: `${shiShiXing.join('、')} → 恃势之刑。仗势欺人反被欺，容易卷入权力斗争和利益冲突。${shiShiXing.length === 3 ? '三刑俱全，需特别注意。' : '半刑已显端倪，在相关年份补齐会爆发。'}`,
     });
   }
@@ -433,18 +441,19 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   const wuEnXing = ['丑', '戌', '未'].filter((n) => dzList.includes(n));
   if (wuEnXing.length >= 2) {
     results.push({
-      type: '刑', subtype: '无恩之刑', color: 'var(--color-warn)',
+      type: '刑', subtype: '无恩之刑', color: 'var(--color-warn)', pillars: wuEnXing.map((dz) => dzList.indexOf(dz)),
       desc: `${wuEnXing.join('、')} → 无恩之刑。恩将仇报或被恩将仇报，合伙做事要格外小心，容易因利益分配反目成仇。${wuEnXing.length === 3 ? '三刑俱全，合伙需慎之又慎。' : ''}`,
     });
   }
   // 自刑：辰、午、酉、亥（单独出现也算自刑）
   const ziXingList = ['辰', '午', '酉', '亥'];
   const ziXingFound = dzList.filter((dz) => ziXingList.includes(dz));
+  const ziXingIdx = dzList.map((dz, idx) => (ziXingList.includes(dz) ? idx : -1)).filter((idx) => idx >= 0);
   if (ziXingFound.length >= 2) {
     const dups = ziXingFound.filter((dz, i) => ziXingFound.indexOf(dz) !== i);
     if (dups.length > 0) {
       results.push({
-        type: '刑', subtype: '自刑', color: 'var(--color-warn)',
+        type: '刑', subtype: '自刑', color: 'var(--color-warn)', pillars: ziXingIdx,
         desc: `命局中有重复出现的地支（${[...new Set(dups)].join('、')}）→ 自刑。自己跟自己过不去，容易钻牛角尖、自我纠结、过度内耗。事情没你想的那么糟，学着放下。`,
       });
     }
@@ -461,7 +470,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     for (let j = i + 1; j < dzList.length; j++) {
       if (liuHai[dzList[i]] === dzList[j]) {
         results.push({
-          type: '害', subtype: '地支六害', color: 'var(--wx-water)',
+          type: '害', subtype: '地支六害', color: 'var(--wx-water)', pillars: [i, j],
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}害（穿害）。害比冲更隐蔽，是暗箭伤人、背后使绊子。表面看着没事，暗地里有人拆台。需要多留心眼，不要轻信他人。`,
         });
       }
@@ -479,7 +488,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
     for (let j = i + 1; j < dzList.length; j++) {
       if (liuPo[dzList[i]] === dzList[j]) {
         results.push({
-          type: '破', subtype: '地支六破', color: 'var(--wx-metal)',
+          type: '破', subtype: '地支六破', color: 'var(--wx-metal)', pillars: [i, j],
           desc: `${pn(i)}地支「${dzList[i]}」与${pn(j)}地支「${dzList[j]}」→ ${dzList[i]}${dzList[j]}破。"破"就是互相拆台捣乱，两柱之间明合暗破，表面关系还行、背地里互相伤害。合作中要小心面和心不和的局面。`,
         });
       }
@@ -490,7 +499,7 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
 }
 
 // 大运白话解读 — 在原 [i%3] 基础上扩展为 5+ 模板池，按 i 索引递增避免重复
-function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge: number): string[] {
+function getDayunInterpretation(steps: { ganZhi: string; startAge: number; endAge: number }[], dayGan: string): string[] {
   // 与日主关系的 6 种模板池（比劫/印/食伤/官杀/财 各 5 条左右 + 共用建议）
   const TEMPLATES: Record<string, string[]> = {
     bijian: [
@@ -542,9 +551,8 @@ function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge:
   const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
   const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
 
-  return dayunGanZhi.map((gz, i) => {
-    const age = startAge + i * 10;
-    const gan = gz.charAt(0);
+  return steps.map((s, i) => {
+    const gan = s.ganZhi.charAt(0);
     const dayWx = tgWx[dayGan] || '';
     const dayunWx = tgWx[gan] || '';
 
@@ -558,7 +566,7 @@ function getDayunInterpretation(dayunGanZhi: string[], dayGan: string, startAge:
 
     // 选用第 i 条（不超过 pool 长度），保证顺序选而不是简单模3 — 大运多的情况下不重复
     const desc = pool[i % pool.length];
-    return `${age}-${age + 9}岁 大运「${gz}」：${desc}`;
+    return `${s.startAge}-${s.endAge}岁 大运「${s.ganZhi}」：${desc}`;
   });
 }
 
@@ -692,7 +700,7 @@ export default function Bazi() {
   const [liuYueMonths, setLiuYueMonths] = useState<Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> | null>(null);
   const [liuRiYear, setLiuRiYear] = useState<number | null>(null);
   const [liuRiMonth, setLiuRiMonth] = useState<number | null>(null);
-  const [liuRiDays, setLiuRiDays] = useState<Array<{ day: number; ganZhi: string; wx: string; desc: string }> | null>(null);
+  const [liuRiDays, setLiuRiDays] = useState<Array<{ day: number; ganZhi: string; wx: string; desc: string; weekend?: boolean }> | null>(null);
   const now = new Date();
   const currentYear = now.getFullYear();
   /**
@@ -827,7 +835,7 @@ export default function Bazi() {
       yunRef.current = yun;
       // 大运：精确计算起运日期/年龄、识别起运前小运
       const dayunRaw = yun.getDaYun(11);
-      const startAge = yun.getStartYear(); // 起运年龄（虚岁，从出生到起运的年数）
+      const startAge = yun.getStartYear(); // 起运年数（周岁口径；大运卡片 startAge 为虚岁 = 本值 + 1）
       const startDate = yun.getStartSolar()?.toYmd?.() || ''; // 起运公历日期 YYYY-MM-DD
       const isForward = yun.isForward();
       const directionText = isForward ? '顺排' : '逆排';
@@ -932,9 +940,11 @@ export default function Bazi() {
         dayWx,
         shenSha,
         mingGe,
-        birthYear: year,
-        birthMonth: month,
-        birthDay: day,
+        // 存排盘实际使用的公历日期：农历输入时 month/day 是农历值，真太阳时跨午夜还会平移一天。
+        // 直接存表单原值会让 calcCurrentAge 拿农历月日与公历今天比较 → 周岁算错、当前大运高亮错位。
+        birthYear: solarDate.getYear(),
+        birthMonth: solarDate.getMonth(),
+        birthDay: solarDate.getDay(),
         birthHour: calcHour,
         birthMinute: calcMinute,
         birthGender: gender,
@@ -1071,7 +1081,8 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
         // Mark weekends
         const dow = new Date(year, month - 1, d).getDay();
         const mark = dow === 0 || dow === 6 ? '周末' : '';
-        result.push({ day: d, ganZhi: gz, wx, desc: mark || desc });
+        // 周末用独立字段标记，不再覆盖 desc（否则周末日的十神/吉凶信息被吞掉）
+        result.push({ day: d, ganZhi: gz, wx, desc, weekend: mark === '周末' });
       } catch {
         result.push({ day: d, ganZhi: '--', wx: '', desc: '' });
       }
@@ -1105,11 +1116,18 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     return getShiShenComboAnalysis(baziData.pillars, baziData.dayGan);
   }, [baziData]);
 
+  // 起运虚岁（与大运卡片 steps.startAge 同源）；dayun.startAge 是起运年数（周岁口径），两者相差约 1
+  const firstDaYunStartAge = useMemo(() => {
+    const firstReal = baziData?.dayun.steps.find((s) => !s.isPreStart);
+    return firstReal?.startAge ?? baziData?.dayun.startAge ?? 0;
+  }, [baziData]);
+
   const dayunInterpretations = useMemo(() => {
     if (!baziData) return [];
     // 跳过起运前无干支的小运（显示 — 的步骤）
-    const ganZhiList = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—').map((s) => s.ganZhi);
-    return getDayunInterpretation(ganZhiList, baziData.dayGan, baziData.dayun.startAge);
+    // 年龄一律用 getDaYun 的虚岁，与大运卡片口径一致
+    const steps = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—');
+    return getDayunInterpretation(steps, baziData.dayGan);
   }, [baziData]);
 
   // 一句话结论（xiShen 实为忌神，不并入结论文案，避免与专业分析自相矛盾）
@@ -1153,24 +1171,6 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     return getChangSheng12(baziData.dayGan, baziData.pillars);
   }, [baziData]);
 
-  // 六大领域深度解读（干支 + 十神 + 神煞分层白话）
-  const domainDeep = useMemo(() => {
-    if (!baziData || !yongShenRec) return [];
-    return generateDomainDeepReadings({
-      pillars: baziData.pillars,
-      shenSha: baziData.shenSha,
-      gender: baziData.birthGender,
-      dayGan: baziData.dayGan,
-      strengthLevel: strengthAnalysis?.level,
-      yongShen: yongShenRec.yongShen,
-      relations: relationAnalysis,
-    });
-  }, [baziData, yongShenRec, strengthAnalysis, relationAnalysis]);
-  const domainDeepMap = useMemo(() => {
-    const m: Record<string, DomainDeepReading> = {};
-    for (const d of domainDeep) m[d.domainKey] = d;
-    return m;
-  }, [domainDeep]);
 
   // 六大领域分析
   const loveAnalysis = useMemo(() => {
@@ -1207,6 +1207,37 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     if (!baziData || !strengthAnalysis || !yongShenRec || !wxStats) return null;
     return analyzeFortuneOverview(baziData.pillars, baziData.dayGan, strengthAnalysis.level, yongShenRec.yongShen, baziData.shenSha, baziData.dayun, baziData.birthYear, wxStats as Record<string, { count: number; level: string }>);
   }, [baziData, strengthAnalysis, yongShenRec, wxStats]);
+
+  // 六大领域深度解读（干支 + 十神 + 神煞 + 各领域分析合并为单一解读）
+  const domainDeep = useMemo(() => {
+    if (!baziData || !yongShenRec) return [];
+    return generateDomainDeepReadings({
+      pillars: baziData.pillars,
+      shenSha: baziData.shenSha,
+      gender: baziData.birthGender,
+      dayGan: baziData.dayGan,
+      strengthLevel: strengthAnalysis?.level,
+      yongShen: yongShenRec.yongShen,
+      relations: relationAnalysis,
+      // 五行短板与页面其它板块同源，避免同一命盘两处结论打架
+      wxStats: wxStats || undefined,
+      // 合并六大领域分析结果——页面只保留深度解读一套，不再重复第二遍
+      analyses: {
+        love: loveAnalysis || undefined,
+        career: careerAnalysis || undefined,
+        health: healthAnalysis || undefined,
+        family: familyAnalysis || undefined,
+        social: socialAnalysis || undefined,
+        personality: personality || undefined,
+      },
+    });
+  }, [baziData, yongShenRec, strengthAnalysis, relationAnalysis, wxStats,
+      loveAnalysis, careerAnalysis, healthAnalysis, familyAnalysis, socialAnalysis, personality]);
+  const domainDeepMap = useMemo(() => {
+    const m: Record<string, DomainDeepReading> = {};
+    for (const d of domainDeep) m[d.domainKey] = d;
+    return m;
+  }, [domainDeep]);
 
   return (
     <div style={{ padding: '16px 0' }}>
@@ -1901,11 +1932,11 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               return `起运前 · 还有${baziData.dayun.startAge - currentExactAge}年开始第一步大运`;
             }
             const last = baziData.dayun.steps[baziData.dayun.steps.length - 1];
-            return `起运${baziData.dayun.startAge}岁 · 十年一运 · 至${last?.endAge ?? 100}岁`;
+            return `起运${firstDaYunStartAge}岁 · 十年一运 · 至${last?.endAge ?? 100}岁`;
           })()}`} defaultOpen>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert
-              message={`起运年龄：${baziData.dayun.startAge}岁（${baziData.dayun.startDate || '日期待推算'}） | 起运方向：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运` +
+              message={`起运年龄：${firstDaYunStartAge}岁（${baziData.dayun.startDate || '日期待推算'}） | 起运方向：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运` +
                 (currentExactAge < baziData.dayun.startAge ? ` | 当前 ${currentExactAge} 岁（未起运）` : ' | 当前 ' + currentExactAge + ' 岁')}
               type="info"
               showIcon
@@ -2032,7 +2063,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                   {liuRiDays.map((d) => {
                     const isGood = d.desc === '印生' || d.desc === '财运';
                     const isBad = d.desc === '官杀';
-                    const isWeekend = d.desc.includes('周末');
+                    const isWeekend = !!d.weekend;
                     return (
                       <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
                         <Card size="small" style={{
@@ -2079,14 +2110,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
               styles={{ body: { background: 'rgba(44,90,142,0.02)' } }}
             >
-              <Paragraph><Text strong>核心性格：</Text>{personality.core}</Paragraph>
-              <Paragraph><Text strong>内心世界：</Text>{personality.inner}</Paragraph>
-              <Paragraph><Text strong style={{ color: 'var(--wx-fire)' }}>盲区提醒：</Text>{personality.blindSpot}</Paragraph>
-              <Paragraph><Text strong>人际与感情：</Text>{personality.interaction}</Paragraph>
-              {personality.monthFlavor && (
-                <Paragraph><Text strong>月令染色：</Text>{personality.monthFlavor}</Paragraph>
-              )}
-              <Paragraph style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{personality.strengthTone}</Paragraph>
+              <DomainDeepBlock d={domainDeepMap.personality} accent="rgba(44,90,142,0.28)" />
             </Card>
             </CollapsibleCard>
           )}
@@ -2102,10 +2126,6 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               styles={{ body: { background: 'rgba(194,59,43,0.02)' } }}
             >
               <DomainDeepBlock d={domainDeepMap.love} accent="rgba(194,59,43,0.2)" />
-              <Paragraph><Text strong>配偶特征：</Text>{loveAnalysis.spouseFeature}</Paragraph>
-              <Paragraph><Text strong>婚姻质量：</Text>{loveAnalysis.marriageQuality}</Paragraph>
-              <Paragraph><Text strong>桃花运势：</Text>{loveAnalysis.peachBlossom}</Paragraph>
-              <Paragraph><Text strong style={{ color: 'var(--wx-fire)' }}>建议：</Text>{loveAnalysis.advice}</Paragraph>
             </Card>
             </CollapsibleCard>
           )}
@@ -2117,11 +2137,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0, borderLeft: '3px solid var(--wx-water)' }}
               styles={{ body: { background: 'rgba(42,51,64,0.02)' } }}
             >
-              <Paragraph><Text strong>事业方向：</Text>{careerAnalysis.direction}</Paragraph>
-              <Paragraph><Text strong>赚钱方式：</Text>{careerAnalysis.moneyMethod}</Paragraph>
-              <Paragraph><Text strong>财运走势：</Text>{careerAnalysis.fortuneTrend}</Paragraph>
-              <Paragraph><Text strong>贵人运：</Text>{careerAnalysis.nobleHelp}</Paragraph>
-              <Paragraph><Text strong style={{ color: 'var(--wx-water)' }}>建议：</Text>{careerAnalysis.advice}</Paragraph>
+              <DomainDeepBlock d={domainDeepMap.career} accent="rgba(42,51,64,0.25)" />
             </Card>
             </CollapsibleCard>
           )}
@@ -2132,12 +2148,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
-              <Paragraph><Text strong>体质概况：</Text>{healthAnalysis.bodyOverview}</Paragraph>
-              <Paragraph><Text strong>需要留意的方面：</Text></Paragraph>
-              <ul style={{ paddingLeft: 20 }}>
-                {healthAnalysis.concerns.map((c, i) => <li key={i} style={{ marginBottom: 6, fontSize: 14 }}>{c}</li>)}
-              </ul>
-              <Paragraph><Text strong style={{ color: 'var(--wx-wood)' }}>养生建议：</Text>{healthAnalysis.wellnessAdvice}</Paragraph>
+              <DomainDeepBlock d={domainDeepMap.health} accent="rgba(107,154,122,0.35)" />
             </Card>
             </CollapsibleCard>
           )}
@@ -2148,10 +2159,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             <Card
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
-              <Paragraph><Text strong>与父母关系：</Text>{familyAnalysis.parentRelation}</Paragraph>
-              <Paragraph><Text strong>兄弟姐妹：</Text>{familyAnalysis.siblings}</Paragraph>
-              <Paragraph><Text strong>家庭氛围：</Text>{familyAnalysis.familyAtmosphere}</Paragraph>
-              <Paragraph><Text strong style={{ color: 'var(--wx-earth)' }}>建议：</Text>{familyAnalysis.advice}</Paragraph>
+              <DomainDeepBlock d={domainDeepMap.family} accent="rgba(184,123,74,0.3)" />
             </Card>
             </CollapsibleCard>
           )}
@@ -2163,10 +2171,6 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}
             >
               <DomainDeepBlock d={domainDeepMap.social} accent="rgba(166,166,166,0.3)" />
-              <Paragraph><Text strong>社交特质：</Text>{socialAnalysis.socialTrait}</Paragraph>
-              <Paragraph><Text strong>朋友质量：</Text>{socialAnalysis.friendQuality}</Paragraph>
-              <Paragraph><Text strong>贵人类型：</Text>{socialAnalysis.nobleType}</Paragraph>
-              <Paragraph><Text strong style={{ color: 'var(--wx-metal)' }}>合伙建议：</Text>{socialAnalysis.partnerAdvice}</Paragraph>
             </Card>
             </CollapsibleCard>
           )}

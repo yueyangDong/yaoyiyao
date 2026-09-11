@@ -25,14 +25,14 @@ const baseInput = {
   relations: [],
 };
 
-describe('generateDomainDeepReadings 五领域深度解读', () => {
+describe('generateDomainDeepReadings 六领域深度解读', () => {
   const readings = generateDomainDeepReadings(baseInput);
   const byKey: Record<string, any> = {};
   for (const r of readings) byKey[r.domainKey] = r;
 
-  it('五个领域全部生成，各含4段分层结构', () => {
-    expect(readings).toHaveLength(5);
-    for (const key of ['love', 'career', 'health', 'family', 'social']) {
+  it('六个领域全部生成，各含4段分层结构', () => {
+    expect(readings).toHaveLength(6);
+    for (const key of ['personality', 'love', 'career', 'health', 'family', 'social']) {
       expect(byKey[key]).toBeDefined();
       expect(byKey[key].sections.length).toBe(4);
     }
@@ -86,5 +86,55 @@ describe('generateDomainDeepReadings 五领域深度解读', () => {
     expect(health.sections[1].text).toContain('体质底子平顺');
     const love = r.find((x) => x.domainKey === 'love')!;
     expect(love.sections[2].text).toContain('日支逢冲');
+  });
+
+  it('relations 带 pillars 时按柱位结构化判断夫妻宫（刑类不再漏报）', () => {
+    const r = generateDomainDeepReadings({
+      ...baseInput,
+      shenSha: [],
+      // 刑类 desc 不含「日柱」字样，仅靠 pillars 命中 —— 旧字符串匹配在此漏报
+      relations: [{ type: '刑', desc: '子卯相刑（无礼之刑），示例文案不含柱位', pillars: [2, 3] }],
+    });
+    const love = r.find((x) => x.domainKey === 'love')!;
+    expect(love.sections[2].text).toContain('日支逢刑');
+  });
+
+  it('传入 analyses 时合并为单一解读：领域分析并入对应段，页面不再重复', () => {
+    const r = generateDomainDeepReadings({
+      ...baseInput,
+      analyses: {
+        love: { spouseFeature: '配偶特征样例', marriageQuality: '婚姻质量样例', peachBlossom: '桃花样例', advice: '感情建议样例' },
+        career: { direction: '事业方向样例', moneyMethod: '赚钱样例', fortuneTrend: '财运样例', nobleHelp: '贵人样例', advice: '事业建议样例' },
+      },
+    });
+    const love = r.find((x) => x.domainKey === 'love')!;
+    expect(love.sections[0].text).toContain('配偶特征样例');
+    expect(love.sections[1].text).toContain('桃花样例');
+    expect(love.sections[2].heading).toContain('婚姻质量');
+    expect(love.sections[2].text).toBe('婚姻质量样例');
+    expect(love.sections[3].text).toContain('感情建议样例');
+    const career = r.find((x) => x.domainKey === 'career')!;
+    expect(career.sections.map((s) => s.text).join('')).toContain('贵人样例');
+  });
+
+  it('命局指纹：性格领域按 日主/月令/强弱/主导十神 定调，且不再是固定模板', () => {
+    const r = generateDomainDeepReadings(baseInput);
+    const p = r.find((x) => x.domainKey === 'personality')!;
+    expect(p.sections[0].text).toContain('【命局指纹】');
+    expect(p.sections[0].text).toContain('日主属木');   // 甲日主
+    expect(p.sections[0].text).toContain('生于丑月');   // 丑月令
+    // 主导十神组不同 → 各领域建议段文案不同
+    const r2 = generateDomainDeepReadings({
+      ...baseInput,
+      pillars: [
+        { ...pillars[0], shiShen: '正官' },
+        { ...pillars[1], shiShen: '七杀' },
+        pillars[2],
+        { ...pillars[3], shiShen: '正印' },
+      ],
+    });
+    const careerA = r.find((x) => x.domainKey === 'career')!;
+    const careerB = r2.find((x) => x.domainKey === 'career')!;
+    expect(careerA.sections.map((s) => s.text).join('')).not.toBe(careerB.sections.map((s) => s.text).join(''));
   });
 });

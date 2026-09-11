@@ -794,19 +794,28 @@ function getShenShaByName(shenSha: { name: string; pillar: string }[], names: st
 }
 
 /** 查看某个柱是否与日柱有冲/合/刑关系 */
-function getRiZhiRelationType(relations: { type: string; desc: string }[]): string[] {
-  return relations
-    .filter(r => r.desc.includes('日柱') || r.desc.includes('日支'))
-    .map(r => r.type);
+function getRiZhiRelationType(relations: { type: string; desc: string; pillars?: number[] }[]): string[] {
+  // 结构化优先（索引 2 = 日柱）：刑类关系 desc 不含柱位，纯字符串匹配会漏报日支逢刑；无 pillars 时回退兼容。
+  const hasPillars = relations.some(r => Array.isArray(r.pillars));
+  const dayRels = hasPillars
+    ? relations.filter(r => r.pillars?.includes(2))
+    : relations.filter(r => r.desc.includes('日柱') || r.desc.includes('日支'));
+  return dayRels.map(r => r.type);
 }
 
 /** 查看某个柱涉及的冲合刑害关系 */
-function getPillarRelations(relations: { type: string; desc: string }[], pillarLabel: string): { type: string; desc: string }[] {
+const PILLAR_INDEX: Record<string, number> = { '年柱': 0, '月柱': 1, '日柱': 2, '时柱': 3 };
+
+/** 查看某个柱涉及的冲合刑害关系（结构化优先，兼容无 pillars 的旧数据） */
+function getPillarRelations(relations: { type: string; desc: string; pillars?: number[] }[], pillarLabel: string): { type: string; desc: string; pillars?: number[] }[] {
+  const idx = PILLAR_INDEX[pillarLabel];
+  const hasPillars = relations.some(r => Array.isArray(r.pillars));
+  if (hasPillars && idx !== undefined) return relations.filter(r => r.pillars?.includes(idx));
   return relations.filter(r => r.desc.includes(pillarLabel));
 }
 
 /** 列出某个柱的具体冲合刑害详情 */
-function describePillarRelations(relations: { type: string; desc: string }[], pillarLabel: string): string {
+function describePillarRelations(relations: { type: string; desc: string; pillars?: number[] }[], pillarLabel: string): string {
   const rels = getPillarRelations(relations, pillarLabel);
   if (rels.length === 0) return '';
   return rels.map(r => r.desc).join('；');
@@ -819,7 +828,7 @@ export function analyzeLove(
   gender: string,
   dayGan: string,
   dayZhi: string,
-  relations: { type: string; desc: string }[]
+  relations: { type: string; desc: string; pillars?: number[] }[]
 ): LoveAnalysis {
   const dayWx = TG_WX[dayGan];
   const spouseStarName = gender === 'male' ? '正财' : '正官';
@@ -912,9 +921,12 @@ export function analyzeLove(
   const hasXing = riZhiRelTypes.includes('刑');
   const hasHai = riZhiRelTypes.includes('害');
 
-  const riZhiRelDescs = relations
-    .filter(r => r.desc.includes('日柱') || r.desc.includes('日支'))
-    .map(r => r.desc);
+  // 与 getRiZhiRelationType 同口径取描述文本，避免这里再退回字符串匹配
+  const hasPillarsInRels = relations.some(r => Array.isArray(r.pillars));
+  const riZhiRelations = hasPillarsInRels
+    ? relations.filter(r => r.pillars?.includes(2))
+    : relations.filter(r => r.desc.includes('日柱') || r.desc.includes('日支'));
+  const riZhiRelDescs = riZhiRelations.map(r => r.desc);
 
   let marriageQuality = '';
 
@@ -1188,7 +1200,7 @@ export function analyzeCareer(
     const ssInfo = [...shiShenList, ...shangGuanPillars].map(p => `${p.ganZhi}在${p.pillar}(${p.shiShen})`).join('、');
     moneyMethod = `你八字中食伤（${ssInfo}）较旺但财星不显，这叫"食伤不转财"——你有技术有才华，但变现的渠道不够直接。`;
     moneyMethod += '赚钱的核心是"把自己的能力产品化"——把技术变成课程、把创意变成内容、把经验变成咨询。你需要的不是更努力，而是更会"包装自己"。';
-    if (strengthLevel === '身弱') {
+    if (strengthLevel.includes('弱')) {
       moneyMethod += '另外你日主偏弱，不要同时搞太多方向——先精钻一件事，做到行业前20%，钱自然就来了。';
     }
   } else {
@@ -1199,14 +1211,14 @@ export function analyzeCareer(
   // ===== 财运走势 =====
   let fortuneTrend = '';
 
-  if (strengthLevel === '身强' && hasCai) {
+  if (strengthLevel.includes('强') && hasCai) {
     const caiInfo = allCaiPillars.map(p => `${p.pillar}${p.ganZhi}(${p.shiShen})`).join('、');
     fortuneTrend = `你${strengthLevel}能担财——好比一个大容器能装很多水。财星（${caiInfo}）在你的命中，说明你只要行动就有收获。`;
     if (allCaiPillars.some(p => p.pillar === '月柱' || p.pillar === '日柱')) {
       fortuneTrend += '财星在月柱或日柱，青壮年时期（17-48岁）是你的创富黄金期，机会最多、精力最旺。这个阶段不要畏首畏尾，该拼就拼。';
     }
     fortuneTrend += '你的理财重点是"开源"——多开拓收入渠道，你的身体和能力都撑得住。';
-  } else if (strengthLevel === '身弱' && hasCai) {
+  } else if (strengthLevel.includes('弱') && hasCai) {
     const caiInfo = allCaiPillars.map(p => `${p.pillar}${p.ganZhi}(${p.shiShen})`).join('、');
     fortuneTrend = `你命中有财（${caiInfo}）但日主${dayGan}(${dayWx})偏弱——好比小容器装不下太多水，财多反而会累。`;
     fortuneTrend += '赚钱不要太拼，身体健康和精力管理比赚钱更重要。35岁以后运势逐渐走稳，不用急着在年轻时暴富。';
@@ -1215,7 +1227,7 @@ export function analyzeCareer(
       fortuneTrend += `你八字中有印星（${yinWx}生助${dayWx}），建议通过学习和考证来提升自己的"容量"——学历和专业技能就是你的"增容器"，先学习后赚钱。`;
     }
     fortuneTrend += '理财重点是"节流"——赚钱不求大，求稳。高风险投资不太适合你。';
-  } else if (strengthLevel === '身强' && !hasCai) {
+  } else if (strengthLevel.includes('强') && !hasCai) {
     fortuneTrend = `你${strengthLevel}但财星不显——你有能力和精力，但需要主动去找赚钱机会。`;
     if (hasShiShang) {
       const ssWx = TG_WX[(shiShenList[0] || shangGuanPillars[0]).tianGan];
@@ -1269,7 +1281,7 @@ export function analyzeCareer(
     const jx = shenSha.find(s => s.name === '将星');
     adviceItems.push(`你命带将星（${jx?.pillar}），天生有领导才能，不要怕挑大梁——你扛得住`);
   }
-  if (strengthLevel === '身弱' && hasCai) {
+  if (strengthLevel.includes('弱') && hasCai) {
     adviceItems.push(`身弱担财有限，赚钱的同时别忘了投资健康和学习——你本人的能力才是最大的财富`);
   }
   if (hasBiJie && hasCai) {
@@ -1295,7 +1307,7 @@ export function analyzeHealth(
   wxStats: Record<string, { count: number; level: string }>,
   dayGan: string,
   strengthLevel: string,
-  relations: { type: string; desc: string }[]
+  relations: { type: string; desc: string; pillars?: number[] }[]
 ): HealthAnalysis {
   const dayWx = TG_WX[dayGan];
 
@@ -1363,7 +1375,7 @@ export function analyzeHealth(
     bodyOverview += `${SEASON_HEALTH[monthZhi]}。`;
   }
 
-  if (strengthLevel === '身强') {
+  if (strengthLevel.includes('强')) {
     bodyOverview += `你属于${strengthLevel}体质——就像一台发动机功率较大，精力比较充沛。但"过犹不及"，过旺的五行对应的身体部位容易出现功能亢进型问题。`;
     if (strongest[1].level === '旺' && strongest[0] !== dayWx) {
       bodyOverview += `具体来说，「${strongest[0]}」过旺会压制其他五行，${wxBody[strongest[0]]}容易成为你的"短板"。`;
@@ -1371,7 +1383,7 @@ export function analyzeHealth(
     if (strongest[0] === woShengWx) {
       bodyOverview += `食伤（${woShengWx}）过旺泄身，代表你平时容易用脑过度或思虑过多——精神层面的消耗需要特别注意。`;
     }
-  } else if (strengthLevel === '身弱') {
+  } else if (strengthLevel.includes('弱')) {
     bodyOverview += `你属于${strengthLevel}体质——好比手机电池容量偏小，精力有限，容易感到疲劳。`;
     if (weakest[0] === dayWx) {
       bodyOverview += `你的日主五行（${dayWx}）本身在八字中偏弱，代表身体素质天生不算特别强。需要后天多注意保养，规律作息比吃什么补品都重要。`;
@@ -1465,7 +1477,7 @@ export function analyzeHealth(
     `运动方面：适合${wxSport[targetWx] || '适度的有氧运动'}。` +
     `颜色方面：多接触${WX_COLOR[targetWx] || '柔和色调'}（衣饰、家居、手机壁纸都可以）。` +
     `方位方面：有条件可以多往${WX_DIRECTION[targetWx] || '适合自己的方向'}走走。` +
-    `${strengthLevel === '身弱' ? '另外你日主偏弱，建议配合规律作息（最晚23点前睡）和轻度运动来增强体质，比吃保健品更有效。' : ''}`;
+    `${strengthLevel.includes('弱') ? '另外你日主偏弱，建议配合规律作息（最晚23点前睡）和轻度运动来增强体质，比吃保健品更有效。' : ''}`;
 
   return { bodyOverview, concerns, wellnessAdvice };
 }
@@ -1473,7 +1485,7 @@ export function analyzeHealth(
 // ========== 4. 家庭亲情分析 ==========
 export function analyzeFamily(
   pillars: PillarData[],
-  relations: { type: string; desc: string }[],
+  relations: { type: string; desc: string; pillars?: number[] }[],
   dayGan: string
 ): FamilyAnalysis {
   const dayWx = TG_WX[dayGan];
@@ -1983,9 +1995,9 @@ export function analyzeFortuneOverview(
   }
 
   // 如果日主和克己的五行旺
-  if (strengthLevel === '身弱') {
+  if (strengthLevel.includes('弱')) {
     lifeLesson += `因为你日主偏弱，人生的课题是"先站稳再走远"——不要在根基不稳时盲目扩张。`;
-  } else if (strengthLevel === '身强') {
+  } else if (strengthLevel.includes('强')) {
     lifeLesson += `因为你日主偏强，人生的课题是"学会释放和分享"——把你的能量投入到有价值的事情上，而不是憋着较劲。`;
   } else {
     lifeLesson += `你的日主中和平衡，人生的课题是"保持平衡"——在进取和休息之间、在付出和接受之间找到自己的节奏。`;
@@ -2012,7 +2024,9 @@ export function analyzeFortuneOverview(
     `整体来看，这是属于"${strengthLevel}型 + ${strongest}旺 + ${dayWx}日主"的一张盘——`;
   const signatureHints: Record<string, string> = {
     '身强': '有能量、有主见，适合做开拓性的事。',
+    '身极强': '能量极旺、一行得势，最怕"力无处使"——给自己找大目标。',
     '身弱': '敏感细腻、靠协作取胜，适合做"加法"而非"乘法"。',
+    '身极弱': '顺势而为的命，善于借力，忌硬扛硬拼。',
     '中和': '可塑性强，能在不同环境切换角色，是"全能选手"的底子。',
   };
   const fullSignature = signature + (signatureHints[strengthLevel] || '是独特的一张命盘。');

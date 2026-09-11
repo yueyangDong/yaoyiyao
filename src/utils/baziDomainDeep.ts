@@ -9,8 +9,17 @@ export interface DomainDeepSection {
 }
 
 export interface DomainDeepReading {
-  domainKey: 'love' | 'career' | 'health' | 'family' | 'social';
+  domainKey: 'personality' | 'love' | 'career' | 'health' | 'family' | 'social';
   sections: DomainDeepSection[];
+}
+
+export interface DomainAnalyses {
+  love?: { spouseFeature: string; marriageQuality: string; peachBlossom: string; advice: string };
+  career?: { direction: string; moneyMethod: string; fortuneTrend: string; nobleHelp: string; advice: string };
+  health?: { bodyOverview: string; concerns: string[]; wellnessAdvice: string };
+  family?: { parentRelation: string; siblings: string; familyAtmosphere: string; advice: string };
+  social?: { socialTrait: string; friendQuality: string; nobleType: string; partnerAdvice: string };
+  personality?: { title: string; core: string; inner: string; blindSpot: string; interaction: string; monthFlavor?: string; strengthTone: string };
 }
 
 export interface DomainDeepInput {
@@ -20,7 +29,11 @@ export interface DomainDeepInput {
   dayGan: string;
   strengthLevel?: string;
   yongShen: string[];
-  relations: { type: string; desc: string }[];
+  /** 全局五行统计（与页面 calcWuxingStats 同源，含藏干全量），用于五行短板判定 */
+  wxStats?: Record<string, { count: number; level: string }>;
+  relations: { type: string; desc: string; pillars?: number[] }[];
+  /** 各领域分析结果（baziAnalysis 口径）——合并进深度解读，页面只留一套解读 */
+  analyses?: DomainAnalyses;
 }
 
 // ---------- 工具 ----------
@@ -53,13 +66,14 @@ function monthZhiShiShen(pillars: PillarData[]): string {
   return raw.split('/')[0] || '';
 }
 /** 日支是否逢冲/合/刑/害（借 relations 文本判断） */
-function dayZhiRelationTypes(relations: { type: string; desc: string }[]): string[] {
-  const relDescs = relations.filter((r) => r.desc.includes('日柱') || r.desc.includes('日支')).map((r) => r.desc);
-  const types: string[] = [];
-  for (const t of ['冲', '合', '刑', '害']) {
-    if (relDescs.some((d) => d.includes(t))) types.push(t);
-  }
-  return types;
+function dayZhiRelationTypes(relations: { type: string; desc: string; pillars?: number[] }[]): string[] {
+  // 优先用结构化柱位（索引 2 = 日柱）：刑类关系的 desc 只列地支、不含柱位，旧实现靠
+  // desc.includes('日柱') 匹配会让「日支逢刑」永久漏报；无 pillars 时回退兼容旧数据。
+  const hasPillars = relations.some((r) => Array.isArray(r.pillars));
+  const dayTypes = hasPillars
+    ? relations.filter((r) => r.pillars?.includes(2)).map((r) => r.type)
+    : relations.filter((r) => r.desc.includes('日柱') || r.desc.includes('日支')).map((r) => r.type);
+  return ['冲', '合', '刑', '害'].filter((t) => dayTypes.includes(t));
 }
 /** 柱位列表转可读文本："月柱（庚午）" */
 function fmtPillars(list: { pillar: string; ganZhi: string }[]): string {
@@ -118,8 +132,8 @@ const FAMILY_SHA: Record<string, string> = {
   '孤辰': '与家人沟通偏少，亲情在心口难开——节日多回家，多打一个电话',
   '寡宿': '对家人清冷、报喜不报忧——家人要的不是你的成就，是你的消息',
   '元辰': '主破耗与不顺，家中钱财往来要清爽，亲情账算清楚反而不伤感情',
-  '天德': '祖上有德，家中逢难有解——这份庇荫也值得你传下去',
-  '月德': '家风温和，与母亲缘分偏厚，家庭是你能量补给站',
+  '天德贵人': '祖上有德，家中逢难有解——这份庇荫也值得你传下去',
+  '月德贵人': '家风温和，与母亲缘分偏厚，家庭是你能量补给站',
   '丧门': '流年遇之多关心长辈身体，重要体检别省',
   '吊客': '家人健康的小警钟，尤其是长辈的慢病管理',
   '披麻': '家中忧愁事的提示——陪伴就是最好的化解',
@@ -182,16 +196,162 @@ const WX_BODY_BASE: Record<string, string> = {
   '水': '肾水与内分泌为主——先天肾气充盈与否直接体现在精力与腰膝，节律作息是养肾根本',
 };
 
+// ---------- 性格：十神主导组 ----------
+const GROUP_OF: Record<string, string> = {
+  '比肩': '比劫', '劫财': '比劫',
+  '食神': '食伤', '伤官': '食伤',
+  '正官': '官杀', '七杀': '官杀',
+  '正印': '印', '偏印': '印',
+  '正财': '财', '偏财': '财',
+};
+const DOMINANT_GROUP_PERSONALITY: Record<string, string> = {
+  '比劫': '自我意识强、主意正，认准的事九头牛拉不回；行动力是天赋，但"我的地盘我做主"的执念也会让你听不进劝。朋友多是你的资源，也是你的消耗——学会拒绝，比学会合群更重要。',
+  '食伤': '脑子转得快、表达欲旺，天生有"点子多"的体质；追求自由、讨厌被管，创意是看家本领。短板是想得多做得少，或话说满了事没办到——把灵感落到交付上，就是你的修行。',
+  '官杀': '有规矩感、责任心重，凡事爱讲"应该"，对自己要求高于常人；抗压是强项，但紧绷也是常态。学会区分"别人的期待"和"自己的意愿"，你会活得松弛很多。',
+  '印': '想得深、学得快，重视精神世界与内在安全感；待人温和有包容心，但容易想太多、动太少。你的痛点不是能力，而是决断——遇到机会先迈一步，比想清楚一百步更管用。',
+  '财': '现实、务实、目标感强，对投入产出天生敏感，擅长经营关系与整合资源。短板是容易用"值不值"衡量一切，包括感情——偶尔做点"没用但开心"的事，是你的解药。',
+};
+const GROUP_LACK: Record<string, string> = {
+  '比劫': '比劫不显——你不太依赖同辈，习惯单打独斗；遇到超过自己量级的事，学会借力请教，那不是示弱。',
+  '食伤': '食伤不显——表达偏内敛，想法常憋在心里；写下来、说出来，别让好点子烂在肚子里。',
+  '官杀': '官杀不显——不喜欢被规矩绑住，自律得自己立；给自己定规则，比等环境来管你更自由。',
+  '印': '印不显——安全感要自己给，遇坎时少了个兜底的人；向可信的人开口，是成熟不是软弱。',
+  '财': '财不显——对务实经营兴趣不大，更看重精神满足；适度关注现实回报，理想才走得远。',
+};
+const PERSONALITY_SHA: Record<string, string> = {
+  '魁罡': '个性刚烈、眼里揉不得沙子，认死理也守原则——气场是天生的，但服软不服硬容易把关系顶僵',
+  '金神': '刚毅果决、才华外露，遇强则强——锋芒需要配成绩才立得住，切忌意气用事',
+  '十灵日': '直觉极准，一眼看穿人心与动机——别让"我都知道"堵住了沟通的路',
+  '华盖': '自带清高与艺术气，享受独处、精神世界丰富——孤独不是缺陷，是你的充电方式',
+  '八专': '情感浓烈、投入起来不留退路，认定就不回头——给自己留一点回旋的余地',
+  '孤辰': '内心有一块别人进不去的独处区，热闹中也会突然抽离——主动说一句真心话，比沉默更有力量',
+  '寡宿': '外表清冷、内心细腻，不擅长主动示好——你的温度需要被翻译出来，别等别人猜',
+  '阴差阳错': '行事易在关键处慢半拍或错位，好事多磨——重要节点提前准备、反复确认，能把错位降到最低',
+  '太极贵人': '对哲学、玄学、心理学这些看不见的领域有天生的感应——直觉与思辨并存，是研究型人格的底子',
+  '六秀日': '才艺出众、审美在线，对美和品质有要求——把讲究用在自己身上，是良性循环',
+  '日德': '心地宽厚、有容人之量，遇事讲情面——善意要有边界，才不会被人当成软弱',
+  '天赦': '逢凶化吉的体质，心态相对乐观——但别把好运当成不用努力的借口',
+  '四废': '精力起伏大、容易疲惫，需要比常人多一点的休整——你的节奏是脉冲式的，别逼自己匀速跑',
+};
+const YONG_SHEN_MIND: Record<string, string> = {
+  '木': '多亲近自然、多做舒展身体的事，肝气顺了心气就顺，你的情绪出口在行动里',
+  '火': '多晒太阳、多和人热闹，把心里的热情表达出来，你的情绪出口在表达里',
+  '土': '把生活过规律，好好吃饭睡觉，安定感一上来，焦虑自然退潮',
+  '金': '定规矩、做决定、断舍离，把模糊的事说清楚，你的心安来自边界感',
+  '水': '多独处、多思考、多接触水与安静的环境，你的能量来自向内',
+};
+
+// ---------- 命局指纹：日主 + 月令 + 强弱 + 主导十神 ----------
+const DAY_WX_TONE: Record<string, string> = {
+  '木': '日主属木，气质向上，认方向不认捷径',
+  '火': '日主属火，气质外扬，看重被看见',
+  '土': '日主属土，气质稳重，求稳先于求快',
+  '金': '日主属金，气质锐利，重规则与决断',
+  '水': '日主属水，气质灵活，擅长迂回渗透',
+};
+const MONTH_ZHI_TONE: Record<string, string> = {
+  '寅': '生于寅月，开局带冲劲', '卯': '生于卯月，开局带韧性', '辰': '生于辰月，开局带容量',
+  '巳': '生于巳月，开局带热度', '午': '生于午月，开局带张力', '未': '生于未月，开局带绵长',
+  '申': '生于申月，开局带锋芒', '酉': '生于酉月，开局带标准', '戌': '生于戌月，开局带厚重',
+  '亥': '生于亥月，开局带深水', '子': '生于子月，开局带沉静', '丑': '生于丑月，开局带坚忍',
+};
+// 同一句建议不再套在所有人身上：按主导十神组给每个领域一句"指纹化"建议
+const GROUP_ADVICE_CAREER: Record<string, string> = {
+  '比劫': '你的路数是先立山头——找一个自己能说了算的赛道，独立或小团队作战效率最高。',
+  '食伤': '你的路数把才华产品化——技术、内容、创意变成可交付的成果，价值才被看见。',
+  '官杀': '你的路数是在规则里拿结果——平台、体制、大公司是你的放大器，按规矩做到位就能上位。',
+  '印': '你的路数是先厚积再薄发——学历、证书、专业背书是护城河，别急着变现。',
+  '财': '你的路数贴着钱走——业务、贸易、投资这类离现金流近的位置最能发挥你。',
+};
+const GROUP_ADVICE_LOVE: Record<string, string> = {
+  '比劫': '感情里你要的是战友而非附属——平等对话比甜言蜜语更让你安心。',
+  '食伤': '感情里你需要聊得来——精神同频是刚需，但别用挑刺代替夸奖。',
+  '官杀': '感情里你倾向被照顾也被约束——找个能给你秩序感又不控制你的人。',
+  '印': '感情里你渴望被理解——找能接住你情绪的人，同时别把对方当情绪垃圾桶。',
+  '财': '感情里你看重过日子——务实是优点，但记得留一点不划算的浪漫。',
+};
+const GROUP_ADVICE_HEALTH: Record<string, string> = {
+  '比劫': '你精力底子不差，短板是用得过猛——运动减压，别把身体当消耗品。',
+  '食伤': '你脑子转得比身体快——思虑耗神，睡够比补品管用。',
+  '官杀': '你习惯紧绷——主动放松，压力才是你健康的主要变量。',
+  '印': '你偏静——规律作息之外，加点有氧让气血动起来。',
+  '财': '你忙于经营——三餐规律和年度体检别省，别用健康换业绩。',
+};
+const GROUP_ADVICE_FAMILY: Record<string, string> = {
+  '比劫': '你对家人讲义气——别把为你好变成替家人做主。',
+  '食伤': '你嘴甜也嘴快——对家人多说暖话少下评价，关系会顺很多。',
+  '官杀': '你在家里习惯扛事——偶尔示弱，让家人也有照顾你的机会。',
+  '印': '你和家人情感黏——保持亲密也保持边界，才不互相消耗。',
+  '财': '你务实顾家——除了物质，家人更想要你的时间和陪伴。',
+};
+const GROUP_ADVICE_SOCIAL: Record<string, string> = {
+  '比劫': '你朋友多但消耗也多——筛选比扩张重要，留下能一起进步的。',
+  '食伤': '你天生聚人——别只顾表达，多听一句关系就深一层。',
+  '官杀': '你的人脉偏有用型——适当交几个不谈利益的真朋友。',
+  '印': '你偏内向——不必强融，深耕两三知己胜过泛泛之交。',
+  '财': '你社交带目的——偶尔纯粹地帮人一把，回报会以意外的方式回来。',
+};
+
 // ---------- 生成器 ----------
 export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepReading[] {
   const out: DomainDeepReading[] = [];
   const { pillars, gender, dayGan, yongShen } = input;
+  const a: DomainAnalyses = input.analyses || {};
+
+  // 命局指纹：主导十神分组的统计上移，供性格领域与各领域"指纹化建议"共用
+  const allGroups = ['比劫', '食伤', '官杀', '印', '财'];
+  const groupCounts: Record<string, number> = {};
+  for (const g of allGroups) groupCounts[g] = 0;
+  for (const p of pillars) {
+    const g = GROUP_OF[p.shiShen];
+    if (g) groupCounts[g]++;
+  }
+  const maxGroup = Math.max(...allGroups.map((g) => groupCounts[g]));
+  const dominant = maxGroup > 0 ? allGroups.filter((g) => groupCounts[g] === maxGroup) : [];
+  const absent = allGroups.filter((g) => groupCounts[g] === 0);
+  const fingerprint = `${DAY_WX_TONE[TG_WX_LOCAL[dayGan] || ''] || ''}；${MONTH_ZHI_TONE[pillars[1]?.diZhi || ''] || ''}${input.strengthLevel ? `；日主${input.strengthLevel.includes('弱') ? '偏弱，宜借力不宜硬拼' : input.strengthLevel.includes('强') ? '偏强，宜主导也宜放权' : '中和，进退有据'}` : ''}；十神以${dominant.length > 0 ? dominant.join('、') : '五类均衡'}为主。`;
+
   const dp = dayPillar(pillars);
   const dayZhiShiShenName = dayZhiShiShen(pillars);
   const monthShiShen = monthZhiShiShen(pillars);
   const dayRelTypes = dayZhiRelationTypes(input.relations);
   const yongText = yongShen.map((w) => YONG_SHEN_LIFE[w]).filter(Boolean);
   const yongShort = yongShen.join('、');
+
+  // ===== 性格特质 =====
+  const personalitySections: DomainDeepSection[] = [];
+  personalitySections.push({
+    heading: '十神给的性格骨架',
+    text: dominant.length > 0
+      ? `四柱天干中${dominant.join('、')}最重——${dominant.map((g) => DOMINANT_GROUP_PERSONALITY[g]).join('')}`
+      : '四柱天干十神分布均衡——性格没有单一主导，属于看场合切换的复合型，适应力是你的武器。',
+  });
+  const personaShas = findShaExact(input, Object.keys(PERSONALITY_SHA));
+  personalitySections.push({
+    heading: '神煞点睛（性格的暗号）',
+    text: personaShas.length > 0
+      ? personaShas.map((s) => `【${s.name}·${s.pillar}】${PERSONALITY_SHA[s.name] || ''}`).join('')
+      : '命局无魁罡、华盖、孤辰等性格标记星——性格底色平顺，更像随环境塑形的水，可塑性很强。',
+  });
+  personalitySections.push({
+    heading: '性格暗线（内在的缺口）',
+    text: absent.length > 0
+      ? `${absent.join('、')}在命局不显——${absent.map((g) => GROUP_LACK[g]).join('')}`
+      : '五类十神都有落点，性格是均衡型——你的课题不是补缺，而是别让每一样都只做六十分。',
+  });
+  personalitySections.push({
+    heading: '心性调养（喜用神开方）',
+    text: `喜用神为${yongShort}——${yongShen.map((w) => YONG_SHEN_MIND[w]).filter(Boolean).join('；') || yongText[0] || ''}。性格没有好坏，只有用对地方和用过头——看清自己的默认模式，就是最大的成长。`,
+  });
+  if (a.personality) {
+    const p = a.personality;
+    personalitySections[0].text = `日主${dayGan}（${TG_WX_LOCAL[dayGan] || ''}）画像：${p.core}${p.monthFlavor ? ' ' + p.monthFlavor : ''} ${personalitySections[0].text}`;
+    personalitySections[2].text += ` ${p.inner} ${p.blindSpot}`;
+    personalitySections[3].text += ` ${p.interaction} ${p.strengthTone}`;
+  }
+  // 命局指纹无条件置顶——即使没有外部 analyses，也保证每个命盘开篇不同
+  personalitySections[0].text = `【命局指纹】${fingerprint}` + personalitySections[0].text;
+  out.push({ domainKey: 'personality', sections: personalitySections });
 
   // ===== 爱情婚姻 =====
   const loveSections: DomainDeepSection[] = [];
@@ -231,6 +391,19 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '经营之道',
     text: `喜用神为${yongShort}——${yongText[0] || '顺应喜用五行安排生活'}。感情上，约会选对你们"旺"的环境；吵架时先处理情绪再处理事情。${findShaExact(input, ['红鸾', '天喜']).length > 0 ? '命带红鸾天喜，遇到对的人时别犹豫，是你的就是你的。' : ''}`,
   });
+  if (a.love) {
+    loveSections[0].text += ` ${a.love.spouseFeature}`;
+    loveSections[1].text += ` ${a.love.peachBlossom}`;
+    if (a.love.marriageQuality) {
+      loveSections[2].heading = '婚姻质量（夫妻宫的暗线）';
+      loveSections[2].text = a.love.marriageQuality;
+    }
+    loveSections[3].text += ` ${a.love.advice}`;
+  }
+  if (dominant[0]) {
+    const fp = loveSections.find((s) => s.heading.includes('经营之道'));
+    if (fp) fp.text += ` ${GROUP_ADVICE_LOVE[dominant[0]] || ''}`;
+  }
   out.push({ domainKey: 'love', sections: loveSections });
 
   // ===== 事业财运 =====
@@ -261,6 +434,22 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '发力建议',
     text: `喜用神为${yongShort}——${yongText[0] || ''}。${findSha(input, (n) => n.includes('驿马')).length > 0 ? '驿马在命，主动出击、多走动多见人，机会在路上。' : '你的机会在深耕——选定赛道至少沉淀三年再评值不值得。'}`,
   });
+  if (a.career) {
+    const findC = (h: string) => careerSections.find((s) => s.heading.includes(h));
+    const engine = findC('月令十神');
+    if (engine) engine.text += ` ${a.career.direction}`;
+    let shaC = findC('神煞点睛');
+    if (!shaC) { shaC = { heading: '神煞点睛（职场的底牌）', text: '' }; careerSections.splice(1, 0, shaC); }
+    shaC.text += `${shaC.text ? ' ' : ''}${a.career.nobleHelp}`;
+    const money = findC('财富的形状');
+    if (money) money.text += ` ${a.career.moneyMethod} ${a.career.fortuneTrend}`;
+    const advC = findC('发力建议');
+    if (advC) advC.text += ` ${a.career.advice}`;
+  }
+  if (dominant[0]) {
+    const fp = careerSections.find((s) => s.heading.includes('发力建议'));
+    if (fp) fp.text += ` ${GROUP_ADVICE_CAREER[dominant[0]] || ''}`;
+  }
   out.push({ domainKey: 'career', sections: careerSections });
 
   // ===== 身体健康 =====
@@ -276,16 +465,25 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
       ? healthShas.map((s) => `【${s.name}·${s.pillar}】${HEALTH_SHA[s.name] || ''}`).join('')
       : '命局无羊刃飞刃流霞等血光灾煞之星——体质底子平顺，健康主要取决于作息与心态，别仗着没警示牌就透支。',
   });
-  // 五行短板：找四柱五行中最缺/最弱的一行
-  const wxCount: Record<string, number> = {};
-  for (const p of pillars) {
-    for (const ch of p.ganZhi) {
-      const wx = TG_WX_LOCAL[ch];
-      if (wx) wxCount[wx] = (wxCount[wx] || 0) + 1;
-    }
-  }
+  // 五行短板：优先用页面同源的 wxStats（含藏干全量），保证与其它板块口径一致；
+  // 未传入时回退到本地天干+地支本气统计（保持函数可独立调用）。
   const allWx = ['木', '火', '土', '金', '水'];
-  const weakest = allWx.filter((w) => (wxCount[w] || 0) === Math.min(...allWx.map((x) => wxCount[x] || 0)));
+  let wxCountOf: (w: string) => number;
+  if (input.wxStats) {
+    const stats = input.wxStats;
+    wxCountOf = (w) => stats[w]?.count ?? 0;
+  } else {
+    const local: Record<string, number> = {};
+    for (const p of pillars) {
+      for (const ch of p.ganZhi.split('')) {
+        const wx = TG_WX_LOCAL[ch] || DZ_WX_LOCAL[ch];
+        if (wx) local[wx] = (local[wx] || 0) + 1;
+      }
+    }
+    wxCountOf = (w) => local[w] || 0;
+  }
+  const minCount = Math.min(...allWx.map(wxCountOf));
+  const weakest = allWx.filter((w) => wxCountOf(w) === minCount);
   const weakInfo = weakest.map((w) => `${w}（${WX_HEALTH[w]?.organ || ''}偏弱——${WX_HEALTH[w]?.advice || ''}）`).join('；');
   healthSections.push({
     heading: '五行短板（藏干点出的系统）',
@@ -295,6 +493,19 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '养生方案（喜用神开方）',
     text: `喜用神为${yongShort}——${yongText.slice(0, 2).join('；')}。规律作息大于一切补品，体检按年做，情绪管理是养生的上半场。`,
   });
+  if (a.health) {
+    const findH = (h: string) => healthSections.find((s) => s.heading.includes(h));
+    const base = findH('体质的底色');
+    if (base) base.text += ` ${a.health.bodyOverview}`;
+    const weak = findH('五行短板');
+    if (weak && a.health.concerns.length > 0) weak.text += ` 需要留意的方面：${a.health.concerns.join('；')}`;
+    const plan = findH('养生方案');
+    if (plan) plan.text += ` ${a.health.wellnessAdvice}`;
+  }
+  if (dominant[0]) {
+    const fp = healthSections.find((s) => s.heading.includes('养生方案'));
+    if (fp) fp.text += ` ${GROUP_ADVICE_HEALTH[dominant[0]] || ''}`;
+  }
   out.push({ domainKey: 'health', sections: healthSections });
 
   // ===== 家庭亲情 =====
@@ -322,12 +533,25 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   }
   familySections.push({
     heading: '亲缘的暗线',
-    text: `${familyShas.some((s) => ['孤辰', '寡宿', '空亡'].includes(s.name)) ? '命带孤辰/寡宿/空亡，亲情表达是你要练的功课——家人之间最怕"都爱着但都不说"。' : '你的六亲缘分没有大煞冲撞——家庭是稳定的后盾，别因为忙碌把后盾冷落了。'}${findShaExact(input, ['天德', '月德']).length > 0 ? '天月二德护家，家中逢难有解，家风正则代代顺。' : ''}`,
+    text: `${familyShas.some((s) => ['孤辰', '寡宿', '空亡'].includes(s.name)) ? '命带孤辰/寡宿/空亡，亲情表达是你要练的功课——家人之间最怕都爱着但都不说。' : '你的六亲缘分没有大煞冲撞——家庭是稳定的后盾，别因为忙碌把后盾冷落了。'}${findShaExact(input, ['天德贵人', '月德贵人']).length > 0 ? '天月二德护家，家中逢难有解，家风正则代代顺。' : ''}`,
   });
   familySections.push({
     heading: '相处建议',
     text: `喜用神为${yongShort}——带家人一起做喜用五行的事（${yongText[0] || '顺应五行安排'}），比送礼更能拉近关系。长辈的健康问题按年排查，家事账目提前说清。`,
   });
+  if (a.family) {
+    const findF = (h: string) => familySections.find((s) => s.heading.includes(h));
+    const kin = findF('六亲宫位');
+    if (kin) kin.text += ` ${a.family.parentRelation}`;
+    const line = findF('亲缘的暗线');
+    if (line) line.text += ` ${a.family.siblings} ${a.family.familyAtmosphere}`;
+    const advF = findF('相处建议');
+    if (advF) advF.text += ` ${a.family.advice}`;
+  }
+  if (dominant[0]) {
+    const fp = familySections.find((s) => s.heading.includes('相处建议'));
+    if (fp) fp.text += ` ${GROUP_ADVICE_FAMILY[dominant[0]] || ''}`;
+  }
   out.push({ domainKey: 'family', sections: familySections });
 
   // ===== 社交朋友 =====
@@ -359,6 +583,19 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '择友建议',
     text: `喜用神为${yongShort}——你的贵人多属"${yongShen.map((w) => WX_PERSON[w]).filter(Boolean).join('、') || '志同道合'}"的气质类型。判断一段关系值不值：聊完更有劲，就是滋养；聊完更内耗，趁早降温。`,
   });
+  if (a.social) {
+    const findS = (h: string) => socialSections.find((s) => s.heading.includes(h));
+    const style = findS('社交风格');
+    if (style) style.text += ` ${a.social.socialTrait}`;
+    const shape = findS('朋友圈的形状');
+    if (shape) shape.text += ` ${a.social.friendQuality} ${a.social.nobleType}`;
+    const advS = findS('择友建议');
+    if (advS) advS.text += ` ${a.social.partnerAdvice}`;
+  }
+  if (dominant[0]) {
+    const fp = socialSections.find((s) => s.heading.includes('择友建议'));
+    if (fp) fp.text += ` ${GROUP_ADVICE_SOCIAL[dominant[0]] || ''}`;
+  }
   out.push({ domainKey: 'social', sections: socialSections });
 
   return out;
@@ -368,6 +605,11 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
 const TG_WX_LOCAL: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+};
+// 地支本气五行（五行短板统计需含地支——只算天干会漏掉半数字的能量分布）
+const DZ_WX_LOCAL: Record<string, string> = {
+  '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
+  '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
 };
 // 喜用神对应的贵人气质
 const WX_PERSON: Record<string, string> = {
