@@ -9,6 +9,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ command, mode }) => ({
   base: command === 'build' ? '/yaoyiyao/' : '/',
   root: __dirname,
+  // @ziweijs/core 厂内化：node_modules 原版五行局（纳音）计算有误（丙寅误判土五局），
+  // 修复版见 src/vendor/ziweijs-core（见该目录内注释），此处全局重定向。
+  resolve: {
+    alias: {
+      '@ziweijs/core': fileURLToPath(new URL('./src/vendor/ziweijs-core/index.js', import.meta.url)),
+    },
+  },
   build: {
     // 保守目标：兼容较旧系统 WebView（Android 8/9 及未更新的 WebView）
     target: 'es2018',

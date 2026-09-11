@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getStarBrightness, getChangsheng12, getBoshi12, getSuiqian12, getJiangqian12,
-  getMingZhu, getShenZhu, getLiuNianAges, getXiaoXianAges, enrichGongData,
+  getMingZhu, getShenZhu, getLiuNianAges, getXiaoXianAges, getAuxiliaryStars, enrichGongData,
 } from '../ziweiPalaceData';
 
 describe('星曜亮度查表（iztro 权威表）', () => {
@@ -136,6 +136,7 @@ describe('enrichGongData 集成', () => {
   it('补全亮度/十二神/流年小限/命主身主', () => {
     const { mingZhu, shenZhu } = enrichGongData(gongData, {
       fiveElementName: '金四局', yearGan: '壬', yearZhi: '午', gender: 'male',
+      hourZhi: '午', monthNum: 7,
     });
     expect(mingZhu).toBe('禄存');
     expect(shenZhu).toBe('火星');

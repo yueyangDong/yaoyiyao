@@ -23,7 +23,7 @@ import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, i
 import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
-import { enrichGongData } from '../utils/ziweiPalaceData';
+import { enrichGongData, getMingShenGongBranch } from '../utils/ziweiPalaceData';
 import { getAllSihuaDeepReadings } from '../utils/ziweiSihuaDeep';
 import { recalcSihua, describeFlyIn, describeFlyOutJi } from '../utils/ziweiSihuaFlying';
 import { BIRTH_SIHUA_PALACE, SELF_SIHUA_PALACE } from '../utils/ziweiSihuaPalaceContent';
@@ -106,9 +106,9 @@ const SIHUA_HEX: Record<string, string> = {
 };
 
 // 传统田字格方盘（上南下北：巳午未申 / 辰-酉 / 卯-戌 / 寅丑子亥）
-function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, gender, solarDate, lunisolarDate }: {
+function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, solarDate, lunisolarDate }: {
   gongData: any[]; mingZhu: string; shenZhu: string;
-  fiveElementName: string; gender: string; solarDate: string; lunisolarDate: string;
+  fiveElementName: string; genderLabel: string; solarDate: string; lunisolarDate: string;
 }) {
   const byBranch: Record<string, any> = {};
   for (const g of gongData) byBranch[g.branch] = g;
@@ -203,7 +203,7 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, gender, solar
     }}>
       <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>紫微斗数</div>
       <div style={{ fontSize: 11.5, color: 'var(--text-body)' }}>
-        {gender === 'female' ? '阴女' : '阳男'} · {fiveElementName}
+        {genderLabel} · {fiveElementName}
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{solarDate}</div>
       <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{lunisolarDate}</div>
@@ -352,7 +352,6 @@ export default function Ziwei() {
         sol = sol2;
         lu = sol.getLunar();
         solarDateStr = `${sol.getYear()}年${sol.getMonth()}月${sol.getDay()}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
-        lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
       } else {
         // 农历输入
         const m = isLeapMonth ? -(month) : month;
@@ -362,8 +361,15 @@ export default function Ziwei() {
         sol = sol2;
         lu = sol.getLunar();
         solarDateStr = `${sol.getYear()}年${sol.getMonth()}月${sol.getDay()}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
-        lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
       }
+
+      // 晚子时（23点）换日：与 @ziweijs/core 的 fixLateZiHour（_dayDivision='normal'）对齐。
+      // core 排盘在 23 点会把农历日 +1（次日），应用侧身宫/年干支/天刑天姚若仍按当日农历，
+      // 农历月末 23 点出生时会与排盘基准错位（如除夕 23 点生：排盘已按次年正月，应用还在腊月）。
+      if (calcHour === 23) {
+        lu = lu.next(1);
+      }
+      lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
 
       // 排盘统一用转换后的公历日期（农历输入也必须先转公历，否则排盘结果错误）
       const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay(), calcHour, calcMinute, 0);
@@ -378,13 +384,11 @@ export default function Ziwei() {
         language: 'zh-CN',
       } as any);
 
-      // 身宫推算（@ziweijs/core 0.3.0 的宫位对象没有 isShenGong 字段，原写法永远找不到身宫）：
-      // 安星诀——寅宫起正月顺数至生月得"生月宫"，再从生月宫起子时顺数至生时，即身宫。
-      const ZHI_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+      // 身宫推算（@ziweijs/core 0.3.0 的宫位对象没有 isShenGong 字段）：
+      // 安命身诀在 getMingShenGongBranch（命宫=月宫逆数生时、身宫=月宫顺数生时），
+      // 农历月已通过上方晚子时换日与 core 排盘基准对齐
       const lunarMonthAbs = Math.abs(lu.getMonth());
-      const hourZhiIdx = ZHI_ORDER.indexOf(lu.getTimeZhi());
-      const monthPalaceIdx = (2 + lunarMonthAbs - 1) % 12;
-      const shenGongBranch = ZHI_ORDER[(monthPalaceIdx + hourZhiIdx) % 12];
+      const { shenGongBranch } = getMingShenGongBranch(lunarMonthAbs, lu.getTimeZhi());
 
       const gongData = result.palaces.map((p: any) => ({
         name: p.name,
@@ -424,6 +428,8 @@ export default function Ziwei() {
         yearGan: yearGanZhi.charAt(0),
         yearZhi: yearGanZhi.charAt(1),
         gender: (gender === 'female' ? 'female' : 'male') as 'male' | 'female',
+        hourZhi: lu.getTimeZhi(),
+        monthNum: lunarMonthAbs,
       });
 
       // 四化校准（全书画表）：core 的辛干化科等与全书画不一致，此处清空重算。
@@ -506,6 +512,8 @@ export default function Ziwei() {
         fiveElementName: result.fiveElementName,
         ziweiBranch: result.ziweiBranch,
         gender: gender || 'male',
+        // core 返回的"阳男/阳女/阴男/阴女"（按年干阴阳 + 性别推得），直接用于盘面展示
+        genderLabel: (result as any).gender || '',
         mingGongName: mingGong ? `${mingGong.stem}${mingGong.branch}` : '—',
         shenGongName: shenGong ? `${(shenGong as any).stem}${(shenGong as any).branch}` : '—',
         mingZhu,
@@ -858,7 +866,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
               mingZhu={ziweiData.mingZhu}
               shenZhu={ziweiData.shenZhu}
               fiveElementName={ziweiData.fiveElementName}
-              gender={ziweiData.gender}
+              genderLabel={ziweiData.genderLabel}
               solarDate={ziweiData.solarDate}
               lunisolarDate={ziweiData.lunisolarDate}
             />

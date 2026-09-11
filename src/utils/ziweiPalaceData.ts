@@ -118,6 +118,98 @@ export function getJiangqian12(yearZhi: string): Record<string, string> {
   return map;
 }
 
+// ---------- 甲级辅星安星（禄存/擎羊/陀罗/天马/天魁/天钺/地空/地劫/火星/铃星/红鸾/天喜/天刑/天姚） ----------
+// @ziweijs/core 只安十四主星与昌曲辅弼，以下按《紫微斗数全书》通行安星诀补齐。
+
+/** 天马：年支三合局，寅午戌马在申、申子辰马在寅、巳酉丑马在亥、亥卯未马在巳 */
+const SANHE_TIANMA: Record<string, string> = {
+  '寅': '申', '午': '申', '戌': '申', '申': '寅', '子': '寅', '辰': '寅',
+  '巳': '亥', '酉': '亥', '丑': '亥', '亥': '巳', '卯': '巳', '未': '巳',
+};
+/** 火星起宫（起子时顺数至生时）：申子辰起寅、寅午戌起丑、巳酉丑起卯、亥卯未起酉 */
+const HUOXING_START: Record<string, string> = {
+  '申': '寅', '子': '寅', '辰': '寅',
+  '寅': '丑', '午': '丑', '戌': '丑',
+  '巳': '卯', '酉': '卯', '丑': '卯',
+  '亥': '酉', '卯': '酉', '未': '酉',
+};
+/** 铃星起宫（起子时顺数至生时）：寅午戌起卯，余皆起戌 */
+const LINGXING_START: Record<string, string> = { '寅': '卯', '午': '卯', '戌': '卯' };
+/** 天魁/天钺（年干）：甲戊庚牛羊、乙己鼠猴乡、丙丁猪鸡位、壬癸兔蛇藏、六辛逢马虎 */
+const KUI_YUE: Record<string, [string, string]> = {
+  '甲': ['丑', '未'], '戊': ['丑', '未'], '庚': ['丑', '未'],
+  '乙': ['子', '申'], '己': ['子', '申'],
+  '丙': ['亥', '酉'], '丁': ['亥', '酉'],
+  '壬': ['卯', '巳'], '癸': ['卯', '巳'],
+  '辛': ['午', '寅'],
+};
+
+/**
+ * 甲级辅星：返回 Record<地支, 星曜名[]>
+ * 已对文墨天机参考盘逐星核对（2004 甲申年六月巳时：禄存天马天刑在寅、擎羊天魁铃星红鸾等）。
+ */
+export function getAuxiliaryStars(yearGan: string, yearZhi: string, hourZhi: string, monthNum: number): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  const add = (branch: string, star: string) => {
+    if (!branch) return;
+    (result[branch] ||= []).push(star);
+  };
+  const idx = (b: string) => ZHI_ORDER.indexOf(b);
+
+  // 禄存（年干）+ 擎羊（禄前一位）+ 陀罗（禄后一位）
+  const lucun = LUCUN_BRANCH[yearGan] || '寅';
+  add(lucun, '禄存');
+  add(ZHI_ORDER[(idx(lucun) + 1) % 12], '擎羊');
+  add(ZHI_ORDER[(idx(lucun) + 11) % 12], '陀罗');
+
+  // 天马（年支三合局）
+  add(SANHE_TIANMA[yearZhi] || '寅', '天马');
+
+  // 天魁 / 天钺（年干）
+  const [kui, yue] = KUI_YUE[yearGan] || ['丑', '未'];
+  add(kui, '天魁');
+  add(yue, '天钺');
+
+  // 地劫（亥起子时顺数至生时）/ 地空（亥起子时逆数至生时）
+  const hourOff = Math.max(idx(hourZhi), 0);
+  add(ZHI_ORDER[(11 + hourOff) % 12], '地劫');
+  add(ZHI_ORDER[(11 - hourOff + 24) % 12], '地空');
+
+  // 火星 / 铃星（起子时顺数至生时）
+  add(ZHI_ORDER[(idx(HUOXING_START[yearZhi] || '寅') + hourOff) % 12], '火星');
+  add(ZHI_ORDER[(idx(LINGXING_START[yearZhi] || '戌') + hourOff) % 12], '铃星');
+
+  // 红鸾（卯起子年逆数至生年支）/ 天喜（红鸾对宫）
+  const hongluan = ZHI_ORDER[(3 - idx(yearZhi) + 24) % 12];
+  add(hongluan, '红鸾');
+  add(ZHI_ORDER[(idx(hongluan) + 6) % 12], '天喜');
+
+  // 天刑（酉起正月顺数至生月）/ 天姚（丑起正月顺数至生月）；闰月按本月
+  const monthOff = ((Math.abs(monthNum) - 1) % 12 + 12) % 12;
+  add(ZHI_ORDER[(9 + monthOff) % 12], '天刑');
+  add(ZHI_ORDER[(1 + monthOff) % 12], '天姚');
+
+  return result;
+}
+
+// ---------- 命宫 / 身宫 ----------
+/**
+ * 安命宫/身宫诀（《紫微斗数全书》）：
+ * 寅宫起正月顺数至生月得"生月宫"；
+ * 从生月宫起子时逆数至生时 = 命宫；顺数至生时 = 身宫。
+ * 子时生人命身同宫，午时生人命身对冲；命身两宫关于生月宫对称。
+ * 注意：农历月必须与排盘（core）同基准——晚子时（23点）core 会换日，调用方需先 next(1)。
+ */
+export function getMingShenGongBranch(lunarMonthAbs: number, hourZhi: string): { monthPalaceBranch: string; mingGongBranch: string; shenGongBranch: string } {
+  const hourIdx = Math.max(ZHI_ORDER.indexOf(hourZhi), 0);
+  const monthPalaceIdx = (2 + lunarMonthAbs - 1) % 12;
+  return {
+    monthPalaceBranch: ZHI_ORDER[monthPalaceIdx],
+    mingGongBranch: ZHI_ORDER[(monthPalaceIdx - hourIdx + 24) % 12],
+    shenGongBranch: ZHI_ORDER[(monthPalaceIdx + hourIdx) % 12],
+  };
+}
+
 // ---------- 命主 / 身主 ----------
 const MING_ZHU: Record<string, string> = {
   '子': '贪狼', '丑': '巨门', '寅': '禄存', '卯': '文曲', '辰': '廉贞', '巳': '武曲',
@@ -165,10 +257,14 @@ export interface EnrichOptions {
   yearGan: string;
   yearZhi: string;
   gender: 'male' | 'female';
+  /** 生时地支（'子'~'亥'），用于地空地劫/火星铃星安星 */
+  hourZhi: string;
+  /** 农历月数（闰月传正值按本月算），用于天刑天姚安星 */
+  monthNum: number;
 }
 
 /**
- * 补全宫位数据：亮度、长生/博士/岁前/将前十二神、流年小限虚岁、命主身主。
+ * 补全宫位数据：亮度、长生/博士/岁前/将前十二神、甲级辅星、流年小限虚岁、命主身主。
  * 直接在原数组对象上补充字段（含主星/辅星 brightness）。
  */
 export function enrichGongData(gongData: any[], opts: EnrichOptions): { mingZhu: string; shenZhu: string } {
@@ -176,11 +272,18 @@ export function enrichGongData(gongData: any[], opts: EnrichOptions): { mingZhu:
   const boshi = getBoshi12(opts.yearGan, opts.gender);
   const suiqian = getSuiqian12(opts.yearZhi);
   const jiangqian = getJiangqian12(opts.yearZhi);
+  const auxStars = getAuxiliaryStars(opts.yearGan, opts.yearZhi, opts.hourZhi, opts.monthNum);
 
   for (const g of gongData) {
     const branch = g.branch;
     for (const s of [...(g.majorStars || []), ...(g.minorStarDetails || [])]) {
       s.brightness = getStarBrightness(s.name, branch);
+    }
+    // 甲级辅星（禄存羊陀马魁钺空劫火铃鸾喜刑姚）追加到辅星列表
+    for (const starName of auxStars[branch] || []) {
+      (g.minorStars ||= []).push(starName);
+      // type 必须为 'minor'：ziweiAnalysis 按 type==='minor' 区分主辅星
+      (g.minorStarDetails ||= []).push({ name: starName, type: 'minor', sihua: null, sihuaSelf: null, sihuaSelfKind: null, brightness: getStarBrightness(starName, branch) });
     }
     g.changsheng = changsheng[branch] || '';
     g.boshi = boshi[branch] || '';
