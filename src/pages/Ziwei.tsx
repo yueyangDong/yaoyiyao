@@ -497,8 +497,10 @@ export default function Ziwei() {
       if (warnings.length === 0) warnings.push('各宫整体格局较好，无特别需要警惕之处');
 
       const ge = analyzeZiweiGe(gongData);
-      // 大限（十年运）+ 流年四化飞星：大限宫按库的 horoscopeRanges 虚岁区间定位，宫干飞四化
-      const horoscopeSihua = analyzeHoroscopeSihua(gongData as any, sol.getYear());
+      // 大限（十年运）+ 流年四化飞星：大限宫按库的 horoscopeRanges 虚岁区间定位，宫干飞四化。
+      // 虚岁按农历生年计（lu 已与 core 排盘同基准，含晚子时换日）——
+      // 若用公历年（sol.getYear()），立春前出生者虚岁会少算一岁、大限宫错位。
+      const horoscopeSihua = analyzeHoroscopeSihua(gongData as any, Math.abs(lu.getYear()));
       setZiweiData({
         gongData,
         mingGe: ge,
@@ -641,23 +643,25 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
   const getGongVerdict = (gong: any): string => {
     const score = getPalaceScore(gong);
     const starKey = (gong.majorStars || []).map((s: any) => s.name).join('') || '空宫';
+    // '命宫'自带宫字，其余宫名需补宫字
+    const gongLabel = String(gong.name).endsWith('宫') ? gong.name : `${gong.name}宫`;
     const verdicts: Record<string, string[]> = {
       '吉': [
-        `你的${gong.name}宫格局较好，是这个命盘的亮点之一。`,
-        `${gong.name}宫吉星汇聚，在这一方面有天然优势。`,
-        `${gong.name}宫星曜清朗，在这个领域你比大多数人顺利。`,
-        `你这${gong.name}宫底子好，相关的事往往事半功倍，值得重点经营。`,
+        `你的${gongLabel}格局较好，是这个命盘的亮点之一。`,
+        `${gongLabel}吉星汇聚，在这一方面有天然优势。`,
+        `${gongLabel}星曜清朗，在这个领域你比大多数人顺利。`,
+        `你这${gongLabel}底子好，相关的事往往事半功倍，值得重点经营。`,
       ],
       '凶': [
-        `你的${gong.name}宫煞星较重，这个领域需要多花心思经营。`,
-        `${gong.name}宫挑战较多，但煞星也是成就一个人的磨刀石。`,
-        `${gong.name}宫波折较多，早经历、早成长，晚景反而更稳健。`,
-        `${gong.name}宫是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
+        `你的${gongLabel}煞星较重，这个领域需要多花心思经营。`,
+        `${gongLabel}挑战较多，但煞星也是成就一个人的磨刀石。`,
+        `${gongLabel}波折较多，早经历、早成长，晚景反而更稳健。`,
+        `${gongLabel}是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
       ],
       '中': [
-        `你的${gong.name}宫吉凶参半，有好有坏，整体还算平稳。`,
-        `${gong.name}宫中规中矩，不算突出也不算差，知足常乐。`,
-        `${gong.name}宫星曜平和，没有大起大落，稳中求进就是上策。`,
+        `你的${gongLabel}吉凶参半，有好有坏，整体还算平稳。`,
+        `${gongLabel}中规中矩，不算突出也不算差，知足常乐。`,
+        `${gongLabel}星曜平和，没有大起大落，稳中求进就是上策。`,
       ],
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
@@ -1066,7 +1070,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                   marginBottom: 0,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
-                    <Text strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{gong.name}宫</Text>
+                    <Text strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{String(gong.name).endsWith('宫') ? gong.name : `${gong.name}宫`}</Text>
                     <Tag style={{
                       fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 6,
                       background: score.level === '吉' ? '#6B9A7A' : score.level === '凶' ? '#C23B2B' : '#B87B4A',
@@ -1121,22 +1125,22 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                     </Text>
                   )}
                   {(() => {
-                    // 飞宫四化区块：自化 + 飞入对待 + 飞出流向（谁化给谁）
+                    // 飞宫四化区块：飞入对待 + 飞出流向（谁化给谁）。
+                    // 自化不再罗列——含义已由上方"四化详解"区块完整承接（避免重复文案）。
                     const flows: any[] = ziweiData.sihuaFlows || [];
                     const sum: any = (ziweiData.sihuaSummaries || []).find((s: any) => s.gongName === gong.name);
                     if (!sum) return null;
+                    const fmtTo = (n: string) => (n.endsWith('宫') ? n : `${n}宫`);
                     const flyInText = describeFlyIn(gong.name, flows);
                     const flyOutJiText = describeFlyOutJi(gong.name, flows);
-                    const selfText = (sum.selfs || []).map((x: any) => `自化${x.type}（${x.star}）`).join('、');
-                    const flyOutBrief = (sum.flyOut || []).map((x: any) => `化${x.type}→${x.to}宫（${x.star}）`).join('、');
-                    if (!selfText && !flyInText && !flyOutJiText && !flyOutBrief) return null;
+                    const flyOutBrief = (sum.flyOut || []).map((x: any) => `化${x.type}→${fmtTo(x.to)}（${x.star}）`).join('、');
+                    if (!flyInText && !flyOutJiText && !flyOutBrief) return null;
                     return (
                       <div style={{
                         marginTop: 6, padding: '6px 10px', borderRadius: 6,
                         background: 'rgba(184,123,74,0.06)', fontSize: 12, lineHeight: 1.8, color: 'var(--text-body)',
                       }}>
                         <strong style={{ color: 'var(--text-secondary)' }}>飞宫四化：</strong>
-                        {selfText && <div>· 本宫{selfText}——能量自我消散、来得快去得也快，吉凶减力，宜顺其自然不强求。</div>}
                         {flyInText && <div>· 飞入本宫：{flyInText}</div>}
                         {flyOutBrief && <div>· 本宫飞出：{flyOutBrief}。</div>}
                         {flyOutJiText && <div>· {flyOutJiText}</div>}
@@ -1163,7 +1167,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                     size="small"
                     title={
                       <span>
-                        <span style={{ fontWeight: 700 }}>{r.gongName}宫</span>
+                        <span style={{ fontWeight: 700 }}>{r.gongName.endsWith('宫') ? r.gongName : `${r.gongName}宫`}</span>
                         <span style={{ margin: '0 6px', color: 'var(--text-secondary)' }}>·</span>
                         <span style={{ color: 'var(--text-primary)' }}>{r.starName}</span>
                         {r.sihua && (

@@ -234,4 +234,23 @@ describe('analyzeZiweiGe', () => {
     const r = analyzeZiweiGe(gongData);
     expect(r.geNames).not.toContain('昌曲夹命格');
   });
+
+  it('羊陀夹忌：命宫辅星坐生年化忌（文昌化忌）同样触发破格', () => {
+    // 全书画化忌可落辅星（如辛干文昌化忌），只查主星会漏判
+    const gongData = [
+      {
+        name: '命宫', branch: '午',
+        majorStars: [{ name: '天机', sihua: null }],
+        minorStars: ['文昌'],
+        minorStarDetails: [{ name: '文昌', type: 'minor', sihua: '忌' }],
+      },
+      { name: '父母', branch: '未', majorStars: [], minorStars: ['陀罗'] },
+      { name: '兄弟', branch: '巳', majorStars: [], minorStars: ['擎羊'] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.breakReasons.join()).toContain('羊陀夹忌');
+  });
 });

@@ -158,9 +158,10 @@ function sihuaFlyItems(palaces: PalaceData[], stem: string, scope: string): Horo
 function flySummary(items: HoroscopeSihuaItem[]): string {
   const lu = items.find(i => i.hua === '化禄');
   const ji = items.find(i => i.hua === '化忌');
+  // 宫名原样展示（'命宫'自带宫字不可再剥，否则出现"禄入命"）
   const parts: string[] = [];
-  if (lu?.palaceName) parts.push(`禄入${lu.palaceName.replace(/宫$/, '')}（机会所在）`);
-  if (ji?.palaceName) parts.push(`忌入${ji.palaceName.replace(/宫$/, '')}（功课所在）`);
+  if (lu?.palaceName) parts.push(`禄入${lu.palaceName}（机会所在）`);
+  if (ji?.palaceName) parts.push(`忌入${ji.palaceName}（功课所在）`);
   return parts.length ? parts.join('，') + '。' : '';
 }
 
@@ -572,6 +573,13 @@ const TRIANGLE_MAP: Record<string, string[]> = {
 // ========== 工具函数 ==========
 
 /**
+ * 宫名展示标签：'命宫'自带宫字不重复，其余（兄弟/夫妻…）补宫字
+ */
+function fmtPalaceName(name: string): string {
+  return String(name || '').endsWith('宫') ? name : `${name}宫`;
+}
+
+/**
  * 从星曜对象中提取四化标记（兼容多种数据格式）
  * 注意：此函数为生年优先的合并视图，仅用于快速判断；
  * 需要区分"体（生年）/用（自化）"时请用 extractSihuaEntries
@@ -690,6 +698,8 @@ function getPalaceSpecificContext(
   triangleInfos: { name: string; majorStars: string[]; sihua: string | null; sihuaList?: { star: string; sihua: string }[] }[],
 ): string {
   const parts: string[] = [];
+  // 宫名展示标签：'命宫'自带宫字不重复，其余（兄弟/夫妻…）补宫字
+  const gongLabel = palaceName.endsWith('宫') ? palaceName : `${palaceName}宫`;
 
   // 1. 本宫配置定位（动态生成：星曜+生年化标签；空宫实质借对宫论）
   const birthTagOf = (sn: string) => {
@@ -697,15 +707,15 @@ function getPalaceSpecificContext(
     return t ? `化${t.sihua}` : '';
   };
   if (mainStars.length > 0) {
-    parts.push(`${palaceName}宫坐${mainStars.map((s) => `${s}${birthTagOf(s)}`).join('与')}。`);
+    parts.push(`${gongLabel}坐${mainStars.map((s) => `${s}${birthTagOf(s)}`).join('与')}。`);
   } else {
     const oppStars = oppositeInfo && oppositeInfo.majorStars.length > 0
       ? oppositeInfo.majorStars.join('、')
       : '';
     if (oppStars) {
-      parts.push(`${palaceName}宫为空宫，借对宫${oppStars}论——空宫不是空白，而是弹性大、可塑性高，${oppStars}的特质会透过环境和际遇在你身上显现。`);
+      parts.push(`${gongLabel}为空宫，借对宫${oppStars}论——空宫不是空白，而是弹性大、可塑性高，${oppStars}的特质会透过环境和际遇在你身上显现。`);
     } else {
-      parts.push(`${palaceName}宫空而无借——此宫能量平和，没有先天定式，全看后天经营。`);
+      parts.push(`${gongLabel}空而无借——此宫能量平和，没有先天定式，全看后天经营。`);
     }
   }
 
@@ -781,7 +791,7 @@ function getPalaceSpecificContext(
         : (t.sihua ? [{ star: '', sihua: t.sihua }] : []);
       for (const it of list) {
         const label = it.star ? `${it.star}化${it.sihua}` : `化${it.sihua}`;
-        triTags.push(`${t.name}宫${label}${it.sihua === '忌' ? '（压力亦汇入）' : ''}`);
+        triTags.push(`${fmtPalaceName(t.name)}${label}${it.sihua === '忌' ? '（压力亦汇入）' : ''}`);
       }
     }
     if (triTags.length > 0) {
@@ -1039,33 +1049,33 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
   if (luItems.length > 0) {
     for (const lu of luItems) {
       const isInner = INNER_PALACES.includes(lu.palace);
-      let text = `${stemLabel}——${lu.star}在${lu.palace}宫化禄，`;
+      let text = `${stemLabel}——${lu.star}在${fmtPalaceName(lu.palace)}化禄，`;
       text += isInner
         ? `${lu.palace}为我宫，此为"实禄"，福气能量内收，是你顺手可用的资源，顺势而为事半功倍。`
         : `${lu.palace}为他宫，此为"虚禄"，福气能量外泄，机缘多在他人与外境，需主动经营方能承接。`;
       // 禄随忌走：禄的能量最终流向化忌所在领域
       if (birthJiItems.length > 0) {
         const ji = birthJiItems[0];
-        text += `按"禄随忌走"，这份禄的能量最终流向${ji.palace}宫的${ji.star}化忌——${ji.palace}领域才是你真正执着投入、需要用功的所在。`;
+        text += `按"禄随忌走"，这份禄的能量最终流向${fmtPalaceName(ji.palace)}的${ji.star}化忌——${ji.palace}领域才是你真正执着投入、需要用功的所在。`;
       }
       // 权科制衡助力
       const qkParts: string[] = [];
-      if (quanItems.length > 0) qkParts.push(`${quanItems[0].star}化权在${quanItems[0].palace}宫提供掌控力`);
-      if (keItems.length > 0) qkParts.push(`${keItems[0].star}化科在${keItems[0].palace}宫提供名声助力`);
+      if (quanItems.length > 0) qkParts.push(`${quanItems[0].star}化权在${fmtPalaceName(quanItems[0].palace)}提供掌控力`);
+      if (keItems.length > 0) qkParts.push(`${keItems[0].star}化科在${fmtPalaceName(keItems[0].palace)}提供名声助力`);
       if (qkParts.length > 0) text += `权科夹辅：${qkParts.join('，')}，此禄有源有护，非浮禄。`;
       highlights.push(text);
     }
   }
 
   if (quanItems.length > 0 && luItems.length === 0) {
-    const quanStars = quanItems.map((s) => `${s.star}在${s.palace}宫化权`).join('、');
+    const quanStars = quanItems.map((s) => `${s.star}在${fmtPalaceName(s.palace)}化权`).join('、');
     highlights.push(`命盘有化权——${quanStars}，你在这个领域具备领导力和主导权，适合主动争取和掌控局面。`);
   }
 
   // 自化提示（"用"层面的能量流动，体用分层呈现）
   if (selfSihua.length > 0) {
     const desc = selfSihua
-      .map((s) => `${s.star}在${s.palace}宫${s.source === 'selfCF' ? '离心' : '向心'}自化${s.sihua}`)
+      .map((s) => `${s.star}在${fmtPalaceName(s.palace)}${s.source === 'selfCF' ? '离心' : '向心'}自化${s.sihua}`)
       .join('、');
     cautions.push(`命盘带自化——${desc}。自化是"用"层面的能量流动：离心者得到后易再流失，向心者机缘自来但需守得住，皆以平常心对待得失为宜。`);
   }
@@ -1358,6 +1368,8 @@ function normalizePalaceArray(palaces: any[]): PalaceData[] {
       isLaiYin: p.isLaiYin || false,
       isShenGong: p.isShenGong || false,
       index: p.index,
+      // 大限虚岁区间必须透传——analyzeHoroscopeSihua 依赖它定位大限命宫
+      horoscopeRanges: p.horoscopeRanges,
     };
   });
 }

@@ -37,6 +37,11 @@ function normGongName(name: string): string {
   return String(name || '').replace(/宫$/, '');
 }
 
+/** 宫名展示标签：'命宫'自带宫字不重复，其余补宫字 */
+function fmtGongLabel(name: string): string {
+  return String(name || '').endsWith('宫') ? name : `${name}宫`;
+}
+
 function gongKey(g: any): string {
   return normGongName(g?.name);
 }
@@ -84,7 +89,9 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
   // ---- 羊陀夹忌（中州派重破格）：命宫坐生年化忌，擎羊陀罗分居命宫两侧 ----
   let yangTuoJia = false;
   if (ming?.branch) {
-    const mingHasJi = (ming.majorStars || []).some((s: any) => s.sihua === '忌');
+    // 命宫坐生年化忌：主星+辅星都算（辛干文昌化忌、全书画化忌可落辅星，只查主星会漏判）
+    const mingStarObjs = [...(ming.majorStars || []), ...(ming.minorStarDetails || [])];
+    const mingHasJi = mingStarObjs.some((s: any) => (typeof s === 'string' ? null : s.sihua) === '忌');
     if (mingHasJi) {
       const bi = ZHI_ORDER.indexOf(ming.branch);
       const leftGong = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 11) % 12]);
@@ -193,18 +200,18 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     const hasKong = names.some((n) => KONG_STARS.includes(n));
     if (names.includes('贪狼') && names.includes('火星')) {
       if (hasKong) {
-        breakReasons.push(`火贪格：${gongKey(g)}宫贪狼火星同度但逢地空/地劫，横发之气被空劫所破`);
+        breakReasons.push(`火贪格：${fmtGongLabel(gongKey(g))}贪狼火星同度但逢地空/地劫，横发之气被空劫所破`);
       } else {
         geNames.push('火贪格');
-        reasons.push(`火贪格：${gongKey(g)}宫贪狼与火星同度，火炼贪狼主突发横发，机遇来得快`);
+        reasons.push(`火贪格：${fmtGongLabel(gongKey(g))}贪狼与火星同度，火炼贪狼主突发横发，机遇来得快`);
       }
     }
     if (names.includes('贪狼') && names.includes('铃星')) {
       if (hasKong) {
-        breakReasons.push(`铃贪格：${gongKey(g)}宫贪狼铃星同度但逢地空/地劫，横发之气被空劫所破`);
+        breakReasons.push(`铃贪格：${fmtGongLabel(gongKey(g))}贪狼铃星同度但逢地空/地劫，横发之气被空劫所破`);
       } else {
         geNames.push('铃贪格');
-        reasons.push(`铃贪格：${gongKey(g)}宫贪狼与铃星同度，主意外之财与突变机遇`);
+        reasons.push(`铃贪格：${fmtGongLabel(gongKey(g))}贪狼与铃星同度，主意外之财与突变机遇`);
       }
     }
   }

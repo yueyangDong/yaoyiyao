@@ -219,6 +219,28 @@ describe('十二宫解读：冲照只论生年化（体），自化（用）不�
     expect(readings[0].reading).toContain('帝星配财库');
   });
 
+  it('命宫宫名不叠加："命宫坐紫微"而非"命宫宫坐"', () => {
+    const r = generatePalaceReading(
+      '命宫',
+      [{ name: '紫微', type: 'major', sihua: null }],
+      null, null, null,
+    );
+    expect(r.reading).toContain('命宫坐紫微');
+    expect(r.reading).not.toContain('命宫宫');
+  });
+
+  it('大限 summary：禄忌落命宫时宫名完整（"禄入命宫"而非"禄入命"）', () => {
+    const palaces = [
+      { name: '命宫', stem: '甲', branch: '子', majorStars: [{ name: '廉贞' }], minorStars: [], horoscopeRanges: [1, 10] },
+      { name: '兄弟', stem: '乙', branch: '丑', majorStars: [{ name: '太阳' }], minorStars: [], horoscopeRanges: [11, 20] },
+    ];
+    // 甲干：廉贞化禄（命宫）、太阳化忌（兄弟）
+    const r = analyzeHoroscopeSihua(palaces as any, 2020, 2021);
+    expect(r.decadal?.summary).toContain('禄入命宫');
+    expect(r.decadal?.summary).toContain('忌入兄弟');
+    expect(r.decadal?.summary).not.toContain('禄入命（');
+  });
+
   it('参考盘端到端：@ziweijs/core 排盘 → 十二宫解读全覆盖且非空', () => {
     const r = ziwei.bySolar({ name: '', gender: 'male', date: new Date(2000, 7, 16, 4, 0, 0), language: 'zh-CN' } as any);
     const chart = r.palaces.map((p: any) => ({

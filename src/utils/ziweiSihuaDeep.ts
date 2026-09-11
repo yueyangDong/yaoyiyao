@@ -210,10 +210,12 @@ export function generateSihuaDeepReading(gong: {
 
   // 第4段：健康与运势
   const health = STAR_HEALTH[target.name];
+  // '命宫'自带宫字不重复，其余宫名补宫字
+  const gongLabel = gongName.endsWith('宫') ? gongName : `${gongName}宫`;
   if (sihua === '忌') {
     const bodyLink = (gongName === '福德' || gongName === '疾厄')
-      ? `${gongName}宫与身体直接相连，化忌在此`
-      : `${gongName}宫的郁结会间接影响身体——`;
+      ? `${gongLabel}与身体直接相连，化忌在此`
+      : `${gongLabel}的郁结会间接影响身体——`;
     const selfNote = self
       ? `而自化${self}意味着这些不适容易被你藏在体面之下——比如忍着病痛去应酬、去工作，只为保全大局和面子。`
       : '别用"忙"来麻痹信号，定期体检、按时吃饭睡觉，是这个宫位最实在的开运方式。';
