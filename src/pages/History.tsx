@@ -85,7 +85,7 @@ export default function History() {
               return (
                 <List.Item
                   actions={[
-                    <Button key="recheck" type="link" onClick={() => navigate(`/${item.module}`)}>
+                    <Button key="recheck" type="link" onClick={() => navigate(`/${item.module}`, { state: { historyParams: item.queryParams } })}>
                       重新查询
                     </Button>,
                   ]}

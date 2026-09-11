@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
@@ -653,6 +653,7 @@ function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string
 
 export default function Bazi() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -960,7 +961,8 @@ export default function Bazi() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
-        queryParams: { year, month, day, hour, minute, gender },
+        // 补全回放所需参数：否则农历输入/闰月/真太阳时出生地都无法还原，历史“重新查询”形同虚设
+        queryParams: { year, month, day, hour, minute, gender, inputMode, leapMonth, birthplace: birthplace || null, ziShiSect },
         resultSummary: `八字排盘：${eightChar.getYear()} ${eightChar.getMonth()} ${eightChar.getDay()} ${eightChar.getTime()}`,
       });
     } catch (e: any) {
@@ -969,6 +971,33 @@ export default function Bazi() {
       setLoading(false);
     }
   };
+
+  // 历史记录“重新查询”：回填参数并自动重排（B5）。state 消费后立即清掉，避免返回/刷新重复触发。
+  const [pendingReplay, setPendingReplay] = useState<boolean>(false);
+  useEffect(() => {
+    const hp = (location.state as any)?.historyParams;
+    if (!hp || baziData) return;
+    setInputMode(hp.inputMode === 'lunar' ? 'lunar' : 'solar');
+    if (typeof hp.leapMonth === 'number') setLeapMonth(hp.leapMonth);
+    form.setFieldsValue({
+      gender: hp.gender,
+      year: hp.year,
+      month: hp.month,
+      day: hp.day,
+      hour: hp.hour,
+      minute: hp.minute ?? 0,
+      birthplace: hp.birthplace || undefined,
+      ziShiSect: hp.ziShiSect ?? 2,
+    });
+    navigate('.', { replace: true, state: null });
+    setPendingReplay(true);
+  }, [location.state]);
+
+  useEffect(() => {
+    if (!pendingReplay) return;
+    setPendingReplay(false);
+    handleCalc();
+  }, [pendingReplay]);
 
 // 流月模板池：每类关系 5 条，按 i 索引选取避免简单轮转
 const LIUYUE_TEMPLATES: Record<string, string[]> = {
@@ -1951,7 +1980,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                       <Card size="small" style={{ borderStyle: 'dashed', borderColor: 'var(--border-light)', background: 'rgba(0,0,0,0.02)' }}>
                         <Space direction="vertical" size={0}>
                           <Text type="secondary" style={{ fontSize: 14 }}>起运前·小运</Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>0~{step.startAge}岁</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>0~{step.endAge}岁</Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}年以前</Text>
                           <Tag style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-secondary)', border: 'none', marginTop: 4 }}>未起运</Tag>
                         </Space>
