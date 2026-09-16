@@ -96,7 +96,7 @@ const LOVE_SHA: Record<string, string> = {
 };
 const CAREER_SHA: Record<string, string> = {
   '天乙贵人': '一生贵人运强，职场遇坎总有人搭手——维护好师长与前辈，是你的隐形资产',
-  '三奇': '罕见贵格，思维与众不同，事业上常有破格提拔与奇遇，适合走差异化路线',
+  '三奇贵人': '罕见贵格，思维与众不同，事业上常有破格提拔与奇遇，适合走差异化路线',
   '将星': '天生领导命，能独当一面拍板决策——往管理岗走，别浪费统御天赋',
   '驿马': '动中求财，出差、外派、跨区域业务反而旺你，长期坐办公室会"闷住"',
   '华盖': '适合专业深耕而非人情场，技术、学术、设计、玄学类领域能出成绩',
@@ -112,6 +112,7 @@ const CAREER_SHA: Record<string, string> = {
   '学堂': '学新东西快，适合持续深造——学历和证书会直接变现',
   '词馆': '口才笔才俱佳，适合文职、内容、法务、谈判类工作',
   '太极贵人': '对哲学玄学有天赋，也主贵人提携，研究型路线有潜力',
+  '六厄': '三合五行之"死"地，古称"剥官之煞"——才干易被埋没、成果易被他人摘走。选对平台与直属领导，比单靠拼命更能破局',
 };
 const HEALTH_SHA: Record<string, string> = {
   '羊刃': '肝胆之气过旺，注意血压、炎症与外伤——运动宜泄不宜堵，定期体检',
@@ -126,6 +127,7 @@ const HEALTH_SHA: Record<string, string> = {
   '四废': '天生体质偏弱、精力易不足——以养为主：早睡、补养、别硬拼消耗战',
   '天医': '自愈力强，也适合了解医疗养生知识——身体会用得好的人',
   '天赦': '逢凶化吉的体质底子，大病概率低——但别拿好运赌作息',
+  '阴刃': '阴干之刃，爆发力藏在内里——情绪与压力的积压比外伤更需留意，别久坐熬夜、别闷头硬扛',
 };
 const FAMILY_SHA: Record<string, string> = {
   '空亡': '所落宫位的人事易"有名无实"——年柱空亡祖上缘薄，月柱空亡与父母聚少离多，日柱空亡婚姻宜多经营，时柱空亡晚岁宜早规划',
@@ -232,6 +234,15 @@ const PERSONALITY_SHA: Record<string, string> = {
   '日德': '心地宽厚、有容人之量，遇事讲情面——善意要有边界，才不会被人当成软弱',
   '天赦': '逢凶化吉的体质，心态相对乐观——但别把好运当成不用努力的借口',
   '四废': '精力起伏大、容易疲惫，需要比常人多一点的休整——你的节奏是脉冲式的，别逼自己匀速跑',
+};
+
+/**
+ * 领域文案表集合（集合的键即"哪个板块"）。
+ * 供 `shenShaGuard.test.ts` 校验：键名必须是 `shenSha.ts` 里真实存在的神煞名，
+ * 且每个能算出来的神煞至少要落进一张表——避免出现"有星无解"。
+ */
+export const DOMAIN_SHA_MAPS: Record<string, Record<string, string>> = {
+  LOVE_SHA, CAREER_SHA, HEALTH_SHA, FAMILY_SHA, SOCIAL_SHA, PERSONALITY_SHA,
 };
 const YONG_SHEN_MIND: Record<string, string> = {
   '木': '多亲近自然、多做舒展身体的事，肝气顺了心气就顺，你的情绪出口在行动里',
@@ -412,8 +423,8 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '事业格局的发动机（月令十神）',
     text: `月令（${pillars[1]?.ganZhi || ''}）藏干主气为${monthShiShen}——${MONTH_SHI_SHEN_CAREER[monthShiShen] || '你的事业底盘由月令定调'}`,
   });
-  const careerShas = findShaExact(input, Object.keys(CAREER_SHA))
-    .concat(findSha(input, (n) => n.includes('三奇')).map((s) => ({ ...s, name: '三奇' })));
+  // 三奇贵人用精确名匹配（旧版靠 includes('三奇') 后改名，键名与实际神煞名不一致，已统一）
+  const careerShas = findShaExact(input, Object.keys(CAREER_SHA));
   if (careerShas.length > 0) {
     careerSections.push({
       heading: '神煞点睛（职场的底牌）',

@@ -157,11 +157,30 @@ describe('新增神煞：地支查法类', () => {
     expect(names(r)).toContain('时柱亡神');
   });
 
-  it('丧门/吊客/披麻：子年见寅(丧门)、卯(披麻)、戌(吊客)', () => {
-    const r = calcShenSha([P('甲子'), P('丙寅'), P('丁卯'), P('甲戌')]);
+  it('丧门/吊客/披麻：子年见寅(丧门)、戌(吊客)、酉(披麻，年支逆三)', () => {
+    const r = calcShenSha([P('甲子'), P('丙寅'), P('丁酉'), P('甲戌')]);
     expect(names(r)).toContain('月柱丧门');
     expect(names(r)).toContain('日柱披麻');
     expect(names(r)).toContain('时柱吊客');
+  });
+
+  it('披麻只认年支：日支逆三位不生成披麻', () => {
+    // 年支子→披麻在酉；日支巳逆三为寅——若兼查日支，寅会被误判
+    const r = calcShenSha([P('甲子'), P('丙寅'), P('丁巳'), P('甲戌')]);
+    expect(r.filter(x => x.name === '披麻')).toHaveLength(0);
+  });
+
+  it('六厄：寅午戌年见酉（火局火死在酉），仅年支起查', () => {
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')]);
+    expect(names(r)).toContain('日柱六厄');
+    expect(names(r)).not.toContain('月柱六厄');
+  });
+
+  it('六厄只认年支：日支金局死在子，但日支不参与起查', () => {
+    // 日支酉（金局）本应对应子；年支用午（火局）对应酉 → 只有日柱命中
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')]);
+    expect(r.filter(x => x.name === '六厄')).toHaveLength(1);
+    expect(r.find(x => x.name === '六厄')!.pillar).toBe('日柱');
   });
 
   it('天罗地网：年支戌、日支辰均查', () => {
@@ -204,5 +223,51 @@ describe('新增神煞：元辰/勾绞（需性别）', () => {
     const r = calcShenSha([P('甲子'), P('丁卯'), P('庚午'), P('癸酉')], 'male');
     expect(names(r)).toContain('月柱勾绞');
     expect(names(r)).toContain('时柱勾绞');
+  });
+});
+
+describe('词馆：子平法（年干/日干之临官位）', () => {
+  it('癸日见子（癸禄在子）→ 词馆在月柱；时柱壬戌不再判词馆', () => {
+    // 对照盘的「癸干见壬戌」属禄命法口诀，非本项目口径
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')]);
+    expect(names(r)).toContain('月柱词馆');
+    expect(names(r)).not.toContain('时柱词馆');
+  });
+
+  it('甲干见寅（甲禄在寅）→ 词馆在月柱', () => {
+    const r = calcShenSha([P('甲子'), P('庚寅'), P('丙午'), P('戊子')]);
+    expect(names(r)).toContain('月柱词馆');
+  });
+
+  it('年干/日干之临官位不在盘中时不判词馆', () => {
+    // 壬禄在亥、癸禄在子，四支午/寅/卯/戌中皆无 → 无词馆
+    const r = calcShenSha([P('壬午'), P('丙寅'), P('癸卯'), P('戊戌')]);
+    expect(r.filter(x => x.name === '词馆')).toHaveLength(0);
+  });
+
+  it('与学堂口径统一：学堂取长生、词馆取临官，均只判地支', () => {
+    // 癸日：学堂在卯（长生）命中日支；词馆在子（临官）——四支午/寅/卯/戌中无子，故无词馆
+    const r = calcShenSha([P('壬午'), P('丙寅'), P('癸卯'), P('戊戌')]);
+    expect(names(r)).toContain('日柱学堂');
+    expect(r.filter(x => x.name === '词馆')).toHaveLength(0);
+  });
+});
+
+describe('整盘校准：壬午 壬子 癸酉 壬戌（男）', () => {
+  it('四柱神煞分布与校准后规则完全一致（子平法 + 六厄/披麻年支单查）', () => {
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')], 'male');
+    const got = r.map(x => `${x.pillar}${x.name}`).sort();
+    const want = [
+      '年柱桃花', '年柱将星', '年柱月德贵人',
+      '月柱禄神', '月柱灾煞', '月柱词馆', '月柱月德贵人',
+      '日柱将星', '日柱金神', '日柱六厄', '日柱红鸾', '日柱勾绞',
+      '时柱华盖', '时柱月德贵人', '时柱空亡',
+    ].sort();
+    expect(got).toEqual(want);
+  });
+
+  it('披麻不再落此盘（年支午逆三为卯，盘中无卯）', () => {
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')], 'male');
+    expect(r.filter(x => x.name === '披麻')).toHaveLength(0);
   });
 });

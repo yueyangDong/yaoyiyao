@@ -12,6 +12,20 @@
 // 7. 贵人类神煞（天乙/文昌/太极/国印/福星/学堂/词馆）改为年干或日干双查
 // 8. 羊刃仅论阳干，阴干同位另标"阴刃"（平）
 // 9. 新增：天赦、天医、红艳、阴差阳错、孤鸾煞、十恶大败、四废
+//
+// 第二轮校准记录（对照《三命通会》《壶中子》及通行神煞表）：
+// 10. 披麻：旧版按"年支顺数三位"（午年误算出酉→日柱），方向搞反了。
+//     通行查法为逆数三位：子见酉、丑见戌…午见卯、酉见午（查法范围见第 13 条）。
+// 11. 六厄：旧版缺失。六厄为三合五行之"死"地（申子辰见卯、寅午戌见酉、巳酉丑见子、亥卯未见午），
+//     属剥官之煞，与丧门/吊客同为"年支"单查（见第 13 条）。
+// 12. 词馆：本项目采用【子平法】——以年干/日干之临官位取（甲寅 乙卯 丙巳 丁午 戊巳 己午 庚申 辛酉 壬亥 癸子），
+//     与同表的"学堂（日干长生位）"口径统一。癸日之词馆落在月柱（子）。
+//     对照盘的"癸干见壬戌→时柱"属禄命法口诀，两者为门派分歧，非对错；
+//     把 WORD_HALL_USE_JIAZI 置为 true 可切到口诀法。
+// 13. 六厄、披麻：凡"岁煞/剥官"类以【年支】单查为准（与丧门、吊客同组），不再兼查日支：
+//     - 六厄 = 年支三合五行之"死"地（申子辰见卯、寅午戌见酉、巳酉丑见子、亥卯未见午）
+//     - 披麻 = 年支逆数三位（子见酉、丑见戌…午见卯、酉见午）
+//     注意：桃花/驿马/华盖/将星/劫煞/灾煞/亡神仍为"年支 + 日支"双查，不受此条影响。
 
 export interface ShenShaItem {
   name: string;
@@ -73,7 +87,8 @@ export const SHENSHA_PLAIN: Record<string, string> = {
   '进神日': '生于甲子、甲午、己卯、己酉日（四正进神）。主上进心强、做事有始有进、自强不息，事业容易节节攀升。',
   '丧门': '年支前两位为丧门。主孝服、忧愁之事，流年遇之家中长辈健康需多关心，不宜探病送丧。',
   '吊客': '年支后两位为吊客。主丧服、惊扰、小病小灾，流年逢之注意家人健康与自身安全。',
-  '披麻': '年支前三位为披麻，与丧门同类。主忧愁伤心之事，逢之多关心家中长辈身体。',
+  '披麻': '年支逆数三位为披麻，与丧门、吊客同类。主忧愁伤心之事，逢之多关心家中长辈身体。',
+  '六厄': '三合五行之"死"地，又称"剥官之煞"。主事业多阻、才华不被赏识，辛劳成果易被他人所得。宜低调积累、借助贵人与平台之力。',
   '流霞': '又称"血煞"，主意外失血、产厄、手术。女命逢之生产注意安全，男命防酒色伤身；流年遇之避免高危活动。',
   '元辰': '又名"大耗"，阳男阴女取冲位前一辰、阴男阳女取冲位后一辰。主破耗、不顺、钱财易散，逢之年理财宜守不宜攻，少与人争执。',
   '八专': '甲寅、乙卯、己未、丁未、庚申、辛酉、戊戌、癸丑日。主情欲较旺、感情上容易投入过深，夫妻宫需多经营，避免烂桃花。',
@@ -82,6 +97,13 @@ export const SHENSHA_PLAIN: Record<string, string> = {
 
 const TG_ORDER = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const DZ_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+/**
+ * 词馆查法门派开关（本项目默认子平法）。
+ * false = 子平法：以年干/日干之临官（禄）位取，只判地支——甲寅 乙卯 丙巳 丁午 戊巳 己午 庚申 辛酉 壬亥 癸子。
+ * true  = 禄命法口诀（通行神煞表）：判整柱干支——甲见庚寅、乙见辛卯…癸见壬戌。
+ */
+export const WORD_HALL_USE_JIAZI = false;
 
 /** 三合局组 → 目标地支（桃花/驿马/华盖/将星/劫煞/灾煞通用查法） */
 function sanHeTarget(branch: string, map: Record<string, string>): string | undefined {
@@ -222,6 +244,13 @@ export function calcShenSha(pillars: ShenShaPillarInput[], gender?: 'male' | 'fe
       push('灾煞', pi, '凶');
     }
 
+    // --- 六厄（年支单查：三合五行之"死"地，剥官之煞，与丧门/吊客同组）---
+    // 申子辰水局水死在卯、寅午戌火局火死在酉、亥卯未木局木死在午、巳酉丑金局金死在子
+    const liuEMap = buildSanHeMap(['卯', '酉', '子', '午']);
+    if (sanHeTarget(dz[0], liuEMap) === dz[i]) {
+      push('六厄', pi, '凶');
+    }
+
     // --- 亡神（年支/日支三合局查：申子辰见亥、寅午戌见巳、巳酉丑见申、亥卯未见寅）---
     const wangShenMap = buildSanHeMap(['亥', '巳', '申', '寅']);
     if (sanHeTarget(dz[0], wangShenMap) === dz[i] || sanHeTarget(dz[2], wangShenMap) === dz[i]) {
@@ -351,12 +380,22 @@ export function calcShenSha(pillars: ShenShaPillarInput[], gender?: 'male' | 'fe
       push('学堂', pi, '吉');
     }
 
-    // --- 词馆（年干或日干查地支）---
-    const ciGuanMap: Record<string, string> = {
+    // --- 词馆（年干或日干查）---
+    // 禄命法口诀（通行）：判"整柱干支"是否命中，如癸干见壬戌、甲干见庚寅。
+    const ciGuanJiaZiMap: Record<string, string> = {
+      '甲': '庚寅', '乙': '辛卯', '丙': '乙巳', '丁': '戊午', '戊': '丁巳',
+      '己': '庚午', '庚': '壬申', '辛': '癸酉', '壬': '癸亥', '癸': '壬戌',
+    };
+    // 子平法：年干或日干之临官（禄）位，只判地支。
+    const ciGuanZhiMap: Record<string, string> = {
       '甲': '寅', '乙': '卯', '丙': '巳', '丁': '午', '戊': '巳',
       '己': '午', '庚': '申', '辛': '酉', '壬': '亥', '癸': '子',
     };
-    if (guiGans.some((g) => ciGuanMap[g] === dz[i])) {
+    if (WORD_HALL_USE_JIAZI) {
+      if (guiGans.some((g) => ciGuanJiaZiMap[g] === gz[i])) {
+        push('词馆', pi, '吉');
+      }
+    } else if (guiGans.some((g) => ciGuanZhiMap[g] === dz[i])) {
       push('词馆', pi, '吉');
     }
 
@@ -443,12 +482,13 @@ export function calcShenSha(pillars: ShenShaPillarInput[], gender?: 'male' | 'fe
       push('天医', pi, '吉');
     }
 
-    // --- 丧门（年支顺数2位）、吊客（年支逆数2位）、披麻（年支顺数3位）---
+    // --- 丧门（年支顺数2位）、吊客（年支逆数2位）、披麻（年支逆数3位）---
     const nianZhiIdx = DZ_ORDER.indexOf(dz[0]);
     if (nianZhiIdx >= 0) {
       const sangMen = DZ_ORDER[(nianZhiIdx + 2) % 12];
       const diaoKe = DZ_ORDER[(nianZhiIdx + 10) % 12];
-      const piMa = DZ_ORDER[(nianZhiIdx + 3) % 12];
+      // 披麻：子见酉、丑见戌、寅见亥…午见卯、未见辰、申见巳、酉见午、戌见未、亥见申
+      const piMa = DZ_ORDER[(nianZhiIdx + 9) % 12];
       if (dz[i] === sangMen) push('丧门', pi, '凶');
       if (dz[i] === diaoKe) push('吊客', pi, '凶');
       if (dz[i] === piMa) push('披麻', pi, '凶');
