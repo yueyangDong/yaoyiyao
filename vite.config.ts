@@ -11,9 +11,17 @@ export default defineConfig(({ command, mode }) => ({
   root: __dirname,
   // @ziweijs/core 厂内化：node_modules 原版五行局（纳音）计算有误（丙寅误判土五局），
   // 修复版见 src/vendor/ziweijs-core（见该目录内注释），此处全局重定向。
+  // @ziweijs/i18n 同样厂内化，原因有二：
+  //   1) core（厂内版）与 i18n 直接互相依赖，必须成对固定；
+  //   2) 整个 @ziweijs/* scope 已被上游从 npm registry 撤下（404），
+  //      继续作为 npm 依赖会让 `npm ci` 直接失败（CI 部署因此断过）。
+  //      两个包均已不再出现在 package.json / lock 中，构建不再联网取它们。
+  // 注意 tyme4ts 是厂内 core 的运行时依赖（原由 @ziweijs/core 传递声明），
+  // 已在 package.json 提升为直接依赖并锁定 1.3.9。
   resolve: {
     alias: {
       '@ziweijs/core': fileURLToPath(new URL('./src/vendor/ziweijs-core/index.js', import.meta.url)),
+      '@ziweijs/i18n': fileURLToPath(new URL('./src/vendor/ziweijs-i18n/index.js', import.meta.url)),
     },
   },
   build: {

@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@ziweijs/core": ["src/vendor/ziweijs-core/index.d.ts"]
+      "@ziweijs/core": ["src/vendor/ziweijs-core/index.d.ts"],
+      "@ziweijs/i18n": ["src/vendor/ziweijs-i18n/index.d.ts"]
     }
   },
   "include": ["src"],

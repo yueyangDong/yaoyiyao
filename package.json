@@ -23,7 +23,6 @@
     "@capacitor/geolocation": "^8.2.1",
     "@freizl/yijing": "^2.1.0",
     "@supabase/supabase-js": "^2.110.2",
-    "@ziweijs/core": "^0.3.0",
     "antd": "^5.22.0",
     "canvas-confetti": "^1.9.4",
     "cn-division": "^2026.0.0",
@@ -34,7 +33,8 @@
     "lunar-typescript": "^1.6.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "tyme4ts": "1.3.9"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.0",
