@@ -187,6 +187,49 @@ describe('analyzeHePan', () => {
     expect(sh.desc).not.toContain('基础缘分分');
   });
 
+  // 回归：命宫不见十四主星（「命无正曜」）是正常命盘状态，实测占出生数据约 16%（双方任一空宫 ≈ 三成）。
+  // 曾因只判 majorStars.length > 0，把这类盘误报为「出生信息不足，补齐双方出生时辰」。
+  it('命无正曜：命宫空宫 → 借对宫（迁移）主星论，不得误判为数据缺失', () => {
+    const emptyMingA = [
+      { name: '命宫', branch: '亥', majorStars: [] },
+      { name: '迁移', branch: '巳', majorStars: [{ name: '太阳' }] },
+      { name: '夫妻', branch: '酉', majorStars: [] },
+      { name: '官禄', branch: '卯', majorStars: [{ name: '天机' }] },
+    ];
+    const normalB = [{ name: '命宫', branch: '子', majorStars: [{ name: '太阴' }] }];
+    const r = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: emptyMingA },
+      partner: { ...input().partner, ziwei: normalB },
+    }));
+    const zw = r.items.find(i => i.title.includes('紫微命宫'))!;
+    const sh = r.items.find(i => i.title.includes('四化互动'))!;
+    // 不得再落「出生信息不足」兜底
+    expect(zw.desc).not.toContain('未能取得');
+    expect(zw.desc).not.toContain('出生信息不足');
+    expect(sh.desc).not.toContain('未能取得');
+    expect(sh.desc).not.toContain('出生信息不足');
+    // 借宫说明要写明借自哪个宫
+    expect(zw.desc).toContain('空宫');
+    expect(zw.desc).toContain('迁移');
+    // 借得太阳 vs 太阴 → 经典互补配对 20；命宫地支亥子无合无冲 → 不减
+    expect(zw.score).toBe(20);
+  });
+
+  it('命宫与对宫皆空（空而无借）→ 中性分，措辞不得写成缺数据', () => {
+    const bothEmpty = [
+      { name: '命宫', branch: '亥', majorStars: [] },
+      { name: '迁移', branch: '巳', majorStars: [] },
+    ];
+    const r = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: bothEmpty },
+      partner: { ...input().partner, ziwei: [{ name: '命宫', branch: '子', majorStars: [{ name: '太阴' }] }] },
+    }));
+    const zw = r.items.find(i => i.title.includes('紫微命宫'))!;
+    expect(zw.score).toBe(10);
+    expect(zw.desc).toContain('空而无借');
+    expect(zw.desc).not.toContain('出生信息不足');
+  });
+
   it('四化互动：我年干化禄星正坐对方命宫 → 高分且对称', () => {
     // mine 年干壬 → 天梁化禄；partner 命宫坐天梁
     const ziweiA = [{ name: '命宫', majorStars: [{ name: '紫微' }] }];

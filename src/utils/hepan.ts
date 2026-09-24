@@ -46,6 +46,41 @@ function zwPalaceOf(chart: any[], palace: string): any | undefined {
   return (chart || []).find((x: any) => x?.name === palace);
 }
 
+/** 十二宫对宫（借星论用）：命无正曜时借对宫主星安星论 */
+const ZW_OPPOSITE_PALACE: Record<string, string> = {
+  '命宫': '迁移', '迁移': '命宫',
+  '兄弟': '交友', '交友': '兄弟',
+  '夫妻': '官禄', '官禄': '夫妻',
+  '子女': '田宅', '田宅': '子女',
+  '财帛': '福德', '福德': '财帛',
+  '疾厄': '父母', '父母': '疾厄',
+};
+
+/**
+ * 取宫位主星；空宫按紫微斗数惯例借对宫主星论（与 ziweiAnalysis.ts / Ziwei 页同一口径）。
+ *
+ * ⚠️ 命宫不见十四主星（「命无正曜」）是**正常命盘状态**，实测在 1935–2005 年的
+ * 1728 组出生数据中占 278 组（约 16%）——双方任一方空宫即约三成合盘会遇上。
+ * 绝不可当成「出生信息不足」：曾经因为只判 `majorStars.length > 0`，
+ * 把三成合盘误报为「补齐双方出生时辰后可获得完整比对」。
+ *
+ * @returns stars 主星名；borrowedFrom 借自哪个对宫（未借宫时为 undefined）
+ */
+function zwPalaceStarsBorrow(chart: any[], palace: string): { stars: string[]; borrowedFrom?: string } {
+  const own = zwPalaceStars(chart, palace);
+  if (own.length > 0) return { stars: own };
+  const opp = ZW_OPPOSITE_PALACE[palace];
+  if (!opp) return { stars: [] };
+  const borrowed = zwPalaceStars(chart, opp);
+  return borrowed.length > 0 ? { stars: borrowed, borrowedFrom: opp } : { stars: [] };
+}
+
+/** 借宫说明文案（未借宫返回空串） */
+function zwBorrowNote(who: string, buddy: { stars: string[]; borrowedFrom?: string }): string {
+  if (!buddy.borrowedFrom) return '';
+  return `${who}的命宫是空宫（命无正曜），借对宫${buddy.borrowedFrom}宫主星${buddy.stars.join('、')}论——空宫不是空白，而是弹性大、可塑性强；`;
+}
+
 /**
  * 单向：A 的生年干四化对 B 命宫主星的引动。
  * v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重——紫微在合盘里不再只是"点缀分"。
@@ -402,11 +437,13 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   // 档位（20 分制）：同星 14 / 经典互补配对 16~20 / 异组 16 / 同组 12，夫妻宫互参命中 +4，命宫地支六合 +2、三合 +1、六冲 −4。
   // 兜底已取消：正常路径必定有双方紫微盘（合盘页 buildZiweiChart 排盘）；取不到时明确说明，不再含糊给"基础缘分分"。
   let zwScore = 10;
-  let zwDesc = '未能取得双方紫微命宫主星（出生信息不足），本项按中性分计。补齐双方出生时辰后可获得完整比对。';
+  let zwDesc = '未能取得双方紫微命盘（排盘未成功），本项按中性分计。';
   const mZw = mine.ziwei, pZw = partner.ziwei;
   if (Array.isArray(mZw) && Array.isArray(pZw)) {
-    const ms = zwPalaceStars(mZw, '命宫');
-    const ps = zwPalaceStars(pZw, '命宫');
+    // 空宫借对宫主星论：命无正曜是正常命盘状态，不是出生信息缺失
+    const mB = zwPalaceStarsBorrow(mZw, '命宫');
+    const pB = zwPalaceStarsBorrow(pZw, '命宫');
+    const ms = mB.stars, ps = pB.stars;
     if (ms.length > 0 && ps.length > 0) {
       const a = ms[0], b = ps[0];
       // 基础配对分（对称部分）
@@ -430,9 +467,9 @@ export function analyzeHePan(input: HePanInput): HePanResult {
           }
         }
       }
-      // 夫妻宫互参（方向性）：对方命宫主星落入我的夫妻宫＝正缘类型吻合
-      const mSpouse = zwPalaceStars(mZw, '夫妻');
-      const pSpouse = zwPalaceStars(pZw, '夫妻');
+      // 夫妻宫互参（方向性）：对方命宫主星落入我的夫妻宫＝正缘类型吻合（夫妻宫空宫同样借对宫论）
+      const mSpouse = zwPalaceStarsBorrow(mZw, '夫妻').stars;
+      const pSpouse = zwPalaceStarsBorrow(pZw, '夫妻').stars;
       const abBonus = mSpouse.some((s) => ps.includes(s)) ? 4 : 0;
       const baBonus = pSpouse.some((s) => ms.includes(s)) ? 4 : 0;
       // 命宫地支合冲（对称关系，双向同值）：这是紫微合盘里判断"宫位层面契合度"的标准一环
@@ -462,8 +499,13 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       if (baBonus) spouseTexts.push('你的命宫主星正落对方夫妻宫，在对方眼里你是理想型');
       // 星性白话画像（按双方命宫首星所属分组）
       const groupDesc = ['有主见、要面子、习惯做决定的人', '细腻体贴、擅长出主意和打配合的人', '行动派、闲不住、敢想敢闯的人'];
+      const borrowNote = zwBorrowNote('你', mB) + zwBorrowNote('对方', pB);
       zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : ''}${brText ? brText + '。' : ''}` +
+        `${borrowNote}` +
         `白话一点：你是${ZW_GROUP_NAMES[zwGroupOf(a)]}——${groupDesc[zwGroupOf(a)]}；对方是${ZW_GROUP_NAMES[zwGroupOf(b)]}——${groupDesc[zwGroupOf(b)]}。星性没有好坏，只有合不合拍：同一组的像同行者，不同组的像拼图。`;
+    } else {
+      // 命宫与对宫皆不见十四主星（空而无借）——概率极低，但确实存在，措辞不可写成"缺数据"
+      zwDesc = '双方有一方命宫与对宫均不见十四主星（空而无借），该宫能量平和、没有先天定式，无主星组合可比对，本项按中性分计。';
     }
   }
   items.push({ title: '紫微命宫', score: zwScore, desc: zwDesc });
@@ -471,12 +513,15 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   // 7) 四化互动（20 分）——双方生年干四化是否引动对方命星（禄>科>权>忌，双向对称）
   // v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重；兜底取消，改用中性分 + 明确说明。
   let sihuaScore = 10;
-  let sihuaDesc = '未能取得双方生年四化与命宫主星（出生信息不足），本项按中性分计。';
+  let sihuaDesc = '未能取得双方紫微命盘与生年四化（排盘未成功），本项按中性分计。';
   const mStem = mine.pillars?.[0]?.tianGan;
   const pStem = partner.pillars?.[0]?.tianGan;
   if (Array.isArray(mZw) && Array.isArray(pZw) && mStem && pStem && STEM_SIHUA_TABLE[mStem] && STEM_SIHUA_TABLE[pStem]) {
-    const mMing = zwPalaceStars(mZw, '命宫');
-    const pMing = zwPalaceStars(pZw, '命宫');
+    // 命中宫借对宫主星论：四化引动的是"命宫所论之星"，空宫借星后照样成立
+    const mMingB = zwPalaceStarsBorrow(mZw, '命宫');
+    const pMingB = zwPalaceStarsBorrow(pZw, '命宫');
+    const mMing = mMingB.stars;
+    const pMing = pMingB.stars;
     if (mMing.length > 0 && pMing.length > 0) {
       const ab = sihuaDirOnMing(mStem, pMing, '你', '对方'); // 我年干四化 → 对方命宫
       const ba = sihuaDirOnMing(pStem, mMing, '对方', '你'); // 对方年干四化 → 我命宫
@@ -491,7 +536,9 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       else if (hasJi) toneText = '整体基调：对方的在意容易变成你的压力——TA越在乎越紧张，越紧张越想管。这不是"克你"，是TA表达爱的姿势不对。多给彼此留一点空间和信任，忌的伤害就会小很多。';
       else if (tones.includes(16) || tones.includes(14)) toneText = '整体基调：对方能带给你名声、贵人和体面——带TA出席你的重要场合，往往都是加分项。同时留意"为你好"式的推动，别让它悄悄变成施压。';
       else toneText = '整体基调：你们的四化互不引动，属于"干净的平缘"——没有先天的加持，也没有先天的债务，感情的每一分厚薄都是两个人亲手挣来的。';
-      sihuaDesc = `${ab.text}；${ba.text}。${toneText}`;
+      sihuaDesc = `${zwBorrowNote('你', mMingB)}${zwBorrowNote('对方', pMingB)}${ab.text}；${ba.text}。${toneText}`;
+    } else {
+      sihuaDesc = '双方有一方命宫与对宫均不见十四主星（空而无借），无命星可论四化引动，本项按中性分计。';
     }
   }
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
