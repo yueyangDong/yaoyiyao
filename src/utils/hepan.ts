@@ -256,36 +256,58 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const wxScore = Math.round((wxAB + wxBA) / 2);
   let wxDesc: string;
   if (WX_SHENG[mWx] === pWx) {
-    wxDesc = `你的日主${mWx}生对方${pWx}：你更愿意付出与滋养对方；反向看对方处于受生位，能安心接收你的好。单向流动明显，注意别让付出失衡。`;
+    wxDesc = `你的日主${mWx}生对方${pWx}：你更愿意付出与滋养对方；反向看对方处于受生位，能安心接收你的好。单向流动明显，注意别让付出失衡。` +
+      `生活里的样子：大事小事多半是你张罗、你惦记，对方在这段关系里活得比较舒展。这不是坏事——付出本来就是你的爱的语言，但要警惕时间久了付出变成理所当然。偶尔示个弱，把照顾你的机会留给对方，感情才是双向流动的活水。`;
   } else if (WX_SHENG[pWx] === mWx) {
-    wxDesc = `对方日主${pWx}生你的${mWx}：对方更照顾你，你能感受到被滋养；记得及时回应，让流动双向。`;
+    wxDesc = `对方日主${pWx}生你的${mWx}：对方更照顾你，你能感受到被滋养；记得及时回应，让流动双向。` +
+      `生活里的样子：对方是那个记得你的口味、把你随口一提的心愿悄悄办到的人。被爱是福气，但福气最怕习以为常——你的每一句谢谢、每一次主动的拥抱，都是在给这段感情续费。`;
   } else if (mWx === pWx) {
-    wxDesc = `两人日主同为${mWx}，同气比和，像朋友一样有默契，但少了互补。`;
+    wxDesc = `两人日主同为${mWx}，同气比和，像朋友一样有默契，但少了互补。` +
+      `生活里的样子：你们的笑点、雷点、消费观都惊人一致，几乎不用磨合就能同频。唯一的隐患是太像了——你冲动时对方也冲动，你低落时对方拉不动你。刻意培养一两个互补的习惯，日子会更有层次。`;
   } else if (WX_KE[mWx] === pWx) {
-    wxDesc = `你的日主${mWx}克对方${pWx}：你较强势，对方易感压抑；相处时把"主导"变成"引领"，多商量、少命令。`;
+    wxDesc = `你的日主${mWx}克对方${pWx}：你较强势，对方易感压抑；相处时把"主导"变成"引领"，多商量、少命令。` +
+      `生活里的样子：去哪吃饭、怎么过节、钱怎么花，多半是你拍板。对方看起来"都行、随便"，其实未必没有想法——只是懒得争。留几个领域让TA全权做主、真心夸TA的决定，你会发现TA其实很有主意。`;
   } else if (WX_KE[pWx] === mWx) {
-    wxDesc = `对方日主${pWx}克你的${mWx}：相处中对方占上风，你需要更多表达自己，也别默默累积委屈。`;
+    wxDesc = `对方日主${pWx}克你的${mWx}：相处中对方占上风，你需要更多表达自己，也别默默累积委屈。` +
+      `生活里的样子：对方气场强、有主见，你更多在配合和包容。适度的让是爱，但每次都让就成了消耗。练习把"不舒服"温和地说出口——真正爱你的人，会愿意为你调低音量。`;
   } else {
     // 防御：五行相异的组合必有生克关系，正常不应到达此分支
     wxDesc = `两人日主${mWx}与${pWx}无直接生克，关系平淡但有各自空间。`;
   }
   items.push({ title: '日主五行', score: wxScore, desc: wxDesc });
 
-  // 2) 地支关系（20 分）：合冲刑害统计
+  // 2) 地支关系（20 分）：合冲刑害统计（白话列出具体对，生活化解读）
   const myDz = mine.pillars.map(p => p.diZhi);
   const paDz = partner.pillars.map(p => p.diZhi);
+  const posLabel = ['年', '月', '日', '时'];
   let heCount = 0, chongCount = 0;
-  for (const a of myDz) {
-    for (const b of paDz) {
+  const hePairs: string[] = [];   // 具体合对（带柱位）
+  const chongPairs: string[] = []; // 具体冲刑对
+  for (let i = 0; i < myDz.length; i++) {
+    for (let j = 0; j < paDz.length; j++) {
+      const a = myDz[i], b = paDz[j];
       if (a === b) continue;
-      if (LIU_HE[a] === b) heCount += 2;
-      if ((SAN_HE[a] || []).includes(b)) heCount += 1;
-      if (LIU_CHONG[a] === b) chongCount += 2;
-      if ((a === '寅' && ['巳', '申'].includes(b)) || (a === '巳' && ['申', '寅'].includes(b)) || (a === '申' && ['寅', '巳'].includes(b))) chongCount += 1; // 三刑近似
+      if (LIU_HE[a] === b) { heCount += 2; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六合`); }
+      else if ((SAN_HE[a] || []).includes(b)) { heCount += 1; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}三合`); }
+      if (LIU_CHONG[a] === b) { chongCount += 2; chongPairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六冲`); }
+      else if ((a === '寅' && ['巳', '申'].includes(b)) || (a === '巳' && ['申', '寅'].includes(b)) || (a === '申' && ['寅', '巳'].includes(b))) { chongCount += 1; chongPairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}相刑`); } // 三刑近似
     }
   }
   const dzScore = Math.max(0, Math.min(20, 10 + heCount - chongCount));
-  const dzDesc = `双方地支合${heCount}处、冲刑${chongCount}处。${heCount > chongCount ? '合的缘分多于冲撞，彼此能互相成就。' : chongCount > 0 ? '冲撞多于相合，需要更多磨合与体谅。' : '地支关系平稳，无大合大冲。'}`;
+  const heShow = hePairs.slice(0, 3).join('；');
+  const chongShow = chongPairs.slice(0, 3).join('；');
+  let dzDesc = '';
+  if (hePairs.length > 0) dzDesc += `相合：${heShow}${hePairs.length > 3 ? `等${hePairs.length}处` : ''}。`;
+  if (chongPairs.length > 0) dzDesc += `冲刑：${chongShow}${chongPairs.length > 3 ? `等${chongPairs.length}处` : ''}。`;
+  if (heCount > chongCount) {
+    dzDesc += `合多于冲——你们的气场有天然的接口：想法容易对上，相处不容易内耗。地支相合，尤其是六合，意味着在某些特定场合你们会莫名地站在同一边，属于越处越顺的底子。`;
+  } else if (chongCount > heCount) {
+    dzDesc += `冲多于合——你们是节奏型差异的组合：不是三观不合，而是快慢、急缓、先说后做的直觉常常相反。冲的杀伤力不在吵架本身，而在日积月累的拧巴。对策就一条：分歧当场摊开说，别让小事在心里发酵成大事。`;
+  } else if (heCount === 0 && chongCount === 0) {
+    dzDesc += `双方地支无大合也无大冲，气场各自独立、互不干扰——这样的组合少了一见如故的默契，但也少了先天的不对付，关系成色完全由后天相处决定。`;
+  } else {
+    dzDesc += `合冲相当——你们既有投缘的接口，也有要磨合的点，属于处得好是缘分、处不好是功课的组合。多在彼此投缘的领域共处，冲的部分提前知道对方的雷区，就能大事化小。`;
+  }
   items.push({ title: '地支合冲', score: dzScore, desc: dzDesc });
 
   // 3) 纳音（20 分）——双向计算取均分（对称）
@@ -295,30 +317,40 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const nyScore = Math.round((nyAB + nyBA) / 2);
   let nyDesc: string;
   if (mNy && pNy && WX_SHENG[mNy] === pNy) {
-    nyDesc = `你的纳音${mine.nayin}（${mNy}）生对方${partner.nayin}（${pNy}）：你的年命旺对方，家宅安宁；年命相生是传统合婚的吉兆。`;
+    nyDesc = `你的纳音${mine.nayin}（${mNy}）生对方${partner.nayin}（${pNy}）：你的年命旺对方，家宅安宁；年命相生是传统合婚的吉兆。` +
+      `白话一点：纳音看的是两个人的"底色"合不合——你的底色天然滋养对方的底色，像合适的土壤遇上对的种子。这种组合里，你的一句话、一个决定，常常在不经意间就把对方的运势带起来了。`;
   } else if (mNy && pNy && WX_SHENG[pNy] === mNy) {
-    nyDesc = `对方纳音${partner.nayin}（${pNy}）生你的${mine.nayin}（${mNy}）：对方年命旺你，得助力；领受之余也多体谅对方的付出。`;
+    nyDesc = `对方纳音${partner.nayin}（${pNy}）生你的${mine.nayin}（${mNy}）：对方年命旺你，得助力；领受之余也多体谅对方的付出。` +
+      `白话一点：和对方在一起，你会发现自己状态莫名变好——决策更准、人缘更顺。这不是玄学安慰，是两种底色在互相滋养。记得别把这份"顺"全归功于自己，对方是那个默默给你托底的人。`;
   } else if (mNy && mNy === pNy) {
-    nyDesc = `双方纳音同属${mine.nayin}，命韵相似，彼此懂对方的节奏。`;
+    nyDesc = `双方纳音同属${mine.nayin}，命韵相似，彼此懂对方的节奏。` +
+      `白话一点：你们像是同一种木头做的两把琴——频率天然一致，一个眼神就能接上对方的半句话。缺点是共鸣太强：对方emo你跟着emo。学着做彼此的"减震器"而不是"放大器"。`;
   } else if (mNy && pNy && WX_KE[mNy] === pNy) {
-    nyDesc = `你的纳音${mine.nayin}（${mNy}）克对方${partner.nayin}（${pNy}）：你年命占强势位，宜多相让。`;
+    nyDesc = `你的纳音${mine.nayin}（${mNy}）克对方${partner.nayin}（${pNy}）：你年命占强势位，宜多相让。` +
+      `白话一点：底色相克不是"命里犯冲"的判死刑，而是提醒你气场天然压对方一头——你语气重三分，对方感受到的是十分。同样的意思换个软一点的说法，效果天差地别。`;
   } else if (mNy && pNy && WX_KE[pNy] === mNy) {
-    nyDesc = `对方纳音${partner.nayin}（${pNy}）克你的${mine.nayin}（${mNy}）：对方年命占强势位，你需要更多话语权上的平衡。`;
+    nyDesc = `对方纳音${partner.nayin}（${pNy}）克你的${mine.nayin}（${mNy}）：对方年命占强势位，你需要更多话语权上的平衡。` +
+      `白话一点：对方气场天然压你一头，你容易在不知不觉中让渡太多决定权。感情里可以示弱，但不可以失声——该坚持的底线温和而坚定地守住，对方反而更尊重你。`;
   } else {
-    nyDesc = `纳音${mine.nayin}与${partner.nayin}无直接生克，平顺无大碍。`;
+    nyDesc = `纳音${mine.nayin}与${partner.nayin}无直接生克，平顺无大碍。` +
+      `白话一点：底色互不干扰，各自安好——没有额外的加成，也没有先天的别扭，关系好坏全看日常怎么处。`;
   }
   items.push({ title: '纳音年命', score: nyScore, desc: nyDesc });
 
   // 4) 生肖（20 分）
   let sxScore: number; let sxDesc: string;
   if (LIU_HE[mine.zodiac] === partner.zodiac) {
-    sxScore = 20; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}六合，天生一对，默契十足。`;
+    sxScore = 20; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}六合，天生一对，默契十足。` +
+      `白话一点：六合是"暗合"——明面上你们的性格未必相似，但价值观和节奏天然合拍，越处越有默契。老一辈说的"天生一对"，多半指的就是这种组合：不轰烈，但省心。`;
   } else if ((SAN_HE[mine.zodiac] || []).includes(partner.zodiac)) {
-    sxScore = 16; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}三合，志趣相投，易成良配。`;
+    sxScore = 16; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}三合，志趣相投，易成良配。` +
+      `白话一点：三合是大格局的合——你们看人生的大方向一致：什么值得花力气、什么不值得计较，这些底层判断惊人地相同。适合一起做长远打算的组合，越到大事上越显出合拍。`;
   } else if (LIU_CHONG[mine.zodiac] === partner.zodiac) {
-    sxScore = 4; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}六冲，性格差异大，需要更多包容。`;
+    sxScore = 4; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}六冲，性格差异大，需要更多包容。` +
+      `白话一点：六冲是"节奏差"——你对快慢、取舍的直觉和对方常常相反。但冲的组合感情反而不平淡：吸引力强、火花多，吵架也多。关键就一条：吵完架谁先转身。先转身的那个人，不是输了，是更爱。`;
   } else {
-    sxScore = 10; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}无合无冲，随缘相处。`;
+    sxScore = 10; sxDesc = `生肖${mine.zodiac}与${partner.zodiac}无合无冲，随缘相处。` +
+      `白话一点：属相平配，不好也不坏——缘分在人不在相。没有先天的加持或包袱，你们的感情成色百分之百由自己书写。`;
   }
   items.push({ title: '生肖配对', score: sxScore, desc: sxDesc });
 
@@ -327,13 +359,17 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const mineHelps = partner.yongShen.includes(mine.dayWx);    // 我补对方（对方受益）
   let ysScore: number; let ysDesc: string;
   if (partnerHelps && mineHelps) {
-    ysScore = 20; ysDesc = `互为喜用：对方日主${partner.dayWx}补你的用神，你的${mine.dayWx}也补对方，彼此是对方的贵人。`;
+    ysScore = 20; ysDesc = `互为喜用：对方日主${partner.dayWx}补你的用神，你的${mine.dayWx}也补对方，彼此是对方的贵人。` +
+      `白话一点：你们是彼此的"补品"——你缺的对方恰好有，对方缺的你刚好补。这种组合过日子越久越舒服，是合婚里最实惠的一档。唯一提醒：别因为"旺"就懒得经营，再好的底子也怕消耗。`;
   } else if (partnerHelps) {
-    ysScore = 15; ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起你的运势有助益（你更受益）；而你的${mine.dayWx}不在对方喜用之列，记得在情感之外也给对方实际的支持。`;
+    ysScore = 15; ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起你的运势有助益（你更受益）；而你的${mine.dayWx}不在对方喜用之列，记得在情感之外也给对方实际的支持。` +
+      `白话一点：跟对方在一起，你会不知不觉变顺——这是"旺你"的缘分。但别只做受益方：对方累的时候、低落的时候，记得你也伸把手。只进不出的好运气，迟早会用完。`;
   } else if (mineHelps) {
-    ysScore = 15; ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方（对方更受益）；但对方${partner.dayWx}非你喜用，别把"我对他好"当成关系好的全部保证。`;
+    ysScore = 15; ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方（对方更受益）；但对方${partner.dayWx}非你喜用，别把"我对他好"当成关系好的全部保证。` +
+      `白话一点：你是对方的贵人——TA跟你在一起后状态肉眼可见地变好。你旺对方不等于你吃亏，但要看清一件事：对方怎么对待你的付出，决定这段感情值不值得继续加码。`;
   } else {
-    ysScore = 6; ysDesc = `双方日主都不在对方喜用神之列，互补性一般，需靠后天经营。`;
+    ysScore = 6; ysDesc = `双方日主都不在对方喜用神之列，互补性一般，需靠后天经营。` +
+      `白话一点：五行上谁也不旺谁，属于"平缘"——好消息是你们的感情不受命理绑架，全凭真心换真心；坏消息是没有外挂，所有甜蜜都得靠两个人亲手挣。`;
   }
   items.push({ title: '喜用互补', score: ysScore, desc: ysDesc });
 
@@ -377,7 +413,10 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       const spouseTexts: string[] = [];
       if (abBonus) spouseTexts.push('对方命宫主星正落你的夫妻宫，是你命中欣赏的类型');
       if (baBonus) spouseTexts.push('你的命宫主星正落对方夫妻宫，在对方眼里你是理想型');
-      zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : '夫妻宫互参无直接对应，缘分靠相处养成。'}`;
+      // 星性白话画像（按双方命宫首星所属分组）
+      const groupDesc = ['有主见、要面子、习惯做决定的人', '细腻体贴、擅长出主意和打配合的人', '行动派、闲不住、敢想敢闯的人'];
+      zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : '夫妻宫互参无直接对应，缘分靠相处养成。'}` +
+        `白话一点：你是${ZW_GROUP_NAMES[zwGroupOf(a)]}——${groupDesc[zwGroupOf(a)]}；对方是${ZW_GROUP_NAMES[zwGroupOf(b)]}——${groupDesc[zwGroupOf(b)]}。星性没有好坏，只有合不合拍：同一组的像同行者，不同组的像拼图。`;
     }
   }
   items.push({ title: '紫微命宫', score: zwScore, desc: zwDesc });
@@ -393,14 +432,31 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       const ab = sihuaDirOnMing(mStem, pMing, '你', '对方'); // 我年干四化 → 对方命宫
       const ba = sihuaDirOnMing(pStem, mMing, '对方', '你'); // 对方年干四化 → 我命宫
       sihuaScore = Math.round((ab.score + ba.score) / 2);
-      sihuaDesc = `${ab.text}；${ba.text}。`;
+      // 四化档位白话：给这对组合的整体相处基调
+      const tones: number[] = [ab.score, ba.score];
+      const hasLu = tones.includes(10);
+      const hasJi = tones.includes(3);
+      let toneText = '';
+      if (hasLu && !hasJi) toneText = '整体基调：你们的缘分自带"保底资产"——哪怕吵架冷战，感情的基本面很难真的塌。这种盘要珍惜：不是每对情侣都有这种先天护城河。';
+      else if (hasLu && hasJi) toneText = '整体基调：又旺又有压力的一对——好的时候特别好，较劲的时候也特别较劲。秘诀是记住旺的时候多存感情本钱，较劲的时候才有得花。';
+      else if (hasJi) toneText = '整体基调：对方的在意容易变成你的压力——TA越在乎越紧张，越紧张越想管。这不是"克你"，是TA表达爱的姿势不对。多给彼此留一点空间和信任，忌的伤害就会小很多。';
+      else if (tones.includes(8) || tones.includes(7)) toneText = '整体基调：对方能带给你名声、贵人和体面——带TA出席你的重要场合，往往都是加分项。同时留意"为你好"式的推动，别让它悄悄变成施压。';
+      else toneText = '整体基调：你们的四化互不引动，属于"干净的平缘"——没有先天的加持，也没有先天的债务，感情的每一分厚薄都是两个人亲手挣来的。';
+      sihuaDesc = `${ab.text}；${ba.text}。${toneText}`;
     }
   }
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
 
   const totalScore = items.reduce((s, i) => s + i.score, 0);
   const level = totalScore >= 80 ? '天作之合' : totalScore >= 65 ? '良缘' : totalScore >= 50 ? '平常' : '需磨合';
-  const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}合盘看的是趋势，最终经营在两人。`;
+  const levelNote = totalScore >= 80
+    ? '这个分数段意味着：你们先天的"合"远多于"冲"——不是不会有矛盾，而是矛盾总有化解的底子。别辜负这份出厂配置。'
+    : totalScore >= 65
+      ? '这个分数段意味着：底子是好的，磨合点也明确——知道坑在哪的情侣，比稀里糊涂的情侣走得远。'
+      : totalScore >= 50
+        ? '这个分数段意味着：先天缘分平平，既不算天造地设，也绝非无缘——这样的感情像白手起家，挣来的每一分都是自己的。'
+        : '这个分数段意味着：先天的差异点多，要付出的功课也多——但请记住：合盘量的是"出厂配置"，量不出"两个人愿意为彼此改多少"。多少低分发盘过成了一流感情，靠的就是这件事。';
+  const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}${levelNote}合盘看的是趋势，最终经营在两人。`;
 
   // 双方各自爱情建议（差异化）
   const mineGender: 'male' | 'female' = (mine as any).gender === 'female' || (mine as any).gender === '女' ? 'female' : 'male';

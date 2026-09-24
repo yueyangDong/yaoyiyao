@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Card, Button, Typography, Space, Tag, Divider,
-  Row, Col, Radio, message, Alert, Collapse, Select, Descriptions,
+  Row, Col, Radio, message, Alert, Collapse, Select, Descriptions, Tooltip,
 } from 'antd';
 import { Sparkles, RefreshCw, HelpCircle } from 'lucide-react';
 import { dayan, decodePan, threeNumberQiGua, manualQiGua, ganZhiToWuXing } from 'iching-shifa';
@@ -32,6 +32,38 @@ const YONGSHEN_GUIDE = [
   { question: '学业/考试/父母', liuqin: '父母', reason: '父母爻代表文书、学历、长辈。' },
   { question: '子女/晚辈', liuqin: '子孙', reason: '子孙爻代表孩子、下属。子孙旺则晚辈有出息。' },
 ];
+
+// ========== 新手入门：三分钟看懂六爻 ==========
+const LIUYAO_BEGINNER_GUIDE = [
+  { term: '六爻是什么', plain: '把你心里问的事"摇"成一个六个爻组成的卦，再用卦里各爻的强弱、关系对照事情的发展。相当于给当下的处境拍一张快照。' },
+  { term: '本卦（开始）', plain: '事情现在的样子——你起卦这一刻的状态。' },
+  { term: '互卦（过程）', plain: '中间的发展过程——从现在走向结果路上会经历的事。' },
+  { term: '变卦（结果）', plain: '事情最终会变成什么样——趋势的终点。' },
+  { term: '动爻（○/×标记）', plain: '带○或×的爻是"动爻"，是全卦的开关：○（老阳）会由阳变阴，×（老阴）会由阴变阳。断卦主要就看动爻——它指明事情在哪一环起变化。' },
+  { term: '世爻 / 应爻', plain: '世爻代表你自己，应爻代表对方或外部环境。应爻生世爻＝外界对你有利；应爻克世爻＝外部有阻力。' },
+  { term: '六亲', plain: '每个爻按五行关系归成的"角色名"：父母＝文书/学业/长辈；兄弟＝朋友/平辈/竞争者；子孙＝晚辈/下属/解忧之神；妻财＝钱财（男命也代表另一半）；官鬼＝事业/压力（女命也代表另一半）。' },
+  { term: '用神', plain: '你问什么事，就取对应的六亲当"主角"来分析——问财看妻财爻，问工作看官鬼爻，问考试看父母爻。用神旺、受生、持世，事情就顺。' },
+  { term: '月建 / 旬空', plain: '月建是起卦当月的五行司令，决定各爻的旺衰（旺相休囚死）；旬空是暂时"落空"的状态——事情有名无实、还没落实，等出空的日期才见分晓。' },
+];
+
+// 六亲白话（Tooltip 用）
+const LIUQIN_PLAIN: Record<string, string> = {
+  '父母': '文书、学历、合同、长辈、房子',
+  '兄弟': '朋友、平辈、竞争者、开支',
+  '子孙': '晚辈、下属、解忧之神、医药',
+  '妻财': '钱财、财物（男命代表另一半）',
+  '官鬼': '事业、职位、压力（女命代表另一半）',
+};
+
+// 六兽白话（Tooltip 用，与用神分析里的描述同一口径）
+const LIUSHOU_PLAIN: Record<string, string> = {
+  '青龙': '主喜庆、贵人',
+  '朱雀': '主口舌、文书、沟通',
+  '勾陈': '主田土、迟滞、牵连',
+  '腾蛇': '主虚惊、怪异、反复',
+  '白虎': '主凶伤、权威、疾病',
+  '玄武': '主暗昧、隐私、盗失',
+};
 
 // 六亲状态白话
 const LIUQIN_STATUS: Record<string, string> = {
@@ -244,6 +276,38 @@ export default function Liuyao() {
     // 动爻判断
     if (yongYao.isMoving) {
       parts.push(`[动爻] 此爻为动爻！表示你所问的事情正在变化之中，不会维持现状，很快会有进展或转折。`);
+      // 动化分析：变爻对本爻的回头生克 / 化进神化退神（六爻断卦核心）
+      const zhiYao = pan.zhiGua?.yaoList?.find((z: any) => z.position === yongYao.position);
+      if (zhiYao && zhiYao.wuXing) {
+        const yongWx = yongYao.wuXing;
+        const zhiWx = zhiYao.wuXing;
+        const wxSheng: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+        const wxKe: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
+        const DZ_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+        const yongZhi = (yongYao.naJia || '').slice(-1);
+        const zhiZhi = (zhiYao.naJia || '').slice(-1);
+        let huaText = '';
+        if (wxSheng[zhiWx] === yongWx) {
+          huaText = `[动化·回头生] 用神动而变爻（${zhiYao.naJia}，属${zhiWx}）回头生用神${yongWx}——这是动化中的上乘之象：事情越变越有助力，变化对你有利，可以积极顺应。`;
+        } else if (wxKe[zhiWx] === yongWx) {
+          huaText = `[动化·回头克] 用神动而变爻（${zhiYao.naJia}，属${zhiWx}）回头克用神${yongWx}——警惕：事情的变化方向反过来伤到自身。宜缓不宜急，先止损、再图进。`;
+        } else if (zhiWx === yongWx) {
+          const iFrom = DZ_ORDER.indexOf(yongZhi);
+          const iTo = DZ_ORDER.indexOf(zhiZhi);
+          if (iFrom >= 0 && iTo >= 0 && iTo === (iFrom + 1) % 12) {
+            huaText = `[动化·进神] 用神由${yongZhi}化${zhiZhi}，同类前进为化进神——事情层层递进、步步走高，势头正旺，宜乘势而上。`;
+          } else if (iFrom >= 0 && iTo >= 0 && iTo === (iFrom + 11) % 12) {
+            huaText = `[动化·退神] 用神由${yongZhi}化${zhiZhi}，同类后退为化退神——事情的势头在回撤：不是失败，而是降档。宜收缩战线、保住成果，别再加码。`;
+          } else {
+            huaText = `[动化] 变爻（${zhiYao.naJia}，属${zhiWx}）与用神${yongWx}同类比和——变化平缓，不构成明显的生克助力，按常规推进即可。`;
+          }
+        } else if (wxSheng[yongWx] === zhiWx) {
+          huaText = `[动化·泄气] 用神动而生变爻（${zhiYao.naJia}，属${zhiWx}）——变化会消耗用神的力量（泄气），事情能推进但成本变高，注意别用力过猛。`;
+        } else {
+          huaText = `[动化] 用神动化出${zhiYao.naJia}（属${zhiWx}），与用神${yongWx}无直接生克——变化本身中性，吉凶更多取决于月建日辰的配合。`;
+        }
+        parts.push(huaText);
+      }
     } else {
       parts.push(`[静爻] 此爻为静爻，所问之事短期内不会有大的变化，维持现有状态。`);
     }
@@ -306,6 +370,44 @@ export default function Liuyao() {
     return found;
   }, [pan]);
 
+  // 世应生克关系自动分析（白话：世=你，应=对方/环境）
+  const shiYingAnalysis = useMemo(() => {
+    if (!pan) return null;
+    const shi = pan.benGua.yaoList.find((y: any) => y.shiYing === '世');
+    const ying = pan.benGua.yaoList.find((y: any) => y.shiYing === '应');
+    if (!shi || !ying) return null;
+    try {
+      const shiWx = ganZhiToWuXing((shi.naJia || '').slice(-1));
+      const yingWx = ganZhiToWuXing((ying.naJia || '').slice(-1));
+      const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+      const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
+      let rel: string; let plain: string;
+      if (WX_SHENG[yingWx] === shiWx) {
+        rel = `应爻（${yingWx}）生世爻（${shiWx}）`;
+        plain = '对方/外部环境在滋养你——你问的这件事，外界对你有善意，多借力、多合作，别单打独斗。';
+      } else if (WX_SHENG[shiWx] === yingWx) {
+        rel = `世爻（${shiWx}）生应爻（${yingWx}）`;
+        plain = '你在对外付出——事情的成败取决于你的投入度和坚持，主动权在你，但要防过度消耗。';
+      } else if (WX_KE[shiWx] === yingWx) {
+        rel = `世爻（${shiWx}）克应爻（${yingWx}）`;
+        plain = '你克制对方/环境——主动权握在你手里，事情能按你的意图推进，注意方式温和些，赢了事别输了关系。';
+      } else if (WX_KE[yingWx] === shiWx) {
+        rel = `应爻（${yingWx}）克世爻（${shiWx}）`;
+        plain = '环境压制你——外部条件暂时不利，硬顶不如智取：要么换路径，要么等时机（应爻受冲受克的日期）。';
+      } else {
+        rel = `世应同为${shiWx}（比和）`;
+        plain = '你与对方/环境同频——不冲不克，按部就班推进即可，属于平顺的格局。';
+      }
+      return {
+        rel,
+        plain,
+        detail: `世爻在第${shi.position}爻（${shi.naJia}，${shiWx}，${shi.liuQin}）；应爻在第${ying.position}爻（${ying.naJia}，${yingWx}，${ying.liuQin}）。`,
+      };
+    } catch {
+      return null;
+    }
+  }, [pan]);
+
   const resetAll = () => {
     setPan(null);
     setDayanLog([]);
@@ -325,6 +427,28 @@ export default function Liuyao() {
         showIcon
         style={{ marginBottom: 16, background: 'var(--bg-card-solid)' }}
       />
+
+      {/* 新手入门 */}
+      <CollapsibleCard title="三分钟看懂六爻（新手必读）" summary="本卦/互卦/变卦/动爻/世应/六亲/用神，一屏说清" accordionGroup="liuyao-guide">
+        <Card size="small" style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+          <Row gutter={[8, 8]}>
+            {LIUYAO_BEGINNER_GUIDE.map((item, i) => (
+              <Col xs={24} sm={12} key={i}>
+                <div style={{ padding: '8px 10px', borderRadius: 8, background: i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'rgba(201,169,110,0.05)' }}>
+                  <Text strong style={{ fontSize: 13, color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>「{item.term}」</Text>
+                  <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block' }}>{item.plain}</Text>
+                </div>
+              </Col>
+            ))}
+          </Row>
+          <Alert
+            style={{ marginTop: 8 }}
+            type="success"
+            showIcon
+            message="一分钟上手：心里默念你要问的事 → 起卦 → 在下方「用神分析」里点你问的事 → 看用神旺不旺、动不动、持不持世。"
+          />
+        </Card>
+      </CollapsibleCard>
 
       {/* 用神选择 */}
       <Card
@@ -472,6 +596,18 @@ export default function Liuyao() {
               <Descriptions.Item label="日空">{pan.dayKong}</Descriptions.Item>
               <Descriptions.Item label="节气">{pan.solarTerm}</Descriptions.Item>
             </Descriptions>
+
+            {/* 世应生克白话分析 */}
+            {shiYingAnalysis && (
+              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(201,169,110,0.06)', border: '1px solid rgba(201,169,110,0.25)' }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
+                  ⚖️ 世应关系（你 vs 对方/环境）
+                </Text>
+                <Text strong style={{ fontSize: 13, color: 'var(--wx-earth)', display: 'block' }}>{shiYingAnalysis.rel}</Text>
+                <Text style={{ fontSize: 12, color: 'var(--text-body)', lineHeight: 1.7, display: 'block', marginTop: 2 }}>{shiYingAnalysis.plain}</Text>
+                <Text style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginTop: 4 }}>{shiYingAnalysis.detail}</Text>
+              </div>
+            )}
           </Card>
 
           {/* 三层说明：古文原文 + 直译 + 白话 */}
@@ -771,22 +907,42 @@ export default function Liuyao() {
           )}
 
           {/* 六爻详细列表 */}
-          <CollapsibleCard title="六爻详细信息" summary="每爻纳甲、六亲、世应详解" accordionGroup="liuyao-analysis">
+          <CollapsibleCard title="六爻详细信息" summary="每爻纳甲、六亲、世应详解（鼠标悬停看白话）" accordionGroup="liuyao-analysis">
           <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            {[...pan.benGua.yaoList].reverse().map((y: any, i: number) => (
-              <div key={i} style={{ padding: '6px 8px', marginBottom: 4, background: y.isMoving ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 4 }}>
-                <Space wrap size={4}>
-                  <Text strong style={{ color: 'var(--text-primary)' }}>第{y.position}爻</Text>
-                  <Tag>{y.naJia}</Tag>
-                  <Tag>{y.wuXing}</Tag>
-                  <Tag>{y.liuQin}</Tag>
-                  <Tag>{y.liuShou}</Tag>
-                  <Tag>{y.shiYing === '世' ? '世' : '应'}</Tag>
-                  {y.isMoving && <Tag>动爻</Tag>}
-                  <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>星宿：{y.xingXiu} 纳音：{y.naYin}</Text>
-                </Space>
-              </div>
-            ))}
+            {[...pan.benGua.yaoList].reverse().map((y: any, i: number) => {
+              const movingChange = y.isMoving && pan.zhiGua?.yaoList
+                ? (() => {
+                  const zhiYao = pan.zhiGua.yaoList.find((z: any) => z.position === y.position);
+                  const from = y.yaoValue === 9 ? '老阳○' : y.yaoValue === 6 ? '老阴×' : '';
+                  const to = zhiYao ? ((zhiYao.yaoValue === 7 || zhiYao.yaoValue === 9) ? '阳' : '阴') : '';
+                  return from ? `${from} 变${to}` : '';
+                })()
+                : '';
+              return (
+                <div key={i} style={{ padding: '6px 8px', marginBottom: 4, background: y.isMoving ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 4 }}>
+                  <Space wrap size={4}>
+                    <Text strong style={{ color: 'var(--text-primary)' }}>第{y.position}爻</Text>
+                    <Tooltip title="这一爻配的干支（纳甲）——用来定它的五行和六亲"><Tag>{y.naJia}</Tag></Tooltip>
+                    <Tooltip title="该爻的五行属性——重点看它与月建、动爻的生克关系"><Tag>{y.wuXing}</Tag></Tooltip>
+                    <Tooltip title={LIUQIN_PLAIN[y.liuQin] || '六亲：爻与卦宫的五行关系名'}><Tag>{y.liuQin}</Tag></Tooltip>
+                    {y.liuShou && <Tooltip title={LIUSHOU_PLAIN[y.liuShou] || '六兽'}><Tag>{y.liuShou}</Tag></Tooltip>}
+                    {y.shiYing === '世' && <Tooltip title="世爻＝你自己"><Tag color="gold">世</Tag></Tooltip>}
+                    {y.shiYing === '应' && <Tooltip title="应爻＝对方或外部环境"><Tag color="blue">应</Tag></Tooltip>}
+                    {y.isMoving && (
+                      <Tooltip title="动爻是断卦的重点：老阳○会变阴、老阴×会变阳——事情在这一环起变化">
+                        <Tag color="red">{movingChange || '动爻'}</Tag>
+                      </Tooltip>
+                    )}
+                    <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>星宿：{y.xingXiu} 纳音：{y.naYin}</Text>
+                  </Space>
+                  {y.isMoving && movingChange && (
+                    <Text style={{ fontSize: 11, color: 'var(--wx-fire)', display: 'block', marginTop: 2, paddingLeft: 4 }}>
+                      ↑ 动爻所在：事情变化的关键节点，断卦优先看这一爻对应的爻辞
+                    </Text>
+                  )}
+                </div>
+              );
+            })}
           </Card>
             </CollapsibleCard>
 

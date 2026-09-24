@@ -242,6 +242,8 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
         const ab = leftMinor.includes(a) && rightMinor.includes(b);
         const ba = leftMinor.includes(b) && rightMinor.includes(a);
         if (!(ab || ba)) return;
+        // 口径说明：夹宫格不像主星格走"分层"（结构成立即入格、缺吉化只降层次）——
+        // 夹宫之力本弱，须禄权科引动方足成格，无引动只记 breakReason 不入格（刻意从严）
         if (!hasLuQuanKe) { breakReasons.push(`${name}：缺少四化引动`); return; }
         geNames.push(name);
         reasons.push(`${name}：${a}${b}分居命宫两侧，且四化引动`);

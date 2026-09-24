@@ -66,9 +66,9 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
   if (['丁酉', '丁亥', '癸巳', '癸卯'].includes(dayPillar.ganZhi)) {
     return { name: '日贵格', type: '外格', desc: `日柱${dayPillar.ganZhi}为日贵。日坐天乙贵人，一生多贵人相助，人缘好。` };
   }
-  // 金神：时柱癸酉/己巳/乙丑
-  if (['癸酉', '己巳', '乙丑'].includes(timePillar.ganZhi)) {
-    return { name: '金神格', type: '外格', desc: `时柱${timePillar.ganZhi}为金神。金神主刚毅果决、才华外露，适合技术或军警类职业。` };
+  // 金神：时柱癸酉/己巳/乙丑，且日主为乙或己（《三命通会》：六乙日、六己日时逢之方为金神，其余日主不论）
+  if (['癸酉', '己巳', '乙丑'].includes(timePillar.ganZhi) && ['乙', '己'].includes(dayGan)) {
+    return { name: '金神格', type: '外格', desc: `日主${dayGan}生于${dayPillar.ganZhi}日，时柱${timePillar.ganZhi}为金神。金神主刚毅果决、才华外露，须火制伏方成大器（柱见丙丁/巳午为佳），适合技术或军警类职业。` };
   }
   // 专旺格：日主强 + 月令当令 + 地支成三会/三合局 + 天干无克星破格
   if (strengthLevel === '身极强' || strengthLevel === '身强') {
@@ -173,8 +173,12 @@ function yanShengGe(pillars: PillarData[], geName: string): { name: string; scor
   if (has('正财') && hasTou('正官')) {
     return { name: '财官相生', score: '中等', detail: '财官相生，财生官旺，利事业财运，是中等偏上格局' };
   }
-  if (has('比肩') && hasTou('正财')) {
-    return { name: '比劫夺财', score: '下等', detail: '比劫旺而财星弱，易破财竞争，是下等格局，需注意合伙与理财' };
+  // 比劫夺财须比劫成势（天干比肩劫财合计≥2）方论——身弱财旺时一个比劫帮身反为喜，
+  // 仅一个比肩透干就判夺财会大面积误伤正财格身弱盘
+  const biJieCount = shiShens.filter(x => x === '比肩' || x === '劫财').length;
+  const hasShiShangTongGuan = shiShens.some(x => x === '食神' || x === '伤官');
+  if (biJieCount >= 2 && has('正财') && !hasShiShangTongGuan) {
+    return { name: '比劫夺财', score: '下等', detail: `比劫${biJieCount}透成势而财星无助（无食伤通关），比劫夺财，易破财竞争，是下等格局，需注意合伙与理财` };
   }
   if (has('正官') && has('七杀')) {
     return { name: '官杀混杂', score: '下等', detail: '正官七杀同现，官杀混杂，压力与机遇并存，需印星化解' };
