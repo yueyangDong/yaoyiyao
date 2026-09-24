@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Card, Form, InputNumber, Button,
   Typography, Space, Tag, message, Radio, Row, Col,
-  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select,
+  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox,
 } from 'antd';
 import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
@@ -623,6 +623,12 @@ export interface PillarData {
   shiShen: string;
   shiShenZhi: string;  // 地支十神 = 自坐X
   nayin: string;
+  /**
+   * 时柱为推定值（用户不知出生时辰，按午时 12:00 排盘）。
+   * 注意：pillar 字段的值必须保持 '时柱' 不变——baziAnalysis 的 PILLAR_INDEX、
+   * shenShaByPillar 等大量以 pillar 名做等值比较，改值会静默失效。
+   */
+  unknown?: boolean;
 }
 
 // 领域深度解读区块（干支 + 十神 + 神煞分层白话）
@@ -688,6 +694,8 @@ export default function Bazi() {
     birthDay: number;
     birthHour: number;
     birthMinute: number;
+    /** 时柱是否为推定值（不知时辰，按午时排盘）——用于结果区提示与标注 */
+    hourUnknown?: boolean;
     birthGender: string;
     xunKong: string[];
     diShi: string[];
@@ -747,9 +755,15 @@ export default function Bazi() {
   const handleCalc = async () => {
     const values = form.getFieldsValue();
     const { year, month, day, hour, minute, gender, birthplace, ziShiSect } = values;
+    // 不知时辰：仍按午时推定排盘（不排时柱会让大量分析直接缺失，对用户毫无价值），
+    // 但时柱与所有依赖时柱的结论都会标注为"推定"。放行条件与提示分开，避免"勾了却说没填时辰"。
+    const hourUnknown = values.hourUnknown === true;
+    // 推定基准：午时 12:00（居中、且不涉晚子时换日争议）
+    const effHour = hourUnknown ? 12 : hour;
+    const effMinute = hourUnknown ? 0 : (minute || 0);
 
-    if (!year || !month || !day || hour === undefined) {
-      message.warning('请填写完整的出生时间');
+    if (!year || !month || !day || (!hourUnknown && hour === undefined)) {
+      message.warning(hourUnknown ? '请填写完整的出生日期' : '请填写完整的出生时间');
       return;
     }
     if (!gender) {
@@ -767,8 +781,8 @@ export default function Bazi() {
 
     // 排盘时间不能晚于当前时刻（不允许超前时间）
     const isFuture = inputMode === 'lunar'
-      ? isLunarFuture(year, month, day, leapMonth === month, hour || 0, minute || 0)
-      : isSolarFuture(year, month, day, hour || 0, minute || 0);
+      ? isLunarFuture(year, month, day, leapMonth === month, effHour, effMinute)
+      : isSolarFuture(year, month, day, effHour, effMinute);
     if (isFuture) {
       message.warning('排盘时间不能晚于当前时间，请检查');
       return;
@@ -779,11 +793,12 @@ export default function Bazi() {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
       // 真太阳时校正（有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT）
-      let calcHour = hour;
-      let calcMinute = minute || 0;
+      // 不知时辰时跳过校正——基准值本身是推定的，再校正只是制造虚假精度（午时远离午夜，不影响日柱）
+      let calcHour = effHour;
+      let calcMinute = effMinute;
       let lng = 120;
       let tsDayOffset = 0; // 真太阳时校正跨午夜时的日历日偏移（必须同步平移出生日期，否则日柱错一天）
-      if (birthplace && birthplace.length >= 2) {
+      if (!hourUnknown && birthplace && birthplace.length >= 2) {
         lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
         const trueSolar = correctSolarTime({
           year, month, day, hour, minute: minute || 0, lng,
@@ -829,6 +844,7 @@ export default function Bazi() {
         {
           pillar: '时柱', ganZhi: eightChar.getTime(), tianGan: eightChar.getTimeGan(), diZhi: eightChar.getTimeZhi(),
           cangGan: eightChar.getTimeHideGan(), shiShen: eightChar.getTimeShiShenGan(), shiShenZhi: (eightChar.getTimeShiShenZhi() || []).join('/'), nayin: eightChar.getTimeNaYin(),
+          unknown: hourUnknown,
         },
       ];
 
@@ -948,6 +964,7 @@ export default function Bazi() {
         birthDay: solarDate.getDay(),
         birthHour: calcHour,
         birthMinute: calcMinute,
+        hourUnknown,
         birthGender: gender,
         xunKong,
         diShi,
@@ -962,7 +979,7 @@ export default function Bazi() {
         userId: currentUser?.id || '',
         module: 'bazi',
         // 补全回放所需参数：否则农历输入/闰月/真太阳时出生地都无法还原，历史“重新查询”形同虚设
-        queryParams: { year, month, day, hour, minute, gender, inputMode, leapMonth, birthplace: birthplace || null, ziShiSect },
+        queryParams: { year, month, day, hour, minute, gender, inputMode, leapMonth, birthplace: birthplace || null, ziShiSect, hourUnknown },
         resultSummary: `八字排盘：${eightChar.getYear()} ${eightChar.getMonth()} ${eightChar.getDay()} ${eightChar.getTime()}`,
       });
     } catch (e: any) {
@@ -986,6 +1003,7 @@ export default function Bazi() {
       day: hp.day,
       hour: hp.hour,
       minute: hp.minute ?? 0,
+      hourUnknown: hp.hourUnknown === true,
       birthplace: hp.birthplace || undefined,
       ziShiSect: hp.ziShiSect ?? 2,
     });
@@ -1379,17 +1397,35 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                 <InputNumber min={1} max={31} placeholder="1" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={6} sm={3}>
-              <Form.Item name="hour" label="时" rules={[{ required: true }]}>
-                <InputNumber min={0} max={23} placeholder="0" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={6} sm={3}>
-              <Form.Item name="minute" label="分">
-                <InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hourUnknown !== cur.hourUnknown}>
+              {({ getFieldValue }) => {
+                const hu = !!getFieldValue('hourUnknown');
+                return (
+                  <>
+                    <Col xs={6} sm={3}>
+                      <Form.Item name="hour" label="时" rules={hu ? [] : [{ required: true }]}>
+                        <InputNumber min={0} max={23} placeholder={hu ? '推定' : '0'} disabled={hu} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={6} sm={3}>
+                      <Form.Item name="minute" label="分">
+                        <InputNumber min={0} max={59} placeholder="0" disabled={hu} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                  </>
+                );
+              }}
+            </Form.Item>
           </Row>
+
+          <Form.Item name="hourUnknown" valuePropName="checked" style={{ marginBottom: 8 }}>
+            <Checkbox>
+              不知道出生时辰
+              <Text type="secondary" style={{ fontSize: 12, marginLeft: 6 }}>
+                （按午时 12:00 推定排盘；年/月/日三柱、日主与格局依然准确，时柱及与时辰相关的结论会标注为"推定"）
+              </Text>
+            </Checkbox>
+          </Form.Item>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -1490,6 +1526,23 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
 
           {/* 竖列四柱布局 + 功能栏 */}
           <Card title="四柱八字" style={{ marginBottom: 16 }}>
+            {/* 不知时辰的推定提示：明确告知哪些结论可信、哪些仅供参考，而非含糊带过 */}
+            {baziData.hourUnknown && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message="时柱为推定值（未提供出生时辰，已按午时 12:00 排盘）"
+                description={
+                  <div style={{ fontSize: 12, lineHeight: 1.7 }}>
+                    <div><Text strong>结论可靠：</Text>年柱、月柱、日柱、日主强弱、格局判定、五行旺衰主体、大运顺逆与走向——主要由年月日决定。</div>
+                    <div><Text strong>仅供参考：</Text>时柱的干支与十神、空亡，以及落位在时柱的神煞；与"晚年运、子女缘、归处"相关的推论。</div>
+                    <div style={{ marginTop: 4 }}>另有一种概率极低的情形：若你恰好生于节气交接当天，月柱也可能因时辰不同而变化。</div>
+                    <div style={{ marginTop: 4, color: 'var(--text-secondary)' }}>想要完整结论，可向家人确认大致时辰（哪怕只记得"上午/下午/傍晚"）后重新排盘。</div>
+                  </div>
+                }
+              />
+            )}
             {/* 功能栏 - 手机端横向滚动 pill */}
             <div className={isMobile ? 'scroll-x' : ''}
               style={{
@@ -1582,7 +1635,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                         color: 'var(--text-primary)',
                         minWidth: 90,
                       }}>
-                        {p.pillar}{idx === 2 ? ' ★日主' : ''}
+                        {p.pillar}{idx === 2 ? ' ★日主' : ''}{p.unknown ? '（推定）' : ''}
                       </th>
                     ))}
                   </tr>

@@ -55,7 +55,8 @@ describe('analyzeHePan', () => {
   it('总分档位与 items 数量正确', () => {
     const r = analyzeHePan(input());
     expect(r.totalScore).toBeGreaterThanOrEqual(0);
-    expect(r.totalScore).toBeLessThanOrEqual(100);
+    // 满分 140 = 八字五项各 20 + 紫微两项各 20（v3 起紫微与八字同权重）
+    expect(r.totalScore).toBeLessThanOrEqual(140);
     expect(r.items.length).toBe(7); // 八字5项 + 紫微2项
     expect(['天作之合', '良缘', '平常', '需磨合']).toContain(r.level);
   });
@@ -119,8 +120,8 @@ describe('analyzeHePan', () => {
     expect(nyItem.score).toBe(7); // 纳音 金(剑锋金)克木(大林木)：(8 + 6) / 2
   });
 
-  // ========== 紫微合盘 v3：命宫主星 + 四化互动 ==========
-  it('紫微命宫：日月经典互补配 → 满分', () => {
+  // ========== 紫微合盘 v3：升为 20 分制 + 命宫地支合冲 + 取消基础分兜底 ==========
+  it('紫微命宫：日月经典互补配 → 满分 20（v3 与八字五项同权重）', () => {
     const ziweiSun = [{ name: '命宫', majorStars: [{ name: '太阳' }] }];
     const ziweiMoon = [{ name: '命宫', majorStars: [{ name: '太阴' }] }];
     const r = analyzeHePan(input({
@@ -128,7 +129,7 @@ describe('analyzeHePan', () => {
       partner: { ...input().partner, ziwei: ziweiMoon },
     }));
     const item = r.items.find(i => i.title.includes('紫微命宫'))!;
-    expect(item.score).toBe(10);
+    expect(item.score).toBe(20); // 太阳+太阴 经典配对 10 → ×2
     expect(item.desc).toContain('太阳');
   });
 
@@ -143,9 +144,47 @@ describe('analyzeHePan', () => {
       partner: { ...input().partner, ziwei: ziweiB },
     }));
     const item = r.items.find(i => i.title.includes('紫微命宫'))!;
-    // 紫微(领导型) vs 太阴(智谋型)：异组 8 分；对方命星落我夫妻宫 +2 → (10+8)/2=9
-    expect(item.score).toBe(9);
+    // 紫微(领导型) vs 太阴(智谋型)：异组 16；对方命星落我夫妻宫 +4 → ab=20, ba=16 → 18
+    expect(item.score).toBe(18);
     expect(item.desc).toContain('夫妻宫');
+  });
+
+  it('紫微命宫：命宫地支六合 → 加分；六冲 → 扣分（紫微合盘的标准判法）', () => {
+    const mkZw = (branch: string, star: string) => [{ name: '命宫', branch, majorStars: [{ name: star }] }];
+    // 子丑六合（且紫微 vs 太阴 异组 16）
+    const he = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: mkZw('子', '紫微') },
+      partner: { ...input().partner, ziwei: mkZw('丑', '太阴') },
+    }));
+    const heItem = he.items.find(i => i.title.includes('紫微命宫'))!;
+    expect(heItem.score).toBe(18); // 16 + 2（六合）
+    expect(heItem.desc).toContain('六合');
+    // 子午六冲
+    const chong = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: mkZw('子', '紫微') },
+      partner: { ...input().partner, ziwei: mkZw('午', '太阴') },
+    }));
+    const chongItem = chong.items.find(i => i.title.includes('紫微命宫'))!;
+    expect(chongItem.score).toBe(12); // 16 − 4（六冲）
+    expect(chongItem.desc).toContain('相冲');
+    // 无合无冲：不增不减
+    const ping = analyzeHePan(input({
+      mine: { ...input().mine, ziwei: mkZw('子', '紫微') },
+      partner: { ...input().partner, ziwei: mkZw('寅', '太阴') },
+    }));
+    expect(ping.items.find(i => i.title.includes('紫微命宫'))!.score).toBe(16);
+  });
+
+  it('紫微两项：无紫微盘时按中性分并明确说明（不再给"基础缘分分"）', () => {
+    const r = analyzeHePan(input()); // 未传 ziwei
+    const zw = r.items.find(i => i.title.includes('紫微命宫'))!;
+    const sh = r.items.find(i => i.title.includes('四化互动'))!;
+    expect(zw.score).toBe(10);
+    expect(sh.score).toBe(10);
+    expect(zw.desc).toContain('未能取得');
+    expect(sh.desc).toContain('未能取得');
+    expect(zw.desc).not.toContain('基础缘分分');
+    expect(sh.desc).not.toContain('基础缘分分');
   });
 
   it('四化互动：我年干化禄星正坐对方命宫 → 高分且对称', () => {
@@ -158,8 +197,8 @@ describe('analyzeHePan', () => {
     };
     const r1 = analyzeHePan(input(over));
     const item1 = r1.items.find(i => i.title.includes('四化互动'))!;
-    // ab：壬→天梁化禄坐对方命=10；ba：甲→廉贞/破军/武曲/太阳均不在[紫微]=5 → 均分 8
-    expect(item1.score).toBe(8);
+    // ab：壬→天梁化禄坐对方命=20；ba：甲→廉贞/破军/武曲/太阳均不在[紫微]=10 → 均分 15
+    expect(item1.score).toBe(15);
     expect(item1.desc).toContain('化禄');
     // 交换输入分项分不变（对称性）
     const r2 = analyzeHePan({ mine: over.partner, partner: over.mine });
@@ -176,8 +215,8 @@ describe('analyzeHePan', () => {
       partner: { ...input().partner, ziwei: ziweiB },
     }));
     const item = r.items.find(i => i.title.includes('四化互动'))!;
-    // ab=3（忌坐命），ba=5（甲干四化不涉紫微）→ 均分 4
-    expect(item.score).toBe(4);
+    // ab=6（忌坐命），ba=10（甲干四化不涉紫微）→ 均分 8
+    expect(item.score).toBe(8);
     expect(item.desc).toContain('化忌');
   });
 });

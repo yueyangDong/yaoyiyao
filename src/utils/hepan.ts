@@ -41,15 +41,24 @@ function zwPalaceStars(chart: any[], palace: string): string[] {
   return ((g?.majorStars) || []).map((s: any) => (typeof s === 'string' ? s : s?.name)).filter(Boolean);
 }
 
-/** 单向：A 的生年干四化对 B 命宫主星的引动（禄>科>权>忌，无引动为中平） */
+/** 取整个宫位对象（需要宫位地支等星名以外的字段时用） */
+function zwPalaceOf(chart: any[], palace: string): any | undefined {
+  return (chart || []).find((x: any) => x?.name === palace);
+}
+
+/**
+ * 单向：A 的生年干四化对 B 命宫主星的引动。
+ * v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重——紫微在合盘里不再只是"点缀分"。
+ * 档位：化禄 20 / 化科 16 / 化权 14 / 无引动 10（中位）/ 化忌 6。
+ */
 function sihuaDirOnMing(fromStem: string, toMingStars: string[], fromLabel: string, toLabel: string): { score: number; text: string } {
   const t = STEM_SIHUA_TABLE[fromStem];
-  if (!t || toMingStars.length === 0) return { score: 5, text: '' };
-  if (toMingStars.includes(t.lu)) return { score: 10, text: `${fromLabel}的${fromStem}干${t.lu}化禄正坐${toLabel}命宫——${fromLabel}的存在本身就能旺${toLabel}，是天生的助力缘` };
-  if (toMingStars.includes(t.ke)) return { score: 8, text: `${fromLabel}的${fromStem}干${t.ke}化科坐${toLabel}命宫——${fromLabel}能给${toLabel}带来名声、贵人与体面` };
-  if (toMingStars.includes(t.quan)) return { score: 7, text: `${fromLabel}的${fromStem}干${t.quan}化权坐${toLabel}命宫——${fromLabel}能推动${toLabel}成长，但要注意别变成施压` };
-  if (toMingStars.includes(t.ji)) return { score: 3, text: `${fromLabel}的${fromStem}干${t.ji}化忌坐${toLabel}命宫——${fromLabel}的执念容易变成${toLabel}的压力，相处宜多留空间` };
-  return { score: 5, text: `${fromLabel}的生年四化未直接引动${toLabel}命星，这一方向的缘分靠日常经营` };
+  if (!t || toMingStars.length === 0) return { score: 10, text: '' };
+  if (toMingStars.includes(t.lu)) return { score: 20, text: `${fromLabel}的${fromStem}干${t.lu}化禄正坐${toLabel}命宫——${fromLabel}的存在本身就能旺${toLabel}，是天生的助力缘` };
+  if (toMingStars.includes(t.ke)) return { score: 16, text: `${fromLabel}的${fromStem}干${t.ke}化科坐${toLabel}命宫——${fromLabel}能给${toLabel}带来名声、贵人与体面` };
+  if (toMingStars.includes(t.quan)) return { score: 14, text: `${fromLabel}的${fromStem}干${t.quan}化权坐${toLabel}命宫——${fromLabel}能推动${toLabel}成长，但要注意别变成施压` };
+  if (toMingStars.includes(t.ji)) return { score: 6, text: `${fromLabel}的${fromStem}干${t.ji}化忌坐${toLabel}命宫——${fromLabel}的执念容易变成${toLabel}的压力，相处宜多留空间` };
+  return { score: 10, text: `${fromLabel}的生年四化未直接引动${toLabel}命星，这一方向的缘分靠日常经营` };
 }
 
 export interface HePanInput {
@@ -124,6 +133,21 @@ const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水'
 const DZ_WX: Record<string, string> = {
   '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
+};
+// 地支六合/三合/六冲——用于紫微命宫宫位的合冲合参（注意：与上面按生肖名的 LIU_HE/SAN_HE 是两套表，勿混用）
+const DZ_LIU_HE: Record<string, string> = {
+  '子': '丑', '丑': '子', '寅': '亥', '亥': '寅', '卯': '戌', '戌': '卯',
+  '辰': '酉', '酉': '辰', '巳': '申', '申': '巳', '午': '未', '未': '午',
+};
+const DZ_SAN_HE: Record<string, string[]> = {
+  '申': ['子', '辰'], '子': ['申', '辰'], '辰': ['申', '子'],
+  '寅': ['午', '戌'], '午': ['寅', '戌'], '戌': ['寅', '午'],
+  '亥': ['卯', '未'], '卯': ['亥', '未'], '未': ['亥', '卯'],
+  '巳': ['酉', '丑'], '酉': ['巳', '丑'], '丑': ['巳', '酉'],
+};
+const DZ_LIU_CHONG: Record<string, string> = {
+  '子': '午', '午': '子', '丑': '未', '未': '丑', '寅': '申', '申': '寅',
+  '卯': '酉', '酉': '卯', '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳',
 };
 const NAYIN_WX: Record<string, string> = {
   '海中金': '金', '剑锋金': '金', '白蜡金': '金', '沙中金': '金', '金箔金': '金', '钗钏金': '金',
@@ -373,8 +397,12 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   }
   items.push({ title: '喜用互补', score: ysScore, desc: ysDesc });
 
-  // 6) 紫微命宫主星（10 分）——星性分组 + 经典配对 + 夫妻宫互参（双向对称）
-  let zwScore = 6; let zwDesc = '紫微命盘需双方都排盘后细化比对（当前以基础缘分分计）。';
+  // 6) 紫微命宫主星（20 分）——命宫主星配对 + 夫妻宫互参 + 命宫地支合冲（三项皆双向对称）
+  // v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重，紫微不再只是"点缀分"。
+  // 档位（20 分制）：同星 14 / 经典互补配对 16~20 / 异组 16 / 同组 12，夫妻宫互参命中 +4，命宫地支六合 +2、三合 +1、六冲 −4。
+  // 兜底已取消：正常路径必定有双方紫微盘（合盘页 buildZiweiChart 排盘）；取不到时明确说明，不再含糊给"基础缘分分"。
+  let zwScore = 10;
+  let zwDesc = '未能取得双方紫微命宫主星（出生信息不足），本项按中性分计。补齐双方出生时辰后可获得完整比对。';
   const mZw = mine.ziwei, pZw = partner.ziwei;
   if (Array.isArray(mZw) && Array.isArray(pZw)) {
     const ms = zwPalaceStars(mZw, '命宫');
@@ -384,20 +412,20 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       // 基础配对分（对称部分）
       let pair: number; let pairText: string;
       if (a === b) {
-        pair = 7;
+        pair = 14;
         pairText = `双方命宫同坐${a}——同类相吸、节奏一致，但要警惕把同样的短板一起放大`;
       } else {
         const ideal = ZW_IDEAL_PAIRS[zwPairKey(a, b)];
         if (ideal) {
-          pair = ideal;
+          pair = ideal * 2; // 8/9/10 → 16/18/20
           pairText = `${a}与${b}是经典互补组合，一个主外一个主内，配合度高`;
         } else {
           const gA = zwGroupOf(a), gB = zwGroupOf(b);
           if (gA !== gB) {
-            pair = 8;
+            pair = 16;
             pairText = `${a}（${ZW_GROUP_NAMES[gA]}）配${b}（${ZW_GROUP_NAMES[gB]}），一刚一柔、一动一静，互补性好`;
           } else {
-            pair = 6;
+            pair = 12;
             pairText = `${a}与${b}同属${ZW_GROUP_NAMES[gA]}，风格相近——默契有余、互补不足，需要刻意引入不同视角`;
           }
         }
@@ -405,24 +433,45 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       // 夫妻宫互参（方向性）：对方命宫主星落入我的夫妻宫＝正缘类型吻合
       const mSpouse = zwPalaceStars(mZw, '夫妻');
       const pSpouse = zwPalaceStars(pZw, '夫妻');
-      const abBonus = mSpouse.some((s) => ps.includes(s)) ? 2 : 0;
-      const baBonus = pSpouse.some((s) => ms.includes(s)) ? 2 : 0;
-      const ab = Math.min(10, pair + abBonus);
-      const ba = Math.min(10, pair + baBonus);
+      const abBonus = mSpouse.some((s) => ps.includes(s)) ? 4 : 0;
+      const baBonus = pSpouse.some((s) => ms.includes(s)) ? 4 : 0;
+      // 命宫地支合冲（对称关系，双向同值）：这是紫微合盘里判断"宫位层面契合度"的标准一环
+      const mBranch = zwPalaceOf(mZw, '命宫')?.branch;
+      const pBranch = zwPalaceOf(pZw, '命宫')?.branch;
+      let brScore = 0; let brText = '';
+      if (mBranch && pBranch) {
+        if (DZ_LIU_HE[mBranch] === pBranch) {
+          brScore = 2;
+          brText = `命宫地支${mBranch}${pBranch}六合——宫位层面天然相亲，相处自带默契，不费力`;
+        } else if ((DZ_SAN_HE[mBranch] || []).includes(pBranch)) {
+          brScore = 1;
+          brText = `命宫地支${mBranch}${pBranch}三合——同属一局，大方向一致，遇事容易想到一处去`;
+        } else if (DZ_LIU_CHONG[mBranch] === pBranch) {
+          brScore = -4;
+          brText = `命宫地支${mBranch}${pBranch}相冲——两人的核心诉求天然对撞，最容易"都在理、说不到一起"；凡事当面讲开，别赌气`;
+        } else {
+          brText = `命宫地支${mBranch}与${pBranch}无合无冲，宫位层面平顺不折腾`;
+        }
+      }
+      const clamp = (n: number) => Math.max(0, Math.min(20, n));
+      const ab = clamp(pair + abBonus + brScore);
+      const ba = clamp(pair + baBonus + brScore);
       zwScore = Math.round((ab + ba) / 2);
       const spouseTexts: string[] = [];
       if (abBonus) spouseTexts.push('对方命宫主星正落你的夫妻宫，是你命中欣赏的类型');
       if (baBonus) spouseTexts.push('你的命宫主星正落对方夫妻宫，在对方眼里你是理想型');
       // 星性白话画像（按双方命宫首星所属分组）
       const groupDesc = ['有主见、要面子、习惯做决定的人', '细腻体贴、擅长出主意和打配合的人', '行动派、闲不住、敢想敢闯的人'];
-      zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : '夫妻宫互参无直接对应，缘分靠相处养成。'}` +
+      zwDesc = `${pairText}。${spouseTexts.length > 0 ? spouseTexts.join('；') + '。' : ''}${brText ? brText + '。' : ''}` +
         `白话一点：你是${ZW_GROUP_NAMES[zwGroupOf(a)]}——${groupDesc[zwGroupOf(a)]}；对方是${ZW_GROUP_NAMES[zwGroupOf(b)]}——${groupDesc[zwGroupOf(b)]}。星性没有好坏，只有合不合拍：同一组的像同行者，不同组的像拼图。`;
     }
   }
   items.push({ title: '紫微命宫', score: zwScore, desc: zwDesc });
 
-  // 7) 四化互动（10 分）——双方生年干四化是否引动对方命星（禄>科>权>忌，双向对称）
-  let sihuaScore = 6; let sihuaDesc = '四化互动需双方完整命盘比对（当前以基础缘分分计）。';
+  // 7) 四化互动（20 分）——双方生年干四化是否引动对方命星（禄>科>权>忌，双向对称）
+  // v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重；兜底取消，改用中性分 + 明确说明。
+  let sihuaScore = 10;
+  let sihuaDesc = '未能取得双方生年四化与命宫主星（出生信息不足），本项按中性分计。';
   const mStem = mine.pillars?.[0]?.tianGan;
   const pStem = partner.pillars?.[0]?.tianGan;
   if (Array.isArray(mZw) && Array.isArray(pZw) && mStem && pStem && STEM_SIHUA_TABLE[mStem] && STEM_SIHUA_TABLE[pStem]) {
@@ -434,13 +483,13 @@ export function analyzeHePan(input: HePanInput): HePanResult {
       sihuaScore = Math.round((ab.score + ba.score) / 2);
       // 四化档位白话：给这对组合的整体相处基调
       const tones: number[] = [ab.score, ba.score];
-      const hasLu = tones.includes(10);
-      const hasJi = tones.includes(3);
+      const hasLu = tones.includes(20);
+      const hasJi = tones.includes(6);
       let toneText = '';
       if (hasLu && !hasJi) toneText = '整体基调：你们的缘分自带"保底资产"——哪怕吵架冷战，感情的基本面很难真的塌。这种盘要珍惜：不是每对情侣都有这种先天护城河。';
       else if (hasLu && hasJi) toneText = '整体基调：又旺又有压力的一对——好的时候特别好，较劲的时候也特别较劲。秘诀是记住旺的时候多存感情本钱，较劲的时候才有得花。';
       else if (hasJi) toneText = '整体基调：对方的在意容易变成你的压力——TA越在乎越紧张，越紧张越想管。这不是"克你"，是TA表达爱的姿势不对。多给彼此留一点空间和信任，忌的伤害就会小很多。';
-      else if (tones.includes(8) || tones.includes(7)) toneText = '整体基调：对方能带给你名声、贵人和体面——带TA出席你的重要场合，往往都是加分项。同时留意"为你好"式的推动，别让它悄悄变成施压。';
+      else if (tones.includes(16) || tones.includes(14)) toneText = '整体基调：对方能带给你名声、贵人和体面——带TA出席你的重要场合，往往都是加分项。同时留意"为你好"式的推动，别让它悄悄变成施压。';
       else toneText = '整体基调：你们的四化互不引动，属于"干净的平缘"——没有先天的加持，也没有先天的债务，感情的每一分厚薄都是两个人亲手挣来的。';
       sihuaDesc = `${ab.text}；${ba.text}。${toneText}`;
     }
@@ -448,12 +497,14 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
 
   const totalScore = items.reduce((s, i) => s + i.score, 0);
-  const level = totalScore >= 80 ? '天作之合' : totalScore >= 65 ? '良缘' : totalScore >= 50 ? '平常' : '需磨合';
-  const levelNote = totalScore >= 80
+  // 满分口径（v3）：八字五项各 20 分 + 紫微两项各 20 分 = 140 分。
+  // 档位阈值按原 120 分制（80/65/50）等比换算到 140 分制 → 93/76/58。
+  const level = totalScore >= 93 ? '天作之合' : totalScore >= 76 ? '良缘' : totalScore >= 58 ? '平常' : '需磨合';
+  const levelNote = totalScore >= 93
     ? '这个分数段意味着：你们先天的"合"远多于"冲"——不是不会有矛盾，而是矛盾总有化解的底子。别辜负这份出厂配置。'
-    : totalScore >= 65
+    : totalScore >= 76
       ? '这个分数段意味着：底子是好的，磨合点也明确——知道坑在哪的情侣，比稀里糊涂的情侣走得远。'
-      : totalScore >= 50
+      : totalScore >= 58
         ? '这个分数段意味着：先天缘分平平，既不算天造地设，也绝非无缘——这样的感情像白手起家，挣来的每一分都是自己的。'
         : '这个分数段意味着：先天的差异点多，要付出的功课也多——但请记住：合盘量的是"出厂配置"，量不出"两个人愿意为彼此改多少"。多少低分发盘过成了一流感情，靠的就是这件事。';
   const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}${levelNote}合盘看的是趋势，最终经营在两人。`;

@@ -23,8 +23,8 @@ const TG_WX: Record<string, string> = {
 };
 
 /**
- * 为合盘双方排紫微命盘（轻量版：只保留合盘需要的宫位名/主星/生年四化）。
- * 排盘失败时返回 undefined，合盘自动降级为基础分，不影响主流程。
+ * 为合盘双方排紫微命盘（轻量版：只保留合盘需要的宫位名/宫位地支/主星/生年四化）。
+ * 排盘失败时返回 undefined —— 合盘对该两项按中性分计并明确说明，不再用"基础缘分分"含糊兜底。
  */
 function buildZiweiChart(solar: any, gender: string): any[] | undefined {
   try {
@@ -37,6 +37,7 @@ function buildZiweiChart(solar: any, gender: string): any[] | undefined {
     } as any);
     return (result.palaces || []).map((p: any) => ({
       name: p.name,
+      branch: p.branch, // 命宫地支合冲合参需要（紫微合盘标准判法的一环）
       majorStars: (p.majorStars || []).map((s: any) => ({
         name: s.name,
         sihua: s.YT?.name || null,
@@ -262,7 +263,8 @@ export default function HePan() {
           targetKey={chartKey}
           previewHeight={180}
           benefits={[
-            '缘分总评与五维评分：五行互补、日主关系、生肖纳音、紫微互动逐项打分',
+            '缘分总评与七维评分：日主五行、地支合冲、纳音年命、生肖配对、喜用互补、紫微命宫、四化互动逐项打分',
+            '紫微合盘真算：命宫主星配对 + 夫妻宫互参 + 命宫地支合冲，双方生年四化对彼此命宫的引动',
             '性格互动双画像：你们各自是什么"物种"，在一起会怎样互相影响',
             '双向视角：同一份缘分，你和 TA 的两种真实感受',
             '分别致双方的相处建议，权益绑定本次合盘，永久回看',
