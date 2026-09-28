@@ -50,10 +50,10 @@ const STAR_PERSONALITY: Record<string, string> = {
 
 // 四化对宫位的影响白话
 const SIHUA_EFFECT: Record<string, string> = {
-  '禄': '化禄在此宫，这个领域容易有收获和好事发生，是你的福气所在。',
-  '权': '化权在此宫，这个领域你有掌控力，适合主动争取。',
-  '科': '化科在此宫，这个领域你容易出彩、出名、得人缘。',
-  '忌': '化忌在此宫，这个领域需要你格外用心经营，是人生的"功课"。',
+  '禄': '化禄落此宫——这一块是你的"顺水区"：资源与机会来得比别人容易，但顺的时候最容易荒废，别把福气当理所当然。',
+  '权': '化权落此宫——这一块你说得上话、扛得住事：适合主动要位置、定规则，而不是等人来安排。',
+  '科': '化科落此宫——这一块你容易被看见：名声与专业形象会替你开门，但"人设"要靠持续兑现撑着。',
+  '忌': '化忌落此宫——这一块是你的"较劲区"：你会反复在这里投入、反复觉得不够，功课是接受不完美，把力气用在能改变的部分。',
 };
 
 const SIHUA_COLORS: Record<string, string> = {
@@ -454,23 +454,28 @@ export default function Ziwei() {
         }
         // 财帛宫
         if (gong.name === '财帛' && allStars.some((s: string) => ['武曲', '天府', '禄存'].includes(s))) {
-          highlights.push('财帛宫有财星坐守，理财能力强，能存住钱');
+          const hit = allStars.filter((s: string) => ['武曲', '天府', '禄存'].includes(s));
+          highlights.push(`财帛宫有${hit.join('、')}坐守——你对钱有天然的手感。但天赋的另一面是：容易把"存住钱"当成唯一的安全感来源，真正的财务自由还得靠让钱生钱。`);
         }
         // 官禄宫
         if (gong.name === '官禄' && allStars.some((s: string) => ['紫微', '天府', '天相'].includes(s))) {
-          highlights.push('官禄宫有贵星，事业上适合管理岗位或进入体制');
+          const hit = allStars.filter((s: string) => ['紫微', '天府', '天相'].includes(s));
+          highlights.push(`官禄宫有${hit.join('、')}——你适合"规则越清楚越能出头"的环境：体制、大公司、有明确晋升通道的平台；野路子里反而束手束脚。`);
         }
         // 夫妻宫
         if (gong.name === '夫妻' && allStars.some((s: string) => ['天相', '天同', '太阴'].includes(s))) {
-          highlights.push('夫妻宫有吉星，婚姻稳定，配偶条件不错');
+          const hit = allStars.filter((s: string) => ['天相', '天同', '太阴'].includes(s));
+          highlights.push(`夫妻宫的${hit.join('、')}——配偶属稳重型，你们的婚姻靠"相处不累"而不是"爱得轰烈"撑着，这其实更耐久。`);
         }
         // 疾厄宫警示（中州派定性：廉贞为正曜而非煞星，不列入）
         if (gong.name === '疾厄' && allStars.some((s: string) => ['七杀', '破军', '擎羊', '火星'].includes(s))) {
-          warnings.push('疾厄宫有煞星，注意意外伤害和定期体检');
+          const hit = allStars.filter((s: string) => ['七杀', '破军', '擎羊', '火星'].includes(s));
+          warnings.push(`疾厄宫有${hit.join('、')}——身体的信号比常人直接，别用"扛一扛"处理健康问题，年度体检和规律作息是你的固定成本。`);
         }
         // 交友宫警示
         if (gong.name === '交友' && allStars.some((s: string) => ['擎羊', '陀罗', '火星', '铃星'].includes(s))) {
-          warnings.push('交友宫有煞星，合伙要小心，容易遇人不淑');
+          const hit = allStars.filter((s: string) => ['擎羊', '陀罗', '火星', '铃星'].includes(s));
+          warnings.push(`交友宫有${hit.join('、')}——合作与借贷是这一块的长期风险点：先小人后君子，书面约定比交情可靠。`);
         }
       }
 
@@ -479,7 +484,7 @@ export default function Ziwei() {
       if (fuDeGong) {
         const fStars = [...(fuDeGong.majorStars || []).map((s: any) => s.name), ...(fuDeGong.minorStars || [])];
         if (fStars.some((s: string) => ['天同', '天梁', '太阴'].includes(s))) {
-          highlights.push('福德宫有吉星，心态好会享福，是打心底里能快乐的人');
+          highlights.push(`福德宫有${fStars.filter((s: string) => ['天同', '天梁', '太阴'].includes(s)).join('、')}坐守——你天生具备"自得其乐"的能力，这是很多人一辈子学不会的。别让忙碌把这份能力耗掉。`);
         }
       }
 
@@ -487,14 +492,14 @@ export default function Ziwei() {
       if (mingGong) {
         const mStars = mingGong.majorStars || [];
         for (const s of mStars) {
-          if (s.sihua === '禄') highlights.push('命宫化禄——天生好运气，福气满满');
-          if (s.sihua === '权') highlights.push('命宫化权——有领导才能，做事有魄力');
-          if (s.sihua === '科') highlights.push('命宫化科——有才艺和名声，受人喜欢');
-          if (s.sihua === '忌') warnings.push('命宫化忌——需要更加努力才能获得认可，但也会让你更坚韧');
+          if (s.sihua === '禄') highlights.push('命宫化禄——你的"顺"是那种不用太用力也能过关的顺，代价是容易钝掉进取心，得主动给自己找点难事。');
+          if (s.sihua === '权') highlights.push('命宫化权——你天生带"拍板"的气场：越主动越有人跟，越犹豫越容易被架空。');
+          if (s.sihua === '科') highlights.push('命宫化科——你容易被记住、被推荐；但好名声要靠持续兑现撑着，一次失约很贵。');
+          if (s.sihua === '忌') warnings.push('命宫化忌——你对自己比对别人狠，认可来得慢。学会给自己结算成绩，而不是只记账失误——这份自我要求，正是你比同龄人走得远的原因。');
         }
       }
 
-      if (warnings.length === 0) warnings.push('各宫整体格局较好，无特别需要警惕之处');
+      if (warnings.length === 0) warnings.push('全盘没有集中的煞星区——没有大坑，但也不存在"一劳永逸"的优势区，稳定本身就是你的底牌');
 
       const ge = analyzeZiweiGe(gongData);
       // 大限（十年运）+ 流年四化飞星：大限宫按库的 horoscopeRanges 虚岁区间定位，宫干飞四化。
@@ -520,7 +525,7 @@ export default function Ziwei() {
         shenGongName: shenGong ? `${(shenGong as any).stem}${(shenGong as any).branch}` : '—',
         mingZhu,
         shenZhu,
-        highlights: highlights.length > 0 ? highlights : ['命盘格局清朗，各方面较为均衡'],
+        highlights: highlights.length > 0 ? highlights : ['各宫星曜分布均衡，没有极端偏科——你属于"哪一块都过得去"的类型：短板不明显，长板要靠自己选出来'],
         warnings,
       });
 
@@ -659,9 +664,9 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
         `${gongLabel}是命盘里的「功课区」，不逃避、勤经营，反而能转危为安。`,
       ],
       '中': [
-        `你的${gongLabel}吉凶参半，有好有坏，整体还算平稳。`,
-        `${gongLabel}中规中矩，不算突出也不算差，知足常乐。`,
-        `${gongLabel}星曜平和，没有大起大落，稳中求进就是上策。`,
+        `你的${gongLabel}吉凶并存——上限不低，但不会自动到位，关键看你在这个领域肯不肯持续投入。`,
+        `${gongLabel}没有大起大落，属于"你怎么对它，它就怎么回报你"的一宫——不必焦虑，但也别指望躺着赢。`,
+        `${gongLabel}底子平稳，成绩基本等于投入——这一块很少给你意外惊喜，也极少给你意外打击。`,
       ],
     };
     const verdictList = verdicts[score.level] || verdicts['中'];
@@ -927,23 +932,27 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             let grade: string; let gradeColor: string; let gradeBg: string; let summary: string;
             if (jiCount >= 6) {
               grade = '上等'; gradeColor = '#6B9A7A'; gradeBg = 'rgba(107,154,122,0.08)';
-              summary = '命盘整体格局优良，多宫吉星汇聚。你天生底子好，在多个领域都有不错的运势。吉星是天赋，善加利用可成大器。';
+              summary = `${jiNames.slice(0, 3).join('、')}等 ${jiCount} 个宫位是吉相——你的底牌在这儿。但底牌好不等于不必出手：优势不主动兑现，十年后会变成"本来可以"。`;
             } else if (jiCount >= 4 && xiongCount <= 3) {
               grade = '中上'; gradeColor = '#6B9A7A'; gradeBg = 'rgba(107,154,122,0.06)';
-              summary = '命盘中等偏上，吉多于凶。大部分领域较为顺利，少数领域需要多下功夫。整体来说是一副不错的牌。';
+              summary = `好在${jiNames.slice(0, 3).join('、')}；${xiongNames.length > 0 ? `${xiongNames.slice(0, 2).join('、')}需要你多花些心思` : '整体没有明显短板'}。这不叫运气差，是该把资源往强项上再集中一点。`;
             } else if (jiCount >= 2 && xiongCount <= 4) {
               grade = '中等'; gradeColor = '#B87B4A'; gradeBg = 'rgba(184,123,74,0.06)';
-              summary = '命盘吉凶参半，有好有坏。不算一帆风顺，但也不是寸步难行。吉星是你的筹码，煞星是你的老师——这副牌怎么打，看你自己。';
+              summary = `${jiNames.slice(0, 2).join('、')}是你的筹码，${xiongNames.length > 0 ? `${xiongNames.slice(0, 2).join('、')}是要补的功课` : '短板不算突出，重点是别把长板埋了'}——这副牌的关键不是运气好坏，而是先啃哪块硬骨头。`;
             } else if (xiongCount >= 5) {
               grade = '中下'; gradeColor = '#C23B2B'; gradeBg = 'rgba(194,59,43,0.06)';
-              summary = '命盘煞星偏多，人生磨砺较多。但请记住——历史上成就大业者，往往命盘煞重。煞星不是诅咒，是逼你变强的磨刀石。宝剑锋从磨砺出。';
+              summary = `煞星偏多（${xiongNames.slice(0, 3).join('、')}），人生的磨砺确实比常人密。但这类盘的成长曲线更陡——把注意力从"为什么又是我"挪到"这次我学到了什么"，三五年就是另一番局面。`;
             } else {
               grade = '中等'; gradeColor = '#B87B4A'; gradeBg = 'rgba(184,123,74,0.06)';
-              summary = '命盘中规中矩，平稳是最大的福气。不求大富大贵，但求岁岁平安。知足常乐，平安是福。';
+              summary = `没有突出的吉相，也没有集中的坑（${jiCount}吉 · ${zhongCount}平 · ${xiongCount}凶）——你的运势不靠运气推，靠的是稳定输出：把一件事做够十年，胜过四处找风口。`;
             }
 
             // 总评首句（按 。！! 分割），页面展示层加粗，不改 ziweiAnalysis.ts
             const overallFirst = summarized ? summarized.overall.split(/[。！!]/)[0] : '';
+            // 底部"最该记住"用本盘真实结论（优先警示点），替代人人都一样的随机名言
+            const keyReminder = summarized
+              ? (summarized.cautions[0] || summarized.highlights[0] || '')
+              : '';
 
             return (
               <Card style={{
@@ -991,7 +1000,9 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                 </Row>
                 <div style={{ textAlign: 'center', marginTop: 10 }}>
                   <Text style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic' }}>
-                    {getRandomQuote()}
+                    {keyReminder
+                      ? `本盘最该记住：${keyReminder.length > 80 ? `${keyReminder.slice(0, 80)}…` : keyReminder}`
+                      : getRandomQuote()}
                   </Text>
                 </div>
               </Card>

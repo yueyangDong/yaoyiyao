@@ -303,6 +303,30 @@ const GROUP_ADVICE_SOCIAL: Record<string, string> = {
   '财': '你社交带目的——偶尔纯粹地帮人一把，回报会以意外的方式回来。',
 };
 
+// 主导十神组的"翻车模式"与"出彩场景"——把性格短板落到具体行为，而不是"要注意性格平衡"
+const GROUP_OVERUSE: Record<string, string> = {
+  '比劫': '把"我说了算"用在需要借力的事上',
+  '食伤': '把"我想到了"当成"我已经做到了"',
+  '官杀': '把"我应该"当成"我愿意"，替别人的期待买单',
+  '印': '把"想清楚"当成不动手的理由',
+  '财': '把"值不值"算到感情和健康头上',
+};
+const GROUP_BEST_USE: Record<string, string> = {
+  '比劫': '开荒、拿主意、扛责任的时候',
+  '食伤': '需要作品和表达的时候',
+  '官杀': '规则明确、要对结果负责的场合',
+  '印': '需要长期沉淀、熬得住的事',
+  '财': '离现金流近、要算账的位置',
+};
+// 主导十神组的"情绪出口"——比"要调节情绪"具体的多
+const GROUP_EMOTION_OUTLET: Record<string, string> = {
+  '比劫': '运动、竞技、出一身汗',
+  '食伤': '把想法写出来或讲出来，别只在脑子里循环',
+  '官杀': '定期把待办清单清空，压力要卸不要攒',
+  '印': '独处、阅读、把没想通的事想通',
+  '财': '把账算清楚、把目标写下来，模糊才让你焦虑',
+};
+
 // ---------- 生成器 ----------
 export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepReading[] {
   const out: DomainDeepReading[] = [];
@@ -352,7 +376,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   });
   personalitySections.push({
     heading: '心性调养（喜用神开方）',
-    text: `喜用神为${yongShort}——${yongShen.map((w) => YONG_SHEN_MIND[w]).filter(Boolean).join('；') || yongText[0] || ''}。性格没有好坏，只有用对地方和用过头——看清自己的默认模式，就是最大的成长。`,
+    text: `喜用神为${yongShort}——${yongShen.map((w) => YONG_SHEN_MIND[w]).filter(Boolean).join('；') || yongText[0] || ''}。真正会让你栽跟头的，往往不是能力不够，而是${dominant[0] ? GROUP_OVERUSE[dominant[0]] : '把同一种模式用到底'}；反过来，${dominant[0] ? GROUP_BEST_USE[dominant[0]] : '找对场景'}，就是你觉得"怎么这么顺"的时候。情绪堵住时去${dominant[0] ? GROUP_EMOTION_OUTLET[dominant[0]] : '运动或独处'}，比硬扛管用。`,
   });
   if (a.personality) {
     const p = a.personality;
@@ -400,7 +424,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   });
   loveSections.push({
     heading: '经营之道',
-    text: `喜用神为${yongShort}——${yongText[0] || '顺应喜用五行安排生活'}。感情上，约会选对你们"旺"的环境；吵架时先处理情绪再处理事情。${findShaExact(input, ['红鸾', '天喜']).length > 0 ? '命带红鸾天喜，遇到对的人时别犹豫，是你的就是你的。' : ''}`,
+    text: `喜用神为${yongShort}——${yongText[0] || '顺应喜用五行安排生活'}。落到实处就两条：吵架时先接住情绪再谈对错（你们的雷区是翻旧账）；付出要说出口——对方看不见的付出，等于没发生。${findShaExact(input, ['红鸾', '天喜']).length > 0 ? '命带红鸾天喜，遇到对的人时别犹豫，是你的就是你的。' : ''}`,
   });
   if (a.love) {
     loveSections[0].text += ` ${a.love.spouseFeature}`;
@@ -443,7 +467,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   careerSections.push({ heading: '财富的形状', text: `${moneyLines.join('；')}。` });
   careerSections.push({
     heading: '发力建议',
-    text: `喜用神为${yongShort}——${yongText[0] || ''}。${findSha(input, (n) => n.includes('驿马')).length > 0 ? '驿马在命，主动出击、多走动多见人，机会在路上。' : '你的机会在深耕——选定赛道至少沉淀三年再评值不值得。'}`,
+    text: `喜用神为${yongShort}——${yongText[0] || ''}。${findSha(input, (n) => n.includes('驿马')).length > 0 ? '驿马在命，机会在路上——主动出击、多走动多见人，坐等是最亏的打法。' : '你的机会在深耕——同一赛道熬满三年，复利才开始显现；频繁换方向的人，十年后往往还在起点附近。'}`,
   });
   if (a.career) {
     const findC = (h: string) => careerSections.find((s) => s.heading.includes(h));
@@ -502,7 +526,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   });
   healthSections.push({
     heading: '养生方案（喜用神开方）',
-    text: `喜用神为${yongShort}——${yongText.slice(0, 2).join('；')}。规律作息大于一切补品，体检按年做，情绪管理是养生的上半场。`,
+    text: `喜用神为${yongShort}——${yongText.slice(0, 2).join('；')}。体检别买"套餐"——把${weakest.map((w) => WX_HEALTH[w]?.organ || w).join('、')}列成每年的固定复查项，比吃补品实在得多。${dominant[0] ? `情绪出口在${GROUP_EMOTION_OUTLET[dominant[0]]}，堵着不排，身体会替你记账。` : ''}`,
   });
   if (a.health) {
     const findH = (h: string) => healthSections.find((s) => s.heading.includes(h));
@@ -548,7 +572,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   });
   familySections.push({
     heading: '相处建议',
-    text: `喜用神为${yongShort}——带家人一起做喜用五行的事（${yongText[0] || '顺应五行安排'}），比送礼更能拉近关系。长辈的健康问题按年排查，家事账目提前说清。`,
+    text: `喜用神为${yongShort}——带家人一起做喜用五行的事（${yongText[0] || '顺应五行安排'}），比送礼更能拉近关系。最容易生嫌隙的两件事趁早处理：长辈健康按年排查，家里的钱与房提前说清——算在明处，反而不伤感情。`,
   });
   if (a.family) {
     const findF = (h: string) => familySections.find((s) => s.heading.includes(h));
@@ -592,7 +616,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   });
   socialSections.push({
     heading: '择友建议',
-    text: `喜用神为${yongShort}——你的贵人多属"${yongShen.map((w) => WX_PERSON[w]).filter(Boolean).join('、') || '志同道合'}"的气质类型。判断一段关系值不值：聊完更有劲，就是滋养；聊完更内耗，趁早降温。`,
+    text: `喜用神为${yongShort}——你的贵人多属"${yongShen.map((w) => WX_PERSON[w]).filter(Boolean).join('、') || '志同道合'}"的气质类型。判断标准很实用：聊完更有劲，就是滋养；聊完更内耗，趁早降温——别用"认识很久"绑住自己。`,
   });
   if (a.social) {
     const findS = (h: string) => socialSections.find((s) => s.heading.includes(h));

@@ -906,7 +906,7 @@ export function analyzeLove(
     if (spousePalace) {
       spouseFeature += `${spousePalace}。`;
     }
-    spouseFeature += `不必担心，配偶星不显不等于没有婚姻，而是你的姻缘模式不走寻常路，可能通过特殊机缘认识。`;
+    spouseFeature += `配偶星不显，是"姻缘不靠天定、靠触发"的写法——你的婚姻更看大运流年何时把机会送到面前。所以别守株待兔：多进入新的圈子，把"遇到"的概率做大，比等一个"命定的人"现实得多。`;
   }
 
   // 拼回日主个性锚：开篇锚定"你这个人"在感情中的底色
@@ -964,7 +964,7 @@ export function analyzeLove(
   } else if (hasHai) {
     const haiDesc = riZhiRelDescs.filter(d => d.includes('害')).join('；');
     marriageQuality = `你的日支${dayZhi}（夫妻宫）有"害"：${haiDesc}。害是一种暗中妨害的关系——表面上可能相安无事，但实际上有些暗流涌动。`;
-    marriageQuality += '注意不要因为小事积累成大矛盾，有问题及时沟通解决。';
+    marriageQuality += '害的麻烦在于"没吵，但记着"——你们要防的不是明面争执，而是那些"算了不说了"的瞬间。约定一条规矩：当天的事当天说，隔夜不许再翻。';
   } else {
     marriageQuality = `你的日支${dayZhi}（夫妻宫，${DZ_WX[dayZhi] || ''}）比较安静——没有明显的冲合刑害。`;
     // 看夫妻宫本身的性质
@@ -974,7 +974,7 @@ export function analyzeLove(
     } else if (WX_SHENG[dayWx] === riDzWx) {
       marriageQuality += `夫妻宫${riDzWx}生助日主${dayWx}，说明你的另一半会比较照顾你、支持你，是那种"旺夫/旺妻"的类型。`;
     } else {
-      marriageQuality += '平淡是福，但偶尔也需要主动制造一些小惊喜和仪式感来保鲜。';
+      marriageQuality += '你们的相处不是"天生黏"那一类——感情靠共同经历一点点垒：一起做成的事越多、共同回忆越厚，关系反而越牢。';
     }
   }
 
@@ -1003,7 +1003,7 @@ export function analyzeLove(
       peachBlossom += '桃花在日柱（33-48岁），即使婚后你的魅力也不减，这既是优势也是考验——已婚者要注意和异性保持适当距离。';
     }
 
-    peachBlossom += '桃花多也意味着选择的烦恼——正桃花和烂桃花混在一起，需要擦亮眼睛。';
+    peachBlossom += '但桃花多不等于姻缘好：你的课题是"筛选"而不是"错过"——同时来的人越多，越要用"相处三个月后我还想不想见"当尺子，而不是只凭心动强度。';
   } else if (allPeach.length >= 1) {
     const peachDetail = allPeach.map(s => `${s.name}在${s.pillar}`).join('、');
     peachBlossom = `你命中带有${peachDetail}，代表你有不错的异性缘和魅力。`;
@@ -1014,7 +1014,7 @@ export function analyzeLove(
     if (peachDz && PEACH_DZ_TRAITS[peachDz]) {
       peachBlossom += `${PEACH_DZ_TRAITS[peachDz]}。`;
     }
-    peachBlossom += '桃花不在多而在于精——遇到对的人比谈很多恋爱更重要。';
+    peachBlossom += '你这类配置的共同点是：开头慢、后劲足——不容易一见钟情，但一旦确认，关系比谁都想得久。';
   } else {
     // 虽然没有明显的桃花煞，但可以看日支和配偶星
     peachBlossom = '你命局中桃花神煞不多，不属于那种一见钟情的万人迷类型。';
@@ -1023,7 +1023,7 @@ export function analyzeLove(
     if (peachDz.includes(dayZhi)) {
       peachBlossom += `但你的夫妻宫坐${dayZhi}，本身就在四正桃花位——${PEACH_DZ_TRAITS[dayZhi]}。遇到对的人时，你的魅力会自然散发。`;
     }
-    peachBlossom += '这种配置的好处是：一旦进入感情，反而更专一、更持久。桃花少不代表没人爱，而是你不把精力浪费在浅层关系上。';
+    peachBlossom += '你的姻缘属于"日久生情"型：靠长期相处攒下的信任，而不是第一眼的电流——别用"没感觉"太快淘汰掉那些相处起来很舒服的人。';
   }
 
   // ===== 综合建议 =====
@@ -1055,7 +1055,7 @@ export function analyzeLove(
     if (dayGanProfile && spousePalace) {
       adviceItems.push(`${dayGanProfile.love}；${spousePalace.split('——')[1] || spousePalace}`);
     } else {
-      adviceItems.push('你的感情底色平稳，重点在于经营：把对方放在"队友"的位置而不是"对手"，感情自然长久');
+      adviceItems.push('你的夫妻宫没有冲刑，感情底子是"稳"的——真正的风险不是吵架，而是稳定到懒得表达。把"这个月有没有认真聊过一次"当体检指标，比什么技巧都实用');
     }
   }
 
@@ -1157,7 +1157,7 @@ export function analyzeCareer(
       '壬': '你的日主是壬水——江河型人格，适合流动性的赛道：贸易物流、旅游出行、投资、传媒。哪里有流动，哪里就有你的机会',
       '癸': '你的日主是癸水——雨露型人格，适合滋养型赛道：护理医疗、教育培训、茶饮咖啡、数据分析。润物无声的功夫，别人替代不了',
     };
-    direction = ganCareer[dayGan] || '综合来看，你的八字格局比较灵活，职业选择面较宽。建议根据自己的兴趣和实际技能来选择，而非盲目跟风。';
+    direction = ganCareer[dayGan] || '日主天干不在预设的十干名单内——职业方向请先以"月令十神主气"为准（见上一个板块），并核对出生日期与时辰是否填写完整。';
   }
 
   // 拼回主气锚
@@ -1179,7 +1179,7 @@ export function analyzeCareer(
     if (pianCaiPillars.some(p => p.pillar === '时柱')) {
       moneyMethod += '偏财在时柱说明你中晚年可能会有一笔意外的财富机会——投资或副业在后期可能开花结果。';
     }
-    moneyMethod += '建议主副并进，用主业的钱养副业，用副业的钱做投资——不要把所有鸡蛋放在一个篮子里。';
+    moneyMethod += '关键是给两条腿定分工：主业负责"稳"，副业负责"试"——副业连续两年没起色就该砍掉，别用"万一成了呢"拖住主业。';
   } else if (hasZhengCai) {
     const zcInfo = zhengCaiPillars.map(p => `${p.ganZhi}在${p.pillar}`).join('、');
     moneyMethod = `你的财星以正财为主（${zcInfo}），正财代表老实赚钱、稳定收入——工资、固定生意、长期项目。`;
@@ -1188,7 +1188,7 @@ export function analyzeCareer(
     } else if (zhengCaiPillars.some(p => p.pillar === '日柱')) {
       moneyMethod += '正财在日柱（夫妻宫），你的收入和配偶可能有很大关系——结婚后财运反而好转，或者和另一半一起经营事业会更顺。';
     }
-    moneyMethod += '不建议高风险投机（比如炒股、虚拟币），稳健存钱和长期理财更适合你。稳扎稳打才是你的财富密码。';
+    moneyMethod += '你的财富曲线是"斜率小、不回撤"——别羡慕别人短期的高收益，你真正的优势是十年后还在场。需要"赌一把"的机会，一律不碰。';
   } else if (hasPianCai) {
     const pcInfo = pianCaiPillars.map(p => `${p.ganZhi}在${p.pillar}`).join('、');
     moneyMethod = `你以偏财为主（${pcInfo}），偏财代表投资、生意、奖金、意外之财——来的方式不太传统。`;
@@ -1204,8 +1204,8 @@ export function analyzeCareer(
       moneyMethod += '另外你日主偏弱，不要同时搞太多方向——先精钻一件事，做到行业前20%，钱自然就来了。';
     }
   } else {
-    moneyMethod = `综合来看，你的八字财星和食伤都不太明显。赚钱不是你的天赋赛道，但也意味着你不会被钱牵着走。`;
-    moneyMethod += '找到自己真正擅长且有人愿意付费的方向，专注深耕——你的优势可能不在"赚钱快"而在"赚得稳"。选择永远比努力重要。';
+    moneyMethod = `你的财星与食伤都不透——这不是"赚不到钱"，而是你的赚钱路径不走"直接换钱"这条路：先有本事、再有钱，是你的正常节奏。`;
+    moneyMethod += '具体做法：把一件事做到"别人愿意为你的专业付费"的程度，钱是结果而不是目标。别在早期用收入高低判断自己选得对不对。';
   }
 
   // ===== 财运走势 =====
@@ -1221,7 +1221,7 @@ export function analyzeCareer(
   } else if (strengthLevel.includes('弱') && hasCai) {
     const caiInfo = allCaiPillars.map(p => `${p.pillar}${p.ganZhi}(${p.shiShen})`).join('、');
     fortuneTrend = `你命中有财（${caiInfo}）但日主${dayGan}(${dayWx})偏弱——好比小容器装不下太多水，财多反而会累。`;
-    fortuneTrend += '赚钱不要太拼，身体健康和精力管理比赚钱更重要。35岁以后运势逐渐走稳，不用急着在年轻时暴富。';
+    fortuneTrend += '你的财是"浇水才长的庄稼"，不是"天上下的雨"——先补日主（学习、考证、结伴、跟对平台），容器大了才装得住财。用健康换钱这笔账，对你尤其不划算。';
     if (hasYin) {
       const yinWx = TG_WX[allYinPillars[0].tianGan];
       fortuneTrend += `你八字中有印星（${yinWx}生助${dayWx}），建议通过学习和考证来提升自己的"容量"——学历和专业技能就是你的"增容器"，先学习后赚钱。`;
@@ -1236,7 +1236,7 @@ export function analyzeCareer(
     fortuneTrend += '多关注市场趋势和商机，你的能力匹配上了机会，财运就会爆发。';
   } else {
     fortuneTrend = `财运整体比较平稳，没有大起大落。${hasZhengCai ? '正财为主，说明你有稳定的收入来源' : ''}${hasPianCai ? '偏财为辅，偶尔有一些意外之财' : ''}。`;
-    fortuneTrend += '保持稳定的收入来源，辅以稳健的理财规划。不追求暴富，追求"细水长流"反而更适合你。';
+    fortuneTrend += '你的财运特征是"没有大风口、也没有大坑"——最该做的不是找机会，而是把储蓄率和支出结构定下来，让复利替你干活。';
   }
 
   // ===== 贵人运 =====
@@ -1256,7 +1256,7 @@ export function analyzeCareer(
   } else if (hasTianDe || hasYueDe) {
     const deItems = shenSha.filter(s => s.name === '天德贵人' || s.name === '月德贵人');
     nobleHelp = `你命带${deItems.map(s => s.name).join('、')}（出现在${deItems.map(s => s.pillar).join('、')}），有天德/月德护佑的人，虽然不是大富大贵，但遇到困难时总会有转机。`;
-    nobleHelp += '你的贵人运主要体现在"无形"的层面——危难时刻的转机、关键时候的消息，这些都是贵人相助的体现。多做好事、保持善念，福报会回馈到你身上。';
+    nobleHelp += '你的贵人运不走"某个人拉你一把"的路子，而是"关键时刻总有转机"——所以更要主动把难处说出去：你遇到的坎，常常在讲给别人听的过程中就有了方案。';
   } else if (hasWenChang) {
     const wcItems = shenSha.filter(s => s.name === '文昌');
     nobleHelp = `你命带文昌星（出现在${wcItems.map(s => s.pillar).join('、')}），文昌主学业和文职。你的贵人主要是学术型或文化型的人——老师、导师、行业专家。`;
@@ -1266,7 +1266,7 @@ export function analyzeCareer(
     nobleHelp = `你八字印星较旺（${allYinPillars.map(p => `${p.ganZhi}在${p.pillar}`).join('、')}），印星${yinWx}生助日主${dayWx}。虽然没有明显的贵人星，但印星本身代表长辈缘和贵人运。`;
     nobleHelp += '你的贵人可能是女性长辈、老师、或者上级领导。多和资历深的人交往，他们的一句话可能改变你的职业方向。';
   } else {
-    nobleHelp = '你的八字中没有明显的贵人星，但不代表没有贵人。你的贵人运更多来自你自己的人际积累——平时多帮人、多交朋友、多输出价值，需要时自然有人愿意帮你。';
+    nobleHelp = '八字中没有明确的贵人星——这类盘的人，贵人往往是"自己攒出来"的：先把事做出来、把专业亮出来，帮你的人才看得见你。空等贵人，等于没有贵人。';
   }
 
   // ===== 综合建议 =====
@@ -1386,11 +1386,11 @@ export function analyzeHealth(
   } else if (strengthLevel.includes('弱')) {
     bodyOverview += `你属于${strengthLevel}体质——好比手机电池容量偏小，精力有限，容易感到疲劳。`;
     if (weakest[0] === dayWx) {
-      bodyOverview += `你的日主五行（${dayWx}）本身在八字中偏弱，代表身体素质天生不算特别强。需要后天多注意保养，规律作息比吃什么补品都重要。`;
+      bodyOverview += `你的日主五行（${dayWx}）自身在局中偏弱——体质底子不算厚，但这类体质"养得回来"：按时睡、别空腹、别硬撑，长期做到这三条，状态会明显好过同龄人。`;
     }
-    bodyOverview += '不适合高强度透支身体的运动和工作方式，劳逸结合是你健康的关键。';
+    bodyOverview += '忌"透支式努力"：对你来说，连续熬夜三天的代价要一周才补得回来。运动选温和可持续的那种（快走、游泳、瑜伽），频率比强度重要。';
   } else {
-    bodyOverview += '你的体质比较均衡，日主中和——身体各系统相对协调，不会有某个方面特别突出或特别弱的问题。保持目前的节奏就好。';
+    bodyOverview += '你的体质属于"耐造型"——各系统协同度好，不容易出大问题；但这类体质的盲点恰恰是"感觉不到信号"，小毛病容易被拖成老毛病，别把"没症状"当"没风险"。';
   }
 
   // ===== 需要留意的身体部位 =====
@@ -1457,7 +1457,7 @@ export function analyzeHealth(
   }
 
   if (concerns.length === 0) {
-    concerns.push('整体来看，你的八字五行相对均衡，没有特别突出的健康短板。但这不代表可以大意——规律作息、均衡饮食、定期体检仍是基本功课。');
+    concerns.push('五行分布上没有明显的"过旺/偏弱"短板——你的健康风险不来自先天结构，而来自后天习惯。真正要盯的是两项：睡眠时长、久坐时间。');
   }
 
   // ===== 养生建议 =====
@@ -1589,9 +1589,9 @@ export function analyzeFamily(
     } else if (bj?.shiShen === '劫财') {
       siblings += '劫财代表虽然亲近但利益容易交叉——比如一起做生意或者共同承担家庭开支的兄弟姐妹关系。金钱方面需要多沟通。';
     }
-    siblings += '你比较独立，不太依赖兄弟姐妹，但也不会疏远。保持适当距离反而让关系更舒服。';
+    siblings += '你们相处的方式更像"淡而长久"：不常联系，但有事一句话就到位——这种关系不需要靠频繁走动维持，别因为"联系少"而觉得亏欠。';
   } else {
-    siblings = '你八字中比劫较少，可能兄弟姐妹不多，或者你和同辈关系比较清淡。但你也在这种环境里养成了独立的性格——不随波逐流、有自己的主见。这不是缺陷，而是你的特质。';
+    siblings = '比劫不显，在六亲上读作"同辈缘淡"——可能是兄弟姐妹少，也可能是从小就要自己拿主意。这让你独立得早，代价是遇到超出量级的事时，习惯硬扛而不是开口求助。这一条值得刻意改。';
   }
 
   // ===== 家庭氛围 =====
@@ -1614,7 +1614,7 @@ export function analyzeFamily(
       ? '食神的家庭氛围是温暖轻松的——你可能从小被比较温柔地对待，性格中也有随和的底色。'
       : '伤官的家庭氛围是"不拘一格"——父母可能比较有个性，或者家庭中有某种"叛逆"的氛围。你也因此养成了独立思考的习惯。';
   } else {
-    familyAtmosphere = `月柱${monthPillar.ganZhi}代表你的成长环境。整体来看你的家庭氛围属于比较正常的范围——有温暖也有摩擦，有好日子也有小困难。这就是大多数普通家庭的写照。`;
+    familyAtmosphere = `你的月柱${monthPillar.ganZhi}天干不透印、官、财、食伤——家庭氛围不属于任何一种典型：更可能是"该给的都给，但很少明说"的那类。这类家庭养出来的人，往往要等到成年之后，才慢慢读懂父母。`;
   }
 
   // ===== 建议 =====
@@ -1694,7 +1694,7 @@ export function analyzeSocial(
     } else if (shangGuanPs.length > 0) {
       socialTrait += '伤官型的社交风格是"锋芒毕露"——你有独到的见解和创意，说话有趣但有时候也容易得罪人。喜欢你的人很喜欢，不喜欢的人会觉得你太较真。';
     }
-    socialTrait += '你不是那种靠"混脸熟"来社交的人，你是靠"内容"吸引人——做好自己的事情，社交网络会自然建立起来。';
+    socialTrait += '你靠"内容"而不是"脸熟"聚人——作品、观点、专业度才是你的社交货币，所以经营自己比经营饭局有效得多。';
     if (dayGanProfile) {
       socialTrait += `${dayGanProfile.social}。`;
     }
@@ -1702,7 +1702,7 @@ export function analyzeSocial(
     const bjInfo = [...biJianPs, ...jieCaiPs].map(p => `${p.shiShen}在${p.pillar}（${p.ganZhi}）`).join('、');
     socialTrait = `${dominantLead}你的八字比劫较旺（${bjInfo}），比劫代表同辈朋友、伙伴、团队。你讲义气、重感情，朋友圈子广，是那种"兄弟/姐妹需要帮忙立马就到"的类型。`;
     if (hasJieCai) {
-      socialTrait += '但比劫多（特别是劫财多）也意味着朋友之间的界限有时不太清晰——你帮别人很多，但别人未必能同等回报。需要学会筛选真正值得深交的人。';
+      socialTrait += '但比劫多（尤其劫财多）也意味着朋友之间的界限常常模糊——你帮出去的多，能收回来的少。筛选标准可以很简单：借钱之后关系不变味的，留；只在你"有用"时才出现的，淡出。';
     }
     if (dayGanProfile) {
       socialTrait += `${dayGanProfile.social}。`;
@@ -1712,7 +1712,7 @@ export function analyzeSocial(
     if (dayGanProfile) {
       socialTrait = `${dominantLead}${dayGanProfile.core}。${dayGanProfile.social}。`;
     } else {
-      socialTrait = '你的社交风格比较自然随和——不是人群中最高调的那个，但有自己稳定的朋友圈子。';
+      socialTrait = '你的社交风格自然随和——不是人群里最高调的那个，但握着一圈稳定的关系。你属于"长期相处不累"的类型，这点在十年以上的关系里，比会说话更值钱。';
     }
   }
 
@@ -1728,10 +1728,10 @@ export function analyzeSocial(
   } else if (biJieCount === 1) {
     const bj = (biJianPs[0] || jieCaiPs[0]);
     friendQuality = `你命中${bj.shiShen}出现在${bj.pillar}（${bj.ganZhi}），代表你生命中有关键的好朋友或伙伴，虽然数量不多但质量很高。`;
-    friendQuality += '你不轻易相信别人，但一旦认可了就是一辈子的朋友。这种交友策略在现代社会中其实很明智——交十个普通朋友不如有一个真朋友。';
+    friendQuality += `你不轻易相信别人，但一旦认可就是长期的朋友——这种"慢热但长久"的策略，比广铺人脉更省心：维护十个点头之交，不如把一个人交深。`;
   } else {
-    friendQuality = '你的朋友不多但质量极高——你不太喜欢泛泛之交的应酬，宁愿一个人待着也不想应付无意义的社交。这在当代社会其实是非常健康的方式。';
-    friendQuality += '朋友少不代表人缘差——你只是不把精力分散在浅层关系上。真正需要帮助的时候，你的朋友一定会站出来。';
+    friendQuality = '命局中比劫不显——你不是"社交型"的人：饭局和应酬对你的消耗大于滋养，独处才是你回血的方式。';
+    friendQuality += '这不等于人缘差。你的关系走"少而深"路线，三五个人就能撑起全部社交需求；要留意的是，别让"不爱麻烦别人"变成"有事也不说"。';
   }
 
   // ===== 贵人类型 =====

@@ -754,8 +754,8 @@ function getPalaceSpecificContext(
   if (minorStars.length > 0) {
     const ausp = minorStars.filter(isAuspiciousStar).slice(0, 2);
     const malef = minorStars.filter(isMaleficStar).slice(0, 2);
-    if (ausp.length > 0) parts.push(`得${ausp.join('、')}相助，事半功倍。`);
-    if (malef.length > 0) parts.push(`逢${malef.join('、')}，行事宜多一分耐心，切忌冲动。`);
+    if (ausp.length > 0) parts.push(`得${ausp.join('、')}相助——这一宫有现成的助力，遇事不妨开口，别硬扛。`);
+    if (malef.length > 0) parts.push(`逢${malef.join('、')}——这一宫的过程会有反复，慢一步、多确认一次，比抢快划算。`);
   }
 
   // 5. 对宫冲照（仅有四化互动时输出：禄权科为"照"，化忌为"冲"）
@@ -1069,7 +1069,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
 
   if (quanItems.length > 0 && luItems.length === 0) {
     const quanStars = quanItems.map((s) => `${s.star}在${fmtPalaceName(s.palace)}化权`).join('、');
-    highlights.push(`命盘有化权——${quanStars}，你在这个领域具备领导力和主导权，适合主动争取和掌控局面。`);
+    highlights.push(`命盘有化权——${quanStars}。这些是你"说得上话"的地盘：越主动要位置、定规则，越不容易被安排；退让反而会消耗这份权。`);
   }
 
   // 自化提示（"用"层面的能量流动，体用分层呈现）
@@ -1077,7 +1077,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     const desc = selfSihua
       .map((s) => `${s.star}在${fmtPalaceName(s.palace)}${s.source === 'selfCF' ? '离心' : '向心'}自化${s.sihua}`)
       .join('、');
-    cautions.push(`命盘带自化——${desc}。自化是"用"层面的能量流动：离心者得到后易再流失，向心者机缘自来但需守得住，皆以平常心对待得失为宜。`);
+    cautions.push(`命盘带自化——${desc}。自化是"用"层面的能量流动：离心（得到后容易再流失）的地方，别急着扩张，先建立"留得住"的习惯；向心（机缘自来）的地方，机会来了要接得住、守得稳。`);
   }
 
   // 4. 财帛宫、田宅宫有财星
@@ -1096,7 +1096,15 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
       const matched = pMainStars.filter((s) => wealthStars.includes(s));
       if (matched.length > 0) {
         const sihuaTag = pSihua.length > 0 ? `，且有${pSihua.map((s) => `${s.star}化${s.sihua}`).join('、')}` : '';
-        highlights.push(`${label}有${matched.join('、')}坐守${sihuaTag}，理财能力和财富积累有先天优势。`);
+        // 按首星给出"你的财是怎么来的"，而不是笼统的"有先天优势"
+        const first = matched[0];
+        const wealthHint: Record<string, string> = {
+          '武曲': '你靠专业硬实力挣钱，看不上投机，也最忌讳被"快钱"带偏',
+          '天府': '你擅长守成与配置，钱放在你手里不容易散，但别把"存住"当成唯一的安全感',
+          '太阴': '你的财多来自长期积累与不动产类配置，急不来，也亏得起时间',
+          '禄存': '你自带"余粮感"，不太会为钱慌，但要防的是守着不动、错过增值',
+        };
+        highlights.push(`${label}有${matched.join('、')}坐守${sihuaTag}——这一块你有先天的"财感"：${wealthHint[first] || '理财与积累上手比常人快'}。`);
       }
     }
   }
@@ -1114,11 +1122,11 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     const guiXing = ['紫微', '天府', '天相', '太阳', '天梁'];
     const matched = glMainStars.filter((s) => guiXing.includes(s));
     if (matched.length > 0) {
-      highlights.push(`官禄宫有${matched.join('、')}坐守，事业上有贵人运，适合往管理或专业权威方向发展。`);
+      highlights.push(`官禄宫有${matched.join('、')}坐守——规则越清楚的环境你越能出头：管理岗、专业权威路线、晋升通道明确的平台，都比"野路子"更适合你。`);
     }
 
     if (glSihua.some((s) => s.sihua === '科')) {
-      highlights.push('官禄宫化科——在事业和公众领域容易获得名声和认可，适合建立个人品牌。');
+      highlights.push('官禄宫化科——你的专业名声会先于职位到达：把作品和口碑做扎实，机会会自己找上门，不必靠抢。');
     }
   }
 
@@ -1133,10 +1141,10 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     const fdSihua = getPalaceSihua(fdStars);
 
     if (fdMainStars.some((s) => ['天同', '天梁', '天府', '太阴'].includes(s))) {
-      highlights.push('福德宫有吉星坐守——内心富足、懂得享受生活，精神世界丰盈，晚年运势尤其不错。');
+      highlights.push(`福德宫有${fdMainStars.filter((s) => ['天同', '天梁', '天府', '太阴'].includes(s)).join('、')}坐守——这份"自得其乐"的能力很多人一辈子学不会：你的快乐不太依赖外部条件，这是晚年最大的本钱。`);
     }
     if (fdSihua.some((s) => s.sihua === '禄')) {
-      highlights.push('福德宫化禄——天生的享福命，物质和精神双丰收，日子过得舒心。');
+      highlights.push('福德宫化禄——对你来说，花钱买体验比买物更值：把"让自己舒服"排进日程不是浪费，是续航。');
     }
   }
 
@@ -1149,7 +1157,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     ];
     const fqMainStars = getMainStarNames(fqStars);
     if (fqMainStars.some((s) => ['天相', '天同', '太阴', '天府'].includes(s))) {
-      highlights.push('夫妻宫格局不错，配偶类型属于稳重可靠型，婚姻生活有质量。');
+      highlights.push(`夫妻宫有${fqMainStars.filter((s) => ['天相', '天同', '太阴', '天府'].includes(s)).join('、')}——配偶偏稳重型，你们的婚姻靠"相处不累"撑着，这比爱得轰烈更耐久。`);
     }
   }
 
@@ -1159,7 +1167,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
   const jiItems = allSihuaList.filter((s) => s.sihua === '忌');
   if (jiItems.length > 0) {
     const jiDesc = jiItems.map((s) => `${s.star}在${s.palace}宫化忌`).join('、');
-    cautions.push(`${jiDesc}——这是你命盘中的"功课区"，在这些领域容易遇到挑战，但跨过去就是成长。不要逃避，而要花更多心思经营。`);
+    cautions.push(`${jiDesc}——这是你命盘中的"功课区"：在这些领域，你会反复投入、反复觉得"还差点"，问题往往不在努力不够，而在期待太高。先接受它的不完美，再把力气用在能改变的部分。`);
   }
 
   // 2. 疾厄宫煞星警示
@@ -1175,7 +1183,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     const dangerStars = ['七杀', '破军', '擎羊', '火星', '铃星', '陀罗', '地空', '地劫'];
     const matched = jeAllNames.filter((s) => dangerStars.includes(s));
     if (matched.length > 0) {
-      cautions.push(`疾厄宫有${matched.join('、')}——体质上需要注意，建议保持规律作息和定期体检，避免意外伤害。`);
+      cautions.push(`疾厄宫有${matched.join('、')}——这一块的体质信号比常人直接，健康管理不能靠"感觉还好"：年度体检当固定项、不熬夜硬扛、运动量循序渐进，这三条守住，煞星的冲击会小很多。`);
     }
   }
 
@@ -1203,7 +1211,7 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
     const mingMain = getMainStarNames(mingAllStars);
     const mingSihua = getPalaceSihua(mingAllStars);
     if (mingMain.length === 0 && cautions.length < 3) {
-      cautions.push('命宫为空宫——并不代表运势不好，而是你的性格可塑性很强，需要更多的时间探索和确立自我。');
+      cautions.push('命宫为空宫——这不算运势差，而是"命无正曜、借对宫安星"：你的性格没有先天定式，可塑性极强，但也更容易被所处环境塑形。选对圈子与平台，比逼自己"变强"更有效。');
     }
     if (mingSihua.some((s) => s.sihua === '忌')) {
       cautions.push('命宫化忌——人生早期可能比别人多走一些弯路，但正是这些经历让你比别人更坚韧、更有深度。');
@@ -1215,10 +1223,10 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
   const finalCautions = cautions.slice(0, 3);
 
   if (finalHighlights.length === 0) {
-    finalHighlights.push('命盘整体格局清朗，各方面能量均衡，没有明显的偏颇之处。');
+    finalHighlights.push('各宫星曜分布均衡，没有极端偏科——你属于"哪一块都过得去"的类型：短板不明显，长板要靠自己选出来。');
   }
   if (finalCautions.length === 0) {
-    finalCautions.push('各宫位整体配置较好，暂无特别需要警惕之处。保持平常心即可。');
+    finalCautions.push('全盘没有明显的煞星集中区——没有大坑，但也不存在"一劳永逸"的优势区，稳定本身就是你的底牌。');
   }
 
   // ---- 整体运势解读 (约200字) ----
@@ -1236,39 +1244,49 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
  * 生成整体运势白话解读（约200字）
  */
 function generateOverallReading(
-  _allPalacesData: PalaceData[],
+  allPalacesData: PalaceData[],
   allSihua: { star: string; palace: string; sihua: string; source?: 'birth' | 'selfCF' | 'selfCP' }[],
   highlights: string[],
   cautions: string[],
 ): string {
   const parts: string[] = [];
 
-  // 开场
-  parts.push('综合来看，这张命盘展现了独特的生命图景。');
+  // 开场：直接点出命宫主角，不用"综合来看，这张命盘展现了独特的生命图景"这类任何盘都成立的句子
+  const mingPalace = allPalacesData.find((p) => p.name === '命宫');
+  const mingStars: (StarInfo | string)[] = mingPalace
+    ? [...(mingPalace.majorStars || []), ...(mingPalace.minorStars || [])]
+    : [];
+  const mingMainStars = getMainStarNames(mingStars);
+  if (mingMainStars.length > 0) {
+    parts.push(`你的命宫由${mingMainStars.join('、')}主事——${MAIN_STAR_HIGHLIGHT[mingMainStars[0]] || MAIN_STAR_TRAITS[mingMainStars[0]]?.positive || '这是你全部性格与选择的底色'}。`);
+    const neg = MAIN_STAR_TRAITS[mingMainStars[0]]?.negative;
+    if (neg) parts.push(`它的反面是：${neg}——优势用过头就是短板，这条比优点更值得你记住。`);
+  } else {
+    parts.push('你的命宫不见主星（命无正曜），按借对宫主星论——能量底色由迁移宫定调。这类人不是"命薄"，而是天生的"环境型选手"：环境选对了，运势就顺了。');
+  }
 
-  // 四化特征总结（只计生年化"体"，自化另计）
+  // 四化特征总结（只计生年化"体"，自化另计）——每句都点出具体星曜与宫位，避免"运气不错"这类通用判断
   const birthOnly = allSihua.filter((s) => !s.source || s.source === 'birth');
-  const luCount = birthOnly.filter((s) => s.sihua === '禄').length;
-  const quanCount = birthOnly.filter((s) => s.sihua === '权').length;
-  const keCount = birthOnly.filter((s) => s.sihua === '科').length;
-  const jiCount = birthOnly.filter((s) => s.sihua === '忌').length;
+  const luItemsOv = birthOnly.filter((s) => s.sihua === '禄');
+  const quanItemsOv = birthOnly.filter((s) => s.sihua === '权');
+  const keItemsOv = birthOnly.filter((s) => s.sihua === '科');
+  const jiItemsOv = birthOnly.filter((s) => s.sihua === '忌');
+  const posDesc = (list: typeof birthOnly) => list.map((s) => `${s.star}·${fmtPalaceName(s.palace)}`).join('、');
 
-  if (luCount > 1) {
-    parts.push('命盘中化禄较多，整体运气不错，人生中容易遇到机遇和贵人，关键是要懂得抓住。');
-  } else if (luCount === 1) {
-    parts.push('命盘中有化禄加持，在对应领域会有不错的福报，顺势而为就能收获。');
+  if (luItemsOv.length > 0) {
+    parts.push(`生年化禄落在${posDesc(luItemsOv)}——这是你不费力就能接到资源的地方。但"顺"的地方最容易荒废：福气要主动变现，才叫真的福气。`);
   }
 
-  if (jiCount > 0) {
-    parts.push(`同时有化忌分布在${jiCount}个宫位，这些领域需要你更多耐心和智慧去经营，是人生成长的必修课。`);
+  if (jiItemsOv.length > 0) {
+    parts.push(`化忌落在${posDesc(jiItemsOv)}——你会在这些领域反复投入、反复觉得"就差一点"。问题通常不在努力不够，而在期待过高：先接受它不完美，再把力气用在能改变的部分。`);
   }
 
-  if (quanCount > 0) {
-    parts.push('化权的力量赋予你掌控和主导的能力，建议在你擅长的领域主动出击、大胆决策。');
+  if (quanItemsOv.length > 0) {
+    parts.push(`化权在${quanItemsOv.map((s) => fmtPalaceName(s.palace)).join('、')}——这几块你说得上话、扛得住事，适合主动要位置、定规则，而不是等人来安排。`);
   }
 
-  if (keCount > 0) {
-    parts.push('化科带来了名声和人缘的助力，你的才华容易被看见，适合在公众领域建立个人影响力。');
+  if (keItemsOv.length > 0) {
+    parts.push(`化科在${keItemsOv.map((s) => fmtPalaceName(s.palace)).join('、')}——这几块你容易被看见，口碑和专业形象会替你开门；但要注意，人设要靠持续兑现撑着。`);
   }
 
   // 格局判断
@@ -1276,15 +1294,15 @@ function generateOverallReading(
   const hasManyCautions = cautions.length >= 3;
 
   if (hasManyHighlights && !hasManyCautions) {
-    parts.push('整体格局向上，命盘中吉星汇聚之处较多，是天生运势不错的类型。');
+    parts.push('整体看，你的牌面是"优势区明显、坑不多"——真正的风险不是能力不够，而是把优势用成了舒适区。');
   } else if (!hasManyHighlights && hasManyCautions) {
-    parts.push('命盘中有几个需要留意的领域，但这不代表命运不好——越是需要修炼的地方，越能成就你的深度和厚度。');
+    parts.push('整体看，需要留意的领域偏多——这类盘的人成长曲线往往更陡：每一次补课，都会变成别人拿不走的经验。');
   } else {
-    parts.push('命盘中有吉有煞，福祸相倚——这正是人生常态。了解自己的优势去发挥，知道短板去补足，才是看盘的意义。');
+    parts.push('整体看，长板与短板都不算极端——决定你走多远的，不是盘面强弱，而是你愿不愿意在某个方向持续压注。');
   }
 
-  // 收尾
-  parts.push('紫微斗数不是宿命论，它给你的是一张人生地图。路怎么走、风景怎么看，永远在你自己的手中。愿你在了解自己命盘之后，更加清醒、更加笃定地走好每一步。');
+  // 收尾：不写"路怎么走永远在你手中"这类万能结尾，落在"看盘到底有什么用"上
+  parts.push('看盘的意义不在算得准，而在提前认出自己的默认反应——知道自己在什么情境下容易犯错，就已经赢了一半。');
 
   return parts.join('');
 }

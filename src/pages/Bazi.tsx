@@ -10,6 +10,7 @@ import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import { generateDomainDeepReadings, type DomainDeepReading } from '../utils/baziDomainDeep';
+import { buildDayunReadings, type DayunReading } from '../utils/dayunReading';
 import PayWall from '../components/PayWall';
 import { chartTargetKey } from '../lib/payment';
 import { analyzePersonality } from '../utils/baziPersonality';
@@ -498,77 +499,9 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
   return results;
 }
 
-// 大运白话解读 — 在原 [i%3] 基础上扩展为 5+ 模板池，按 i 索引递增避免重复
-function getDayunInterpretation(steps: { ganZhi: string; startAge: number; endAge: number }[], dayGan: string): string[] {
-  // 与日主关系的 6 种模板池（比劫/印/食伤/官杀/财 各 5 条左右 + 共用建议）
-  const TEMPLATES: Record<string, string[]> = {
-    bijian: [
-      '这步大运与日主同五行，是比劫运。你会感到社交运走高，适合交朋友、组团队、拓展人脉，自身能量也会被放大。',
-      '比劫大运，身边会出现几个关键的同辈伙伴，事业上有"一起扛事"的同行者。提醒一句：借钱给朋友前三思，合伙的账目要白纸黑字。',
-      '比和之运，自身能量充沛，适合把冲劲用在事业开荒、新赛道切入。这种"被看见"的感觉会让你自信倍增。',
-      '比劫当令，同辈助力多但竞争也多——你会遇到贵人，也会有对手。专注自身升级，别被旁人的节奏带着跑。',
-      '这步大运比劫齐聚，朋友圈活跃，也有"被人拖后腿"的风险。主动筛选、敢于拒绝，是你这段时期的功课。',
-    ],
-    yin: [
-      '这步大运是印运，是相对顺遂的十年。利学业、考证、得长辈贵人相助，做事有"靠山"的感觉。',
-      '印星大运，长辈缘、学习力都强，适合进修深造、读研读博、考专业资格。把时间投在学习上回报率最高。',
-      '印绶当运，内心安定，思考周全，容易获得文凭、资质、口碑。这是一段适合"静下来积累"的时期。',
-      '印星护体，你会被动得到资源——好的导师、好的项目、好的推荐。学会把"被给予"转化为"自我升级"，而不是停留在舒适区。',
-      '印运十年里你容易"想得多"——这是优势也是负担。决策别拖太久，否则会被"分析瘫痪"拖累行动力。',
-    ],
-    shishang: [
-      '这步大运是食伤运，利创意发挥、技术提升、表达输出。你的想法会比平时更值钱、更容易被看见。',
-      '食伤当令，才华外露、表达欲强，适合做创作、写作品、推产品。把心里的"灵感清单"主动落到作品上。',
-      '吐秀之运，灵感涌现，适合技术输出、艺术创作、自媒体/课程开发等"靠自己输出变现"的方向。',
-      '食伤大运也意味着你可能和体制的冲突变多——如果你是上班族，会觉得"规矩"压抑；如果你是创业者，会觉得"流程"麻烦。这是一种成长的征兆。',
-      '才华外露期，记得克制"伤官见官"的冲动——技术/创意可以输出，但不要用表达的快感去顶撞权威。',
-    ],
-    guansha: [
-      '这步大运是官杀运，有压力和挑战，但也是事业上升的十年。扛得住规则的人，能在这段时间拿到结果。',
-      '官杀当令，责任加身、管束增多。工作岗位、岗位职责、外部期待都会拉高——你需要在压力下成长，而不是被压力碾碎。',
-      '压力之运，外界对你的要求变高，自律会让你受益。规律作息、保持学习、按时交付，是这段时期最稳的护身符。',
-      '官杀大运里你容易遇到"挑剔的上司"或"严格的合作方"。把对方当成磨刀石，你在和高手过招中会进步飞快。',
-      '如果你是女性，这步大运官杀齐聚可能意味着工作强度变大、异性缘变复杂。建议先把主业稳住，再考虑感情拓展。',
-    ],
-    cai: [
-      '这步大运是财运，是赚钱窗口期。但记住：财多身弱反而为钱所累，量力而行。',
-      '财星大运，进账机会多，宜开源合作、把能力变现。记住先稳定主业现金流，再去博副业和投资。',
-      '求财之运，行动力能换来回报。这段时期多做"复利"的事——储蓄、投资理财、买房置产，让钱生钱。',
-      '财运期是双刃剑：赚得多花得也多。建议强制储蓄(收入的30%)，不然十年一晃，钱没攒下多少。',
-      '财星当令，利求财但也容易"为利忘义"。合伙前明确账目，借钱前评估风险，别让赚钱损了健康和人脉。',
-    ],
-  };
-  const FALLBACK = [
-    '这步大运五行与日主形成有情之合，整体氛围稳中有升。',
-    '大运所行之五行，恰好与你日柱形成推动力，是顺势而为的十年。',
-    '这步大运整体趋稳，没有大起大落。把精力集中在自身的"长板"上，比追逐风口更有回报。',
-  ];
-
-  const tgWx: Record<string, string> = {
-    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-  };
-  const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-  const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-
-  return steps.map((s, i) => {
-    const gan = s.ganZhi.charAt(0);
-    const dayWx = tgWx[dayGan] || '';
-    const dayunWx = tgWx[gan] || '';
-
-    // 选模板池
-    let pool: string[] = FALLBACK;
-    if (dayWx === dayunWx) pool = TEMPLATES.bijian;
-    else if (wxSheng[dayWx] === dayunWx) pool = TEMPLATES.yin;
-    else if (wxSheng[dayunWx] === dayWx) pool = TEMPLATES.shishang;
-    else if (wxKe[dayWx] === dayunWx) pool = TEMPLATES.guansha;
-    else if (wxKe[dayunWx] === dayWx) pool = TEMPLATES.cai;
-
-    // 选用第 i 条（不超过 pool 长度），保证顺序选而不是简单模3 — 大运多的情况下不重复
-    const desc = pool[i % pool.length];
-    return `${s.startAge}-${s.endAge}岁 大运「${s.ganZhi}」：${desc}`;
-  });
-}
+// 大运白话解读已抽到 src/utils/dayunReading.ts：
+// 按「人生阶段 × 十神关系」二维取内容重心——每步大运按其年龄区间归属人生阶段，
+// 60 岁以后（退休生活期/颐养天年期）不再铺陈事业与求财，转向健康、家庭、生活节奏与心性。
 
 // 流年（单年）计算：干支 + 五行 + 与日主生克简述
 interface LiuNianItem {
@@ -1169,13 +1102,14 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     return firstReal?.startAge ?? baziData?.dayun.startAge ?? 0;
   }, [baziData]);
 
-  const dayunInterpretations = useMemo(() => {
-    if (!baziData) return [];
+  // 大运白话解读：按「人生阶段 × 十神关系」二维取内容重心（见 utils/dayunReading.ts）
+  // 年龄一律用 getDaYun 的虚岁，与大运卡片口径一致；currentExactAge 用于标注「当前大运 / 已走过」
+  const dayunReadings = useMemo(() => {
+    if (!baziData) return { stageLead: '', currentStage: null, readings: [] as DayunReading[] };
     // 跳过起运前无干支的小运（显示 — 的步骤）
-    // 年龄一律用 getDaYun 的虚岁，与大运卡片口径一致
     const steps = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—');
-    return getDayunInterpretation(steps, baziData.dayGan);
-  }, [baziData]);
+    return buildDayunReadings(steps, baziData.dayGan, currentExactAge);
+  }, [baziData, currentExactAge]);
 
   // 一句话结论（xiShen 实为忌神，不并入结论文案，避免与专业分析自相矛盾）
   const plainConclusion = useMemo(() => {
@@ -2060,8 +1994,50 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               })}
             </Row>
             <Divider>大运白话解读</Divider>
-            {dayunInterpretations.map((d, i) => (
-              <Paragraph key={i} style={{ fontSize: 13, marginBottom: 6 }}>{d}</Paragraph>
+            {dayunReadings.stageLead && (
+              <Alert
+                type="success"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message={dayunReadings.stageLead}
+              />
+            )}
+            {dayunReadings.readings.map((d, i) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: 12,
+                  paddingLeft: 10,
+                  borderLeft: `2px solid ${d.isCurrent ? 'var(--wx-fire)' : 'var(--border-light)'}`,
+                }}
+              >
+                <Space size={6} wrap style={{ marginBottom: 2 }}>
+                  <Text strong style={{ fontSize: 13 }}>{d.startAge}~{d.endAge}岁</Text>
+                  <Tag
+                    style={{
+                      background: WX_BG[TG_WX[d.ganZhi.charAt(0)] || ''] || undefined,
+                      color: WX_COLORS[TG_WX[d.ganZhi.charAt(0)] || ''] || undefined,
+                      border: 'none',
+                      fontSize: 12,
+                      margin: 0,
+                    }}
+                  >
+                    {d.ganZhi}
+                  </Tag>
+                  <Tooltip title={`${d.relationLabel} · 本阶段解读重心：${d.stageFocus}`}>
+                    <Tag style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-secondary)', border: 'none', fontSize: 12, margin: 0 }}>
+                      {d.stageLabel}
+                    </Tag>
+                  </Tooltip>
+                  {d.isCurrent && (
+                    <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none', fontSize: 12, margin: 0 }}>当前大运</Tag>
+                  )}
+                  {!d.isCurrent && d.isPast && (
+                    <Tag style={{ background: 'rgba(0,0,0,0.03)', color: 'var(--text-secondary)', border: 'none', fontSize: 12, margin: 0 }}>已走过</Tag>
+                  )}
+                </Space>
+                <Paragraph style={{ fontSize: 13, marginBottom: 0, lineHeight: 1.75 }}>{d.text}</Paragraph>
+              </div>
             ))}
           </Card>
             </CollapsibleCard>
