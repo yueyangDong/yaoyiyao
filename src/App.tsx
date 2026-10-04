@@ -22,6 +22,7 @@ const History = React.lazy(() => import('./pages/History'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const DailyFortune = React.lazy(() => import('./pages/DailyFortune'));
 const HePan = React.lazy(() => import('./pages/HePan'));
+const ChartCompare = React.lazy(() => import('./pages/ChartCompare'));
 
 export default function App() {
   return (
@@ -43,6 +44,9 @@ export default function App() {
             } />
             <Route path="/hepan" element={
               <Suspense fallback={<PageSkeleton />}><HePan /></Suspense>
+            } />
+            <Route path="/compare" element={
+              <Suspense fallback={<PageSkeleton />}><ChartCompare /></Suspense>
             } />
             <Route path="/nayin" element={
               <Suspense fallback={<PageSkeleton />}><Nayin /></Suspense>

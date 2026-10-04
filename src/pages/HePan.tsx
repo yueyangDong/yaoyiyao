@@ -2,88 +2,18 @@ import { useState, useRef } from 'react';
 import {
   Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader, Checkbox,
 } from 'antd';
-import { Lunar, Solar } from 'lunar-typescript';
-import { ziwei } from '@ziweijs/core';
 import { pcaCode } from 'cn-division';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
-import { analyzeHePan } from '../utils/hepan';
-import { analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
+import { analyzeHePan, HEPAN_MAX_SCORE } from '../utils/hepan';
+import { buildPerson } from '../utils/personChart';
 import PayWall from '../components/PayWall';
 import { hepanTargetKey } from '../lib/payment';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
 
 const { Title, Text, Paragraph } = Typography;
-
-const TG_WX: Record<string, string> = {
-  '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-  '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-};
-
-/**
- * 为合盘双方排紫微命盘（轻量版：只保留合盘需要的宫位名/宫位地支/主星/生年四化）。
- * 排盘失败时返回 undefined —— 合盘对该两项按中性分计并明确说明，不再用"基础缘分分"含糊兜底。
- */
-function buildZiweiChart(solar: any, gender: string): any[] | undefined {
-  try {
-    const date = new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay(), solar.getHour(), solar.getMinute(), 0);
-    const result = ziwei.bySolar({
-      name: '',
-      gender: gender === 'male' ? 'male' : 'female',
-      date,
-      language: 'zh-CN',
-    } as any);
-    return (result.palaces || []).map((p: any) => ({
-      name: p.name,
-      branch: p.branch, // 命宫地支合冲合参需要（紫微合盘标准判法的一环）
-      majorStars: (p.majorStars || []).map((s: any) => ({
-        name: s.name,
-        sihua: s.YT?.name || null,
-      })),
-    }));
-  } catch {
-    return undefined;
-  }
-}
-
-/** 从出生信息生成合盘输入。calendar：出生日期的历法；isLeap：农历闰月；dayOffset：真太阳时校正跨午夜时的日历日偏移 */
-function buildPerson(year: number, month: number, day: number, hour: number, minute: number, gender: string, dayOffset = 0, calendar: 'solar' | 'lunar' = 'solar', isLeap = false) {
-  let solar = calendar === 'lunar'
-    ? Lunar.fromYmdHms(year, isLeap ? -month : month, day, hour, minute, 0).getSolar()
-    : Solar.fromYmdHms(year, month, day, hour, minute, 0);
-  if (dayOffset !== 0) solar = solar.next(dayOffset);
-  const lunar = solar.getLunar();
-  const ec = lunar.getEightChar();
-  const pillars = [
-    { pillar: '年柱', ganZhi: ec.getYear(), tianGan: ec.getYearGan(), diZhi: ec.getYearZhi(), cangGan: ec.getYearHideGan(), shiShen: ec.getYearShiShenGan(), shiShenZhi: (ec.getYearShiShenZhi() || []).join('/'), nayin: ec.getYearNaYin() },
-    { pillar: '月柱', ganZhi: ec.getMonth(), tianGan: ec.getMonthGan(), diZhi: ec.getMonthZhi(), cangGan: ec.getMonthHideGan(), shiShen: ec.getMonthShiShenGan(), shiShenZhi: (ec.getMonthShiShenZhi() || []).join('/'), nayin: ec.getMonthNaYin() },
-    { pillar: '日柱', ganZhi: ec.getDay(), tianGan: ec.getDayGan(), diZhi: ec.getDayZhi(), cangGan: ec.getDayHideGan(), shiShen: ec.getDayShiShenGan(), shiShenZhi: (ec.getDayShiShenZhi() || []).join('/'), nayin: ec.getDayNaYin() },
-    { pillar: '时柱', ganZhi: ec.getTime(), tianGan: ec.getTimeGan(), diZhi: ec.getTimeZhi(), cangGan: ec.getTimeHideGan(), shiShen: ec.getTimeShiShenGan(), shiShenZhi: (ec.getTimeShiShenZhi() || []).join('/'), nayin: ec.getTimeNaYin() },
-  ];
-  const dayGan = ec.getDayGan();
-  const dayWx = TG_WX[dayGan] || '';
-  // 身强身弱与八字页完全同一口径：analyzeDayMasterStrength 五维评分（月令/根气/印星/比劫/克泄）五档，
-  // recommendYongShen 据此取用神。校准：旧版"比劫≥2 即身强"不看月令根气，
-  // 且身弱喜用误取 WX_SHENG（我生者=食伤，泄身之物），应为印星（生我者）。
-  const strength = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars);
-  const yongRec = recommendYongShen(dayWx, strength.level, undefined, dayGan, pillars[1].diZhi);
-  return {
-    name: gender === 'male' ? '男方' : '女方',
-    gender,
-    dayGan,
-    dayWx,
-    dayZhi: pillars[2].diZhi,
-    pillars,
-    zodiac: lunar.getYearShengXiao(),
-    nayin: ec.getDayNaYin(),
-    strengthLevel: strength.level,
-    yongShen: yongRec.yongShen,
-    ziwei: buildZiweiChart(solar, gender),
-    birthInfo: `${year}年${month}月${day}日 ${hour}:${String(minute).padStart(2, '0')}`,
-  };
-}
 
 export default function HePan() {
   const { currentUser, addHistory } = useUser();
@@ -263,7 +193,7 @@ export default function HePan() {
           targetKey={chartKey}
           previewHeight={180}
           benefits={[
-            '缘分总评与七维评分：日主五行、地支合冲、纳音年命、生肖配对、喜用互补、紫微命宫、四化互动逐项打分',
+            '缘分总评与八维评分：日主五行、地支合冲、纳音年命、生肖配对、喜用互补、神煞共振、紫微命宫、四化互动逐项打分',
             '紫微合盘真算：命宫主星配对 + 夫妻宫互参 + 命宫地支合冲，双方生年四化对彼此命宫的引动',
             '性格互动双画像：你们各自是什么"物种"，在一起会怎样互相影响',
             '双向视角：同一份缘分，你和 TA 的两种真实感受',
@@ -273,7 +203,13 @@ export default function HePan() {
         <div ref={resultRef}>
           <Card title="合盘结果" size="small">
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            <Progress type="circle" percent={result.totalScore} format={(p) => `${p}分`} strokeColor="var(--wx-metal)" />
+            <Progress
+              type="circle"
+              /* 满分 160（v4 起加神煞共振项）→ 环按比例画；直接给 totalScore 会让 >100 的值被裁掉 */
+              percent={Math.round((result.totalScore / HEPAN_MAX_SCORE) * 100)}
+              format={() => `${result.totalScore}分`}
+              strokeColor="var(--wx-metal)"
+            />
             <Tag style={{ marginLeft: 12, fontSize: 14, padding: '4px 14px' }}>{result.level}</Tag>
           </div>
           <Paragraph style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-body)' }}>{result.summary}</Paragraph>

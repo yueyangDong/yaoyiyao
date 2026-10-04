@@ -55,10 +55,61 @@ describe('analyzeHePan', () => {
   it('总分档位与 items 数量正确', () => {
     const r = analyzeHePan(input());
     expect(r.totalScore).toBeGreaterThanOrEqual(0);
-    // 满分 140 = 八字五项各 20 + 紫微两项各 20（v3 起紫微与八字同权重）
-    expect(r.totalScore).toBeLessThanOrEqual(140);
-    expect(r.items.length).toBe(7); // 八字5项 + 紫微2项
+    // 满分 160 = 八字六项各 20 + 紫微两项各 20（v4 起新增「神煞共振」；紫微自 v3 与八字同权重）
+    expect(r.totalScore).toBeLessThanOrEqual(160);
+    expect(r.items.length).toBe(8); // 八字6项 + 紫微2项
     expect(['天作之合', '良缘', '平常', '需磨合']).toContain(r.level);
+  });
+
+  // ========== 神煞共振（v4，2026-10-04）==========
+  // 背景：旧口径若按"神煞名集合求交集"来判，实测任意两盘平均共享 6 颗神煞，
+  // "共同神煞 ≥3 即高重合"会把 93.9% 的盘对判成高重合（判别力≈0）。
+  // 故改为 shenShaPower 力量加权后的加权 Jaccard，再映射到 20 分制。
+  describe('神煞共振', () => {
+    const itemOf = (r: ReturnType<typeof analyzeHePan>) => r.items.find(i => i.title === '神煞共振')!;
+
+    it('双方命盘完全相同 → 相似度 1 → 神煞共振满分 20', () => {
+      const r = analyzeHePan(input({ partner: input().mine }));
+      expect(itemOf(r).score).toBe(20);
+    });
+
+    it('分数落在 0~20，desc 非空且与具体命盘挂钩', () => {
+      const r = analyzeHePan(input());
+      const item = itemOf(r);
+      expect(item.score).toBeGreaterThanOrEqual(0);
+      expect(item.score).toBeLessThanOrEqual(20);
+      expect(item.desc.length).toBeGreaterThan(0);
+      expect(item.desc).toMatch(/神煞/);
+    });
+
+    it('交换输入后分数不变（对称合盘口径）', () => {
+      const a = analyzeHePan(input());
+      const b = analyzeHePan({ mine: input().partner, partner: input().mine } as HePanInput);
+      expect(itemOf(b).score).toBe(itemOf(a).score);
+    });
+
+    it('未传 shenSha 时按 pillars 兜底自算，不得出现"缺数据"式措辞', () => {
+      // input() 没传 shenSha：走 calcShenSha(pillars) 兜底（元辰/勾绞因无性别跳过）
+      const item = itemOf(analyzeHePan(input()));
+      expect(item.desc).not.toContain('未能取得');
+      expect(item.desc).not.toContain('信息不足');
+      expect(item.desc).not.toContain('出生信息');
+    });
+
+    it('传入的 shenSha 优先于兜底（用于区分不同命盘）', () => {
+      const withSha = analyzeHePan(input({
+        mine: { ...input().mine, shenSha: [{ name: '天乙贵人', pillar: '日柱', type: '吉' }] },
+        partner: { ...input().partner, shenSha: [{ name: '天乙贵人', pillar: '日柱', type: '吉' }] },
+      }));
+      // 双方神煞完全相同 → 共振满分
+      expect(itemOf(withSha).score).toBe(20);
+
+      const diff = analyzeHePan(input({
+        mine: { ...input().mine, shenSha: [{ name: '天乙贵人', pillar: '日柱', type: '吉' }] },
+        partner: { ...input().partner, shenSha: [] },
+      }));
+      expect(itemOf(diff).score).toBeLessThan(20);
+    });
   });
 
   it('desc 由数据生成且非空（无固定模板）', () => {

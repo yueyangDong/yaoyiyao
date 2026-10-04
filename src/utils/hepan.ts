@@ -13,6 +13,14 @@
 import type { PillarData } from '../pages/Bazi';
 import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
 import { DAY_MASTER_ESSENCE, getDayMasterTitle } from './baziPersonality';
+import { calcShenSha } from './shenSha';
+import { compareShenShaCharts, resonanceScoreFrom } from './shenShaSimilarity';
+
+/**
+ * 合盘满分（v4）：八字六项 + 紫微两项，共 8 项 × 20 分 = 160 分。
+ * ⚠️ 改这里的每一项权重/项数，都要同步 hepan.ts 末尾的档位阈值与 hepan.test.ts 期望值。
+ */
+export const HEPAN_MAX_SCORE = 160;
 
 // ========== 紫微合盘：星性分组与经典配对 ==========
 // 中州派星性三分：领导贵气型 / 智谋支援型 / 开创行动型
@@ -108,6 +116,8 @@ export interface HePanInput {
     yongShen: string[];
     /** 日主强弱五档（身极强/身强/中和/身弱/身极弱），与八字页 analyzeDayMasterStrength 同口径 */
     strengthLevel?: string;
+    /** 神煞落点（含吉凶类型）。缺省时由契约方按 pillars 自算，元辰/勾绞因无性别会跳过 */
+    shenSha?: { name: string; pillar: string; type: '吉' | '凶' | '平' }[];
     ziwei?: any[];
   };
   partner: {
@@ -120,6 +130,7 @@ export interface HePanInput {
     nayin: string;
     yongShen: string[];
     strengthLevel?: string;
+    shenSha?: { name: string; pillar: string; type: '吉' | '凶' | '平' }[];
     ziwei?: any[];
     birthInfo?: string;
     birthplace?: string[];
@@ -432,6 +443,46 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   }
   items.push({ title: '喜用互补', score: ysScore, desc: ysDesc });
 
+  // 6) 神煞共振（20 分）——用「加权 Jaccard」衡量双方神煞的实际共振强度
+  // v4（2026-10-04）：旧口径是"神煞名集合求交集"，实测已被证伪——任意两张真实命盘平均命中
+  // 14.9 颗神煞（去重名）、平均共享 6 颗，"共同神煞 ≥3 即高重合"会把 93.9% 的盘对判成高重合，
+  // 判别力≈0。现按 shenShaPower 的力量（宫位×得地×空亡×制化×喜忌）加权后求相似度。
+  // 口径与标定见 utils/shenShaSimilarity.ts；权重模型见 utils/shenShaPower.ts。
+  const shaInputOf = (p: typeof mine) => ({
+    pillars: p.pillars,
+    // 缺 shenSha 时兜底自算（性别未知 → 元辰/勾绞按无性别跳过，不影响其余神煞）
+    shenSha: p.shenSha ?? calcShenSha(p.pillars),
+    strengthLevel: p.strengthLevel,
+    yongShen: p.yongShen,
+  });
+  const shaCmp = compareShenShaCharts(shaInputOf(mine), shaInputOf(partner));
+  const shaScore = resonanceScoreFrom(shaCmp.score);
+  const shaMineLabel = mine.name ? `「${mine.name}」` : '你';
+  const shaPartnerLabel = partner.name ? `「${partner.name}」` : '对方';
+  const shaTop = shaCmp.shared.slice(0, 3).map((s) => s.name);
+  const shaCommon = shaTop.length > 0 ? shaTop.join('、') : '';
+  const mineOnly = shaCmp.onlyA.slice(0, 2).join('、');
+  const partnerOnly = shaCmp.onlyB.slice(0, 2).join('、');
+  let shaDesc: string;
+  if (shaScore >= 17) {
+    shaDesc = `神煞高度共振——你们命中的"触发点"${shaCommon ? `（${shaCommon}）` : ''}几乎重叠：一个人的顺境往往是另一个人的顺境，难关也容易撞在同一处。`
+      + `好处是极度懂对方、不用解释太多；风险是缺互补，要刻意留一两个"和而不同"的空间。`;
+  } else if (shaScore >= 13) {
+    shaDesc = `神煞共振明显——${shaCommon ? `${shaCommon} 等关键星在两人盘里同时发力` : '双方的关键星多处呼应'}，日常相处容易"对上频道"，一个眼神就知道对方在想什么。`;
+  } else if (shaScore >= 9) {
+    shaDesc = `神煞共振一般——${shaCommon ? `共同的发力点是${shaCommon}，但数量不多` : '共同的关键星不多'}，默契更多是处出来的，不是天生带出来的。`;
+  } else if (shaScore >= 5) {
+    shaDesc = `神煞共振偏弱——两人的"触发点"大多不一样${shaCommon ? `（仅 ${shaCommon} 有交集）` : ''}：你在意的事对方可能无感，反之亦然。`
+      + `这不是不合，是意味着"我以为你懂"最容易出岔子——多把话说出口。`;
+  } else {
+    shaDesc = `神煞几乎不共振——两颗盘的关键星各走各的${shaCommon ? `（仅 ${shaCommon} 有交集）` : ''}，敏感点、兴奋点、雷区基本不重叠。`
+      + `好处是互不干扰、各自独立；代价是"感同身受"要靠主动去学，不能指望天生。`;
+  }
+  if (mineOnly || partnerOnly) {
+    shaDesc += `各自的独有触发点是：${mineOnly ? `${shaMineLabel}带${mineOnly}` : ''}${mineOnly && partnerOnly ? '，' : ''}${partnerOnly ? `${shaPartnerLabel}带${partnerOnly}` : ''}——这部分不是"不合"，而是各自带着不同的课题进场。`;
+  }
+  items.push({ title: '神煞共振', score: shaScore, desc: shaDesc });
+
   // 6) 紫微命宫主星（20 分）——命宫主星配对 + 夫妻宫互参 + 命宫地支合冲（三项皆双向对称）
   // v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重，紫微不再只是"点缀分"。
   // 档位（20 分制）：同星 14 / 经典互补配对 16~20 / 异组 16 / 同组 12，夫妻宫互参命中 +4，命宫地支六合 +2、三合 +1、六冲 −4。
@@ -544,14 +595,26 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
 
   const totalScore = items.reduce((s, i) => s + i.score, 0);
-  // 满分口径（v3）：八字五项各 20 分 + 紫微两项各 20 分 = 140 分。
-  // 档位阈值按原 120 分制（80/65/50）等比换算到 140 分制 → 93/76/58。
-  const level = totalScore >= 93 ? '天作之合' : totalScore >= 76 ? '良缘' : totalScore >= 58 ? '平常' : '需磨合';
-  const levelNote = totalScore >= 93
+  // 满分口径（v4）：八字六项各 20 分（日主五行/地支合冲/纳音年命/生肖配对/喜用互补/神煞共振）
+  // + 紫微两项各 20 分 = 160 分。
+  //
+  // 档位阈值（v4，2026-10-04）：**不是等比换算来的，是按实测分布分位数标定的**。
+  // 600 对真实合盘（seed 20261006）实测：8 项总分 mean 100.1、min 65、p15 90、p50 100、
+  // p55 101、p90 114、max 130。取 p90 / p55 / p15 → 114 / 101 / 90。
+  //
+  // ⚠️ 为什么不用"等比换算 140→160 = 106/87/66"：
+  //   换算后实测占比为 天作之合 32.7% / 良缘 57.8% / 平常 9.3% / 需磨合 0.2%，
+  //   与旧口径的 38.7% / 54.7% / 6.7% / 0% 同样失衡——"天作之合"近四成、"需磨合"不可达，
+  //   档位等于没有区分度。等比换算的前提是"新项分布与旧项同量纲"，而神煞共振项
+  //   均分 10.2/20（p50 恰为 10）低于旧项均分 12.97/20，前提不成立。
+  //   所以借这次满分口径必变的机会把档位定到合理分布：10% / 37.7% / 37.3% / 15%。
+  //   若将来要回到"高分宽松"的口径，改回 106/87/66 即可（这两个数字保留在此供对照）。
+  const level = totalScore >= 114 ? '天作之合' : totalScore >= 101 ? '良缘' : totalScore >= 90 ? '平常' : '需磨合';
+  const levelNote = totalScore >= 114
     ? '这个分数段意味着：你们先天的"合"远多于"冲"——不是不会有矛盾，而是矛盾总有化解的底子。别辜负这份出厂配置。'
-    : totalScore >= 76
+    : totalScore >= 101
       ? '这个分数段意味着：底子是好的，磨合点也明确——知道坑在哪的情侣，比稀里糊涂的情侣走得远。'
-      : totalScore >= 58
+      : totalScore >= 90
         ? '这个分数段意味着：先天缘分平平，既不算天造地设，也绝非无缘——这样的感情像白手起家，挣来的每一分都是自己的。'
         : '这个分数段意味着：先天的差异点多，要付出的功课也多——但请记住：合盘量的是"出厂配置"，量不出"两个人愿意为彼此改多少"。多少低分发盘过成了一流感情，靠的就是这件事。';
   const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}${levelNote}合盘看的是趋势，最终经营在两人。`;
