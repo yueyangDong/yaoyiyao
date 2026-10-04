@@ -36,6 +36,36 @@ const YANG_REN: Record<string, string> = {
 const HUI: Record<string, string[]> = { '木': ['寅', '卯', '辰'], '火': ['巳', '午', '未'], '金': ['申', '酉', '戌'], '水': ['亥', '子', '丑'] };
 const HE: Record<string, string[]> = { '木': ['亥', '卯', '未'], '火': ['寅', '午', '戌'], '金': ['巳', '酉', '丑'], '水': ['申', '子', '辰'] };
 
+// ---------- 化气格（《三命通会》《滴天髓》通行口径） ----------
+/** 天干五合：日干 → { 合神, 化神五行 }。只认日干与月干/时干相邻相合，年干隔位不论化 */
+const TIAN_GAN_HE: Record<string, { he: string; hua: string }> = {
+  '甲': { he: '己', hua: '土' }, '己': { he: '甲', hua: '土' },
+  '乙': { he: '庚', hua: '金' }, '庚': { he: '乙', hua: '金' },
+  '丙': { he: '辛', hua: '水' }, '辛': { he: '丙', hua: '水' },
+  '丁': { he: '壬', hua: '木' }, '壬': { he: '丁', hua: '木' },
+  '戊': { he: '癸', hua: '火' }, '癸': { he: '戊', hua: '火' },
+};
+/** 化神当令之月（含生扶之月：土兼巳午火生土、金兼巳申、水兼申亥、木兼寅亥、火兼寅巳） */
+const HUA_MONTH: Record<string, string[]> = {
+  '土': ['辰', '戌', '丑', '未', '巳', '午'],
+  '金': ['巳', '酉', '丑', '申'],
+  '水': ['申', '子', '辰', '亥'],
+  '木': ['亥', '卯', '未', '寅'],
+  '火': ['寅', '午', '戌', '巳'],
+};
+/** 克化神之五行（破化之字） */
+const KE_HUA: Record<string, string> = { '土': '木', '金': '火', '水': '土', '木': '金', '火': '水' };
+/** 生化神之五行（助化之字，行运所喜） */
+const SHENG_HUA: Record<string, string> = { '土': '火', '金': '土', '水': '金', '木': '水', '火': '木' };
+/** 化神性情（《滴天髓》化气十段锦的白话提炼） */
+const HUA_XING: Record<string, string> = {
+  '土': '厚重诚信、包容实干（甲己中正之合）',
+  '金': '刚毅果决、有棱有角（乙庚仁义之合）',
+  '水': '智巧流动、善于应变（丙辛威制之合）',
+  '木': '仁直条达、能屈能伸（丁壬淫慝之合，主聪慧多变）',
+  '火': '礼明踊跃、热忱外放（戊癸无情之合，主外冷内热）',
+};
+
 /** 四柱地支是否成某五行的三会/三合局（土取辰戌丑未 ≥3） */
 function hasJu(dzList: string[], wx: string): boolean {
   if (wx === '土') {
@@ -90,6 +120,54 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
     if (seasonOk && monthWx === dayWx && juOk && !broken) {
       const names: Record<string, string> = { '木': '曲直格', '火': '炎上格', '土': '稼穑格', '金': '从革格', '水': '润下格' };
       return { name: `专旺·${names[dayWx]}`, type: '外格', desc: `${dayGan}日主${dayWx}气专旺，生于${monthZhi}月当令，地支成${dayWx}局（三会/三合），无克星破格，为${names[dayWx]}。这类命格心志坚定、专注力强，适合深耕单一领域。` };
+    }
+  }
+  // 化气格：日干与月干或时干相邻五合，化神当令，日主无根无助，弃本五行从化神。
+  // 真/假分层：带根苗（比劫印绶）、化神力弱、有虚克 → 假化；争合（月干时干同为合神）不论化。
+  // 化气优先于从格：身弱有合先论化，无合再论从。
+  {
+    const heInfo = TIAN_GAN_HE[dayGan];
+    const monthGan = pillars[1].tianGan;
+    const timeGan = pillars[3].tianGan;
+    if (heInfo) {
+      const adjHeCount = [monthGan, timeGan].filter((g) => g === heInfo.he).length;
+      if (adjHeCount === 1 && (HUA_MONTH[heInfo.hua] || []).includes(monthZhi)) {
+        const dayWx = TG_WX[dayGan] || '';
+        const shengWx: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
+        const dzList = pillars.map((p) => p.diZhi);
+        // 根苗：地支本气比劫或印根；天干透比劫印绶
+        const hasRoot = dzList.some((z) => DZ_WX[z] === dayWx || DZ_WX[z] === shengWx[dayWx]);
+        const hasMiao = pillars.some((p) => ['比肩', '劫财', '正印', '偏印'].includes(p.shiShen));
+        // 化神旺：地支化神 ≥2 或化神透干
+        const huaZhiCount = dzList.filter((z) => DZ_WX[z] === heInfo.hua).length;
+        const huaTou = pillars.some((p) => TG_WX[p.tianGan] === heInfo.hua);
+        // 克破：克化神之字透年/月/时干（日干是合化主角，弃本从化，自身不算破字）
+        const keWx = KE_HUA[heInfo.hua];
+        const keTou = pillars.some((p, i) => i !== 2 && TG_WX[p.tianGan] === keWx);
+        const huaName: Record<string, string> = { '土': '甲己化土', '金': '乙庚化金', '水': '丙辛化水', '木': '丁壬化木', '火': '戊癸化火' };
+        const gName = huaName[heInfo.hua] || '化气';
+        const huaStrong = huaZhiCount >= 2 || huaTou;
+        if (huaStrong && !keTou && !hasRoot && !hasMiao) {
+          return {
+            name: `${gName}格`,
+            type: '外格',
+            desc: `日主${dayGan}与${heInfo.he}相邻相合，生于${monthZhi}月化神${heInfo.hua}当令，四柱无根无助，弃本五行而从${heInfo.hua}气，为真化。化气之人心性随化神——${HUA_XING[heInfo.hua]}。行运喜${heInfo.hua}与${SHENG_HUA[heInfo.hua]}生扶之地；大忌${keWx}克化之神，岁运逢之有"化神还原"之应（成败反复），宜未雨绸缪。`,
+          };
+        }
+        // 假化：合化之意已成但带根苗/化神弱/有虚克，且日主整体偏弱方论假化（身强则合而不化，不论）
+        if (strengthLevel === '身极弱' || strengthLevel === '身弱') {
+          const why = hasRoot || hasMiao
+            ? '日主带根苗（比劫印绶未净）'
+            : keTou
+              ? `天干透${keWx}克化神`
+              : '化神力弱（地支无根不透）';
+          return {
+            name: `假${gName}格`,
+            type: '外格',
+            desc: `日主${dayGan}与${heInfo.he}相合且${heInfo.hua}气当令，有从化之意，但${why}，从化不纯为假化。假化之命多白手起家：行运走${heInfo.hua}与${SHENG_HUA[heInfo.hua]}之地则变假成真、一发而起；行运逆化（${keWx}地）则反复进退。宜顺势而为，不宜逆势强立。`,
+          };
+        }
+      }
     }
   }
   // 从格：日主极弱，顺从月令旺神（财/官杀/食伤）

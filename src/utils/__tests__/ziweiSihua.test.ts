@@ -229,6 +229,30 @@ describe('十二宫解读：冲照只论生年化（体），自化（用）不�
     expect(r.reading).not.toContain('命宫宫');
   });
 
+  it('十二宫专属维度：兄弟宫坐紫微用 siblings 文案，不再共用命宫 personality', () => {
+    const r = generatePalaceReading(
+      '兄弟',
+      [{ name: '紫微', type: 'major', sihua: null }],
+      null, null, null,
+    );
+    // 兄弟宫导语（GONG_INTRO）
+    expect(r.reading).toContain('兄弟宫看手足缘分');
+    // 兄弟宫专属星曜说明（siblings 维度），而非命宫 personality
+    expect(r.reading).toContain('主从关系要先讲明');
+    expect(r.reading).not.toContain('天生带有领导气质');
+  });
+
+  it('十二宫专属维度：福德宫坐天机用 spirit 文案（静心功课），田宅宫坐太阴用 estate 文案', () => {
+    const spirit = generatePalaceReading(
+      '福德', [{ name: '天机', type: 'major', sihua: null }], null, null, null,
+    );
+    expect(spirit.reading).toContain('静心是你一辈子的功课');
+    const estate = generatePalaceReading(
+      '田宅', [{ name: '太阴', type: 'major', sihua: null }], null, null, null,
+    );
+    expect(estate.reading).toContain('房产运佳');
+  });
+
   it('大限 summary：禄忌落命宫时宫名完整（"禄入命宫"而非"禄入命"）', () => {
     const palaces = [
       { name: '命宫', stem: '甲', branch: '子', majorStars: [{ name: '廉贞' }], minorStars: [], horoscopeRanges: [1, 10] },
