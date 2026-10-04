@@ -20,10 +20,11 @@ import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
-import { analyzeMingGeDetailed, analyzeTouGan } from '../utils/mingGe';
+import { analyzeMingGeDetailed, analyzeTouGan, type MingGeDetailed } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
 import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
+import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -91,135 +92,9 @@ function getChangSheng12(dayGan: string, pillars: PillarData[]): Record<string, 
   return result;
 }
 
-// ========== 命格分析 ==========
-interface MingGeResult {
-  geName: string;
-  geType: string;
-  score: string;
-  desc: string;
-  details: string[];
-}
-
-function analyzeMingGe(pillars: PillarData[], dayGan: string, strengthLevel: string): MingGeResult {
-  const monthPillar = pillars[1]; // 月柱
-  const monthShiShen = monthPillar.shiShen;
-  const dayWxMap: Record<string, string> = {
-    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-  };
-  const dayWx = dayWxMap[dayGan] || '';
-
-  // 建禄格判断：月支是日干的禄位
-  const luMap: Record<string, string> = {
-    '甲': '寅', '乙': '卯', '丙': '巳', '丁': '午', '戊': '巳',
-    '己': '午', '庚': '申', '辛': '酉', '壬': '亥', '癸': '子',
-  };
-  const yangRenMap: Record<string, string> = {
-    '甲': '卯', '乙': '寅', '丙': '午', '丁': '巳', '戊': '午',
-    '己': '巳', '庚': '酉', '辛': '申', '壬': '子', '癸': '亥',
-  };
-
-  let geName = '';
-  let geType = '';
-  let score = '';
-  let desc = '';
-  const details: string[] = [];
-
-  if (luMap[dayGan] === monthPillar.diZhi) {
-    geName = '建禄格';
-    geType = '禄格';
-    score = '中上';
-    desc = `日主${dayGan}的禄位在${luMap[dayGan]}，月令正值禄位，为建禄格。建禄者自旺，通常身强，独立自主，不依赖他人。月令建禄代表你有天生的根基和底气，做事有主见，但在人际关系上可能略显强势。`;
-    details.push(`月支${monthPillar.diZhi} = 日主${dayGan}的禄位 → 建禄格`);
-    details.push('建禄格的人通常能力强、有主见，适合独立创业或专业领域');
-    details.push('注意：建禄格年柱/时柱若见财官，则格局更高，事业有成');
-  } else if (yangRenMap[dayGan] === monthPillar.diZhi) {
-    geName = '羊刃格';
-    geType = '刃格';
-    score = '中（需制化）';
-    desc = `日主${dayGan}的羊刃在${yangRenMap[dayGan]}，月令正值刃位，为羊刃格。性格刚强果断，执行力极强，但容易冲动、做事极端。若命局中有正官或七杀来制衡羊刃，反而能成大器；若无制化则需注意伤身破财。`;
-    details.push(`月支${monthPillar.diZhi} = 日主${dayGan}的羊刃位 → 羊刃格`);
-    details.push('羊刃格需要官杀来制，或食伤来泄 → 有制则贵，无制则凶');
-    details.push('适合军警、外科医生、竞技等需要决断力的职业');
-  } else {
-    // 月令取格：以月柱天干的十神定格
-    const geMap: Record<string, string> = {
-      '正官': '正官格', '七杀': '七杀格', '正财': '正财格', '偏财': '偏财格',
-      '正印': '正印格', '偏印': '偏印格', '食神': '食神格', '伤官': '伤官格',
-    };
-    const typeMap: Record<string, string> = {
-      '正官': '官格', '七杀': '杀格', '正财': '财格', '偏财': '财格',
-      '正印': '印格', '偏印': '印格', '食神': '食格', '伤官': '伤格',
-    };
-
-    if (monthShiShen && geMap[monthShiShen]) {
-      geName = geMap[monthShiShen];
-      geType = typeMap[monthShiShen];
-
-      const geComments: Record<string, { score: string; desc: string; tips: string[] }> = {
-        '正官格': {
-          score: '上等',
-          desc: `月令正官，为「正气官星格」。正官代表规则、纪律、官位。正官格的人正直守法，适合公务员、管理岗位或在大型机构工作。官星喜财生、喜印护，若四柱见财印相辅则格局更高。`,
-          tips: ['正官格喜财来生官（财生官 = 事业有经济支撑）', '喜印来护官（印制伤官 = 保护官星不被破坏）', '最怕伤官见官（叛逆破坏规则，容易得罪领导）'],
-        },
-        '七杀格': {
-          score: '中上（需制化）',
-          desc: `月令七杀，为「偏官格」。七杀是压力也是动力，像猛虎——用得好能成就大业，制不住反而伤身。七杀格的人有魄力、敢拼敢闯，适合竞争性强的行业。关键在于命局中有没有食神来制杀，有制则贵。`,
-          tips: ['食神制杀 = 最理想的组合（智慧化解压力）', '杀印相生 = 杀生印、印生身，化压力为权力', '无制化的七杀格容易压力山大、健康受损'],
-        },
-        '正财格': {
-          score: '上等',
-          desc: `月令正财，为「正气财星格」。正财是稳定的收入、正当的财富。正财格的人务实、勤俭、重视物质安全感，适合经商、金融、财务管理。正财喜食伤来生（技术/创意生财），也喜官来护财。`,
-          tips: ['食伤生财 = 用才华和技术赚钱是最佳路径', '正财格不喜比劫多（比劫争财 = 朋友借钱不还）', '财格配官 = 富贵双全（财生官、官护财）'],
-        },
-        '偏财格': {
-          score: '上等',
-          desc: `月令偏财，为「偏财格」。偏财是投资收入、意外之财、生意之财。偏财格的人慷慨大方、善于投资理财，是天生的生意人。偏财跟正财不同——偏财来得快去得也快，需要命局有库来存财。`,
-          tips: ['偏财喜食伤生（技术驱动投资回报）', '偏财格大方慷慨，但需注意不要过于冒险', '偏财格配正官 = 在规范框架内赚钱，稳中求胜'],
-        },
-        '正印格': {
-          score: '上等',
-          desc: `月令正印，为「正气印绶格」。正印代表学问、长辈、贵人、文凭。正印格的人温和善良、好学上进、有贵人相助。印格的人通常学历不错，适合教育、文化、学术研究等职业。`,
-          tips: ['印格喜官来生印（官印相生 = 事业和学问相辅相成）', '印格怕财来破印（贪财坏印 = 为钱放弃学习）', '正印格的人心地善良，但也容易心软被人利用'],
-        },
-        '偏印格': {
-          score: '中等',
-          desc: `月令偏印（枭神），为「偏印格」。偏印代表特殊技能、偏门学问、另类思维。偏印格的人聪明、有独特天赋，比如编程、设计、玄学、心理学等冷门领域。偏印格的缺点是容易孤僻、不合群。`,
-          tips: ['偏印喜偏财来制（偏财制偏印 = 用现实利益平衡孤僻）', '偏印格的人"不走寻常路"，适合小众领域深耕', '偏印多的人容易想太多、钻牛角尖'],
-        },
-        '食神格': {
-          score: '上等',
-          desc: `月令食神，为「食神格」。食神代表才华、口才、创造力和享受生活的能力。食神格的人天生乐观、有艺术天赋，是"自带快乐基因"的人。食神格适合艺术、创作、餐饮、娱乐等行业。`,
-          tips: ['食神生财 = 才华变现的最优路径', '食神格最喜财星（食神生财 = 快乐地赚钱）', '食神格不太怕压力（心态好），但也容易过于安逸'],
-        },
-        '伤官格': {
-          score: '中（需配印）',
-          desc: `月令伤官，为「伤官格」。伤官代表聪明、叛逆和打破常规的创造力。伤官格的人极其聪明，但也极其"不听话"，讨厌被管束。伤官格适合自由职业、创意行业的顶尖人才。但伤官见官（正官）会惹麻烦，需要有正印来制衡。`,
-          tips: ['伤官配印 = 最好的组合（聪明有边界，才华有根基）', '伤官见官 → 容易得罪领导、体制、法律', '伤官格的人适合创业、自由职业，不适合传统上班'],
-        },
-      };
-
-      const c = geComments[geName];
-      if (c) {
-        score = c.score;
-        desc = c.desc;
-        details.push(...c.tips);
-      } else {
-        score = '—';
-        desc = `月令${monthShiShen}，为${geName}。`;
-      }
-      details.unshift(`月柱天干「${monthPillar.tianGan}」为日主「${dayGan}」的${monthShiShen} → ${geName}`);
-    } else {
-      geName = '杂格';
-      geType = '杂格';
-      score = '—';
-      desc = '月令格局不明显，或属于特殊外格，需要结合整体八字综合判断。';
-    }
-  }
-
-  return { geName, geType, score, desc, details };
-}
-
+// 命格分析：统一使用 utils/mingGe.ts 的 analyzeMingGeDetailed（含判定依据链/要素对应/成败关键）。
+// 校准说明：本文件曾另有一份本地简化实现（只判建禄/羊刃/正官等基础格，且不看专旺/化气/从格），
+// 与 mingGe.ts 规则漂移、结果不一致——已删除，页面只消费真源。
 // 十神组合解读
 function getShiShenComboAnalysis(pillars: any[], dayGan: string): string[] {
   const combos: string[] = [];
@@ -622,7 +497,7 @@ export default function Bazi() {
     dayGan: string;
     dayWx: string;
     shenSha: ShenShaItem[];
-    mingGe: MingGeResult;
+    mingGe: MingGeDetailed;
     birthYear: number;
     birthMonth: number;
     birthDay: number;
@@ -828,8 +703,9 @@ export default function Bazi() {
       // 命格详细判定（真实强弱 + 五行统计 + 用神忌神透干）
       const strengthLevelGe = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;
       const wxStatsCalc = calcWuxingStats(pillars);
-      const mingGe = analyzeMingGeDetailed(pillars, dayGan, strengthLevelGe, wxStatsCalc);
       const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc, dayGan, pillars[1].diZhi);
+      // 用神一并传入：格局的"成败关键"与要素对应表都要用到（旧版不传，格局与用神互不知情）
+      const mingGe = analyzeMingGeDetailed(pillars, dayGan, strengthLevelGe, wxStatsCalc, yongRec.yongShen);
       mingGe.details = [...mingGe.details, ...analyzeTouGan(pillars, yongRec.yongShen, yongRec.xiShen)];
 
       // 空亡
@@ -1160,6 +1036,19 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     const map: Record<string, ShaPowerItem> = {};
     for (const it of items) map[`${it.name}|${it.pillar}`] = it;
     return map;
+  }, [baziData, strengthAnalysis, yongShenRec]);
+
+  // 神煞「本局解释」（按 name|pillar 索引）：把力量因子翻成盘面绑定的人话——
+  // 同样是天乙贵人，落月柱还是时柱、得地还是落空、在不在用神上，说法完全不同。
+  // 见 utils/shenShaExplain.ts（旧版按名字取静态释义，同名同柱输出一字不差）。
+  const shenShaExplainMap = useMemo(() => {
+    if (!baziData) return {} as Record<string, ShaExplainItem>;
+    return explainShenShaMap({
+      pillars: baziData.pillars,
+      shenSha: baziData.shenSha,
+      strengthLevel: strengthAnalysis?.level,
+      yongShen: yongShenRec?.yongShen,
+    });
   }, [baziData, strengthAnalysis, yongShenRec]);
 
   // 十二长生
@@ -1745,18 +1634,31 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                               ) : (
                                 pillarSS.map((ss: ShenShaItem, si: number) => {
                                   const pw = shenShaPowerMap[`${ss.name}|${ss.pillar}`];
+                                  const ex = shenShaExplainMap[`${ss.name}|${ss.pillar}`];
                                   return (
                                   <div key={si} style={{ margin: '1px 0' }}>
                                     <Popover
                                       trigger="click"
                                       content={
-                                        <div style={{ maxWidth: 300 }}>
-                                          <div>{ss.desc || '暂无详细解释'}</div>
+                                        <div style={{ maxWidth: 340 }}>
+                                          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>
+                                            {ss.name} · {ss.pillar}
+                                            {ex && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>（力量{ex.level}）</span>}
+                                          </div>
+                                          {ex && (
+                                            <div style={{ marginBottom: 6, fontSize: 12, lineHeight: 1.75, color: 'var(--text-body)' }}>
+                                              <strong style={{ color: 'var(--text-secondary)' }}>本局解释：</strong>{ex.text}
+                                            </div>
+                                          )}
+                                          <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+                                            <strong>通用释义：</strong>{ss.desc || '暂无详细解释'}
+                                          </div>
                                           {pw && (
-                                            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-                                              实际发力 {pw.power.toFixed(2)}（力量{pw.level}）—— 得地{pw.factors.changSheng || '—'}
-                                              {pw.factors.relationType ? `、被${pw.factors.relationType}` : ''}
-                                              {pw.factors.kong < 1 ? '、落空亡' : ''}
+                                            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-secondary)', opacity: 0.85 }}>
+                                              因子：宫位×{pw.factors.palace.toFixed(2)} · 得地{pw.factors.changSheng || '—'}×{pw.factors.deDi.toFixed(2)}
+                                              {pw.factors.relationType ? ` · 被${pw.factors.relationType}×${pw.factors.relation.toFixed(2)}` : ''}
+                                              {pw.factors.kong < 1 ? ` · 空亡×${pw.factors.kong.toFixed(2)}` : ''}
+                                              {' · 喜忌×'}{pw.factors.xiJi.toFixed(2)} ＝ {pw.power.toFixed(2)}
                                             </div>
                                           )}
                                         </div>
@@ -1872,7 +1774,22 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                             );
                           })()}
                         </Space>
-                        <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>
+                        {(() => {
+                          const ex = shenShaExplainMap[`${sha.name}|${sha.pillar}`];
+                          if (!ex) {
+                            return <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>;
+                          }
+                          return (
+                            <>
+                              <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 2, color: 'var(--text-body)', lineHeight: 1.75 }}>
+                                <strong style={{ color: 'var(--text-secondary)' }}>本局：</strong>{ex.text}
+                              </Paragraph>
+                              <Paragraph style={{ fontSize: 11, marginBottom: 0, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                                <strong>释义：</strong>{sha.desc}
+                              </Paragraph>
+                            </>
+                          );
+                        })()}
                       </Card>
                     </Col>
                   ))}
@@ -1984,6 +1901,55 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                 </ul>
               </Col>
             </Row>
+
+            {/* 判定依据：从月令/透干/日主状态一步步推到格名，让结论可追溯 */}
+            {baziData.mingGe.basis?.length > 0 && (
+              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(196,164,90,0.05)', borderLeft: '3px solid rgba(196,164,90,0.5)' }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>判断依据（逐步推导）：</Text>
+                <ol style={{ paddingLeft: 20, margin: '6px 0 0', fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
+                  {baziData.mingGe.basis.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* 要素对应：月令/透干/日主强弱/用神 各自对格局起什么作用 */}
+            {baziData.mingGe.keyFactors?.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>要素对应关系：</Text>
+                <div style={{ overflowX: 'auto', marginTop: 6 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>要素</th>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>本盘取值</th>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600 }}>对格局的作用</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {baziData.mingGe.keyFactors.map((k, i) => (
+                        <tr key={i}>
+                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>{k.factor}</td>
+                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontFamily: 'var(--font-mono, monospace)' }}>{k.value}</td>
+                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', lineHeight: 1.7 }}>{k.meaning}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 成败关键：这个格靠什么成、怕什么破 */}
+            {baziData.mingGe.successKey && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginTop: 12 }}
+                message={<span style={{ fontSize: 13, lineHeight: 1.8 }}><strong>格局成败关键：</strong>{baziData.mingGe.successKey}</span>}
+              />
+            )}
           </Card>
             </CollapsibleCard>
 

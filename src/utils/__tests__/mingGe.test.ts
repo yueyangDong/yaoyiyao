@@ -144,6 +144,52 @@ describe('analyzeMingGeDetailed', () => {
     expect(['上等', '中上', '中等', '中下', '下等']).toContain(r.score);
   });
 
+  it('判定依据链：每一步都能追到盘面事实（月令→透干→日主状态→结论）', () => {
+    // 甲日主、月支酉本气辛（正官）透年干 → 正官格
+    const ps = pillars(['辛', '丁', '甲', '庚'], ['酉', '酉', '子', '午'],
+      [['辛'], ['辛'], ['癸'], ['丁']], ['正官', '正官', '偏印', '食神']);
+    ps[1].shiShenZhi = '正官';
+    const r = analyzeMingGeDetailed(ps, '甲', '中和', {}, ['水', '木']);
+    expect(r.basis.length).toBeGreaterThanOrEqual(3);
+    // 依据链必须落到具体干支/十神，而不是空话
+    expect(r.basis[0]).toContain('月令');
+    expect(r.basis[0]).toContain('酉');
+    expect(r.basis.some((b) => b.includes('辛'))).toBe(true);
+    expect(r.basis[r.basis.length - 1]).toContain('正官格');
+  });
+
+  it('要素对应表：含月令/透出/日主强弱/格局，且月令行绑定本盘取值', () => {
+    const ps = pillars(['辛', '丁', '甲', '庚'], ['酉', '酉', '子', '午'],
+      [['辛'], ['辛'], ['癸'], ['丁']], ['正官', '正官', '偏印', '食神']);
+    ps[1].shiShenZhi = '正官';
+    const r = analyzeMingGeDetailed(ps, '甲', '身弱', {}, ['水']);
+    const keys = r.keyFactors.map((k) => k.factor);
+    expect(keys).toContain('月令');
+    expect(keys).toContain('天干透出');
+    expect(keys).toContain('日主强弱');
+    expect(keys).toContain('用神');
+    expect(keys).toContain('格局');
+    const month = r.keyFactors.find((k) => k.factor === '月令')!;
+    expect(month.value).toContain('酉');
+    expect(month.meaning).toContain('本气十神');
+    // 用神透传进要素表
+    expect(r.keyFactors.find((k) => k.factor === '用神')!.value).toBe('水');
+  });
+
+  it('成败关键：不同格局给出不同的喜忌（正官格 vs 专旺格）', () => {
+    const guan = pillars(['辛', '丁', '甲', '庚'], ['酉', '酉', '子', '午'],
+      [['辛'], ['辛'], ['癸'], ['丁']], ['正官', '正官', '偏印', '食神']);
+    guan[1].shiShenZhi = '正官';
+    const rGuan = analyzeMingGeDetailed(guan, '甲', '中和', {});
+    expect(rGuan.successKey).toContain('伤官');
+
+    const zhuanWang = pillars(['壬', '癸', '癸', '壬'], ['亥', '子', '丑', '寅'],
+      [['壬'], ['癸'], ['己'], ['甲']], ['劫财', '比肩', '比肩', '劫财']);
+    const rZW = analyzeMingGeDetailed(zhuanWang, '癸', '身极强', {});
+    expect(rZW.successKey).toContain('官杀');
+    expect(rZW.successKey).not.toBe(rGuan.successKey);
+  });
+
   it('杂气月：本气非八格（比劫），余气透干取余气格', () => {
     // 戊日主，月支辰（本气戊→比肩，不在八格）；余气乙（正官）透年干 → 正官格
     // 辰藏干：戊（本气比肩）、乙（中气正官）、癸（余气正财）
