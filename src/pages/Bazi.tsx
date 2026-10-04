@@ -23,6 +23,7 @@ import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, i
 import { analyzeMingGeDetailed, analyzeTouGan } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
+import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -1146,6 +1147,21 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     return map;
   }, [baziData]);
 
+  // 神煞力量（按 name|pillar 索引）：列表里给每个神煞标「强/中/弱」。
+  // 旧版只显示"命中/未命中"，看不出这颗煞到底发不发力——见 utils/shenShaPower.ts。
+  const shenShaPowerMap = useMemo(() => {
+    if (!baziData) return {} as Record<string, ShaPowerItem>;
+    const items = calcShenShaPower({
+      pillars: baziData.pillars,
+      shenSha: baziData.shenSha,
+      strengthLevel: strengthAnalysis?.level,
+      yongShen: yongShenRec?.yongShen,
+    });
+    const map: Record<string, ShaPowerItem> = {};
+    for (const it of items) map[`${it.name}|${it.pillar}`] = it;
+    return map;
+  }, [baziData, strengthAnalysis, yongShenRec]);
+
   // 十二长生
   const changShengMap = useMemo(() => {
     if (!baziData) return {} as Record<string, string>;
@@ -1727,9 +1743,25 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                               {pillarSS.length === 0 ? (
                                 <Text type="secondary" style={{ fontSize: 11 }}>—</Text>
                               ) : (
-                                pillarSS.map((ss: ShenShaItem, si: number) => (
+                                pillarSS.map((ss: ShenShaItem, si: number) => {
+                                  const pw = shenShaPowerMap[`${ss.name}|${ss.pillar}`];
+                                  return (
                                   <div key={si} style={{ margin: '1px 0' }}>
-                                    <Popover content={ss.desc || '暂无详细解释'} trigger="click">
+                                    <Popover
+                                      trigger="click"
+                                      content={
+                                        <div style={{ maxWidth: 300 }}>
+                                          <div>{ss.desc || '暂无详细解释'}</div>
+                                          {pw && (
+                                            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                              实际发力 {pw.power.toFixed(2)}（力量{pw.level}）—— 得地{pw.factors.changSheng || '—'}
+                                              {pw.factors.relationType ? `、被${pw.factors.relationType}` : ''}
+                                              {pw.factors.kong < 1 ? '、落空亡' : ''}
+                                            </div>
+                                          )}
+                                        </div>
+                                      }
+                                    >
                                       <Tag
                                         style={{
                                           fontSize: 10, margin: 0, cursor: 'pointer',
@@ -1738,11 +1770,12 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                                           border: 'none',
                                         }}
                                       >
-                                        {ss.name}
+                                        {ss.name}{pw?.level === '强' ? '·强' : ''}
                                       </Tag>
                                     </Popover>
                                   </div>
-                                ))
+                                  );
+                                })
                               )}
                             </td>
                           );
@@ -1814,6 +1847,30 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                           </Tag>
                           <Text strong>{sha.name}</Text>
                           <Tag>{sha.pillar}</Tag>
+                          {(() => {
+                            const pw = shenShaPowerMap[`${sha.name}|${sha.pillar}`];
+                            if (!pw) return null;
+                            const why = [
+                              `得地${pw.factors.changSheng || '—'}（${pw.factors.deDi}）`,
+                              `宫位${pw.factors.palace}`,
+                              pw.factors.relationType ? `被${pw.factors.relationType}（${pw.factors.relation}）` : '',
+                              pw.factors.kong < 1 ? `落空亡（${pw.factors.kong}）` : '',
+                              pw.factors.xiJi !== 1 ? `喜忌（${pw.factors.xiJi}）` : '',
+                            ].filter(Boolean).join(' × ');
+                            return (
+                              <Tag
+                                title={`实际发力 ${pw.power.toFixed(2)}｜${why}`}
+                                style={{
+                                  fontSize: 11,
+                                  border: 'none',
+                                  background: pw.level === '强' ? 'rgba(212,107,8,0.10)' : pw.level === '中' ? 'rgba(42,51,64,0.08)' : 'rgba(0,0,0,0.04)',
+                                  color: pw.level === '强' ? '#d46b08' : pw.level === '中' ? 'var(--text-body)' : '#8c8c8c',
+                                }}
+                              >
+                                力量{pw.level}
+                              </Tag>
+                            );
+                          })()}
                         </Space>
                         <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>
                       </Card>
