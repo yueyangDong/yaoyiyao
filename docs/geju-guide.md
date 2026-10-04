@@ -117,8 +117,54 @@
 - `GONG_INTRO`：十二宫白话导语（宫位解读开篇），口径：兄弟兼看母亲与合作、子女兼看创作晚辈、疾厄兼看情绪身心、迁移看外部舞台、交友兼看下属、田宅兼看财库家运、福德看精神世界、父母兼看长辈上司体制文书。
 - `MAIN_STAR_TRAITS`：十四主星 **十二维**——每宫独立文案（命宫 personality、兄弟 siblings、夫妻 love、子女 children、财帛 fortune、疾厄 health、迁移 outing、交友 friends、官禄 career、田宅 estate、福德 spirit、父母 elder）。改文案时十二维都要检查，缺维会回退 personality（见 `getPalaceSpecificContext` 的 dim 映射）。
 - 双星组合走 `PAIR_TRAITS`（24 组合全覆盖）；空宫走借对宫论，"空而无借"有专属措辞。
+- 供外部复用的读取器：`getStarPalaceTrait` / `getPairTrait` / `getStarTraitCore` / `getGongAdvice`
+  （`ziweiPalaceDeep.ts` 用它生成无四化宫的解读，**不要另抄一份表**）。
 
-## 四、改格子的检查清单
+## 四、十二宫深度解读：含无四化宫（ziweiPalaceDeep.ts，2026-10 新增）
+
+**问题**：原「四化深度解读」只对带生年四化/自化的宫生成内容，一张真实盘通常只有 4~6 个宫有解读，
+其余宫在深度层面是空白——用户看得到"化禄在哪、化忌在哪"，看不到"没被四化点到的宫到底怎样"。
+
+**方案**：`getAllPalaceDeepReadings(gongData)` **十二宫全覆盖**，按十二宫顺序输出：
+
+- 有四化的宫 → 直接返回 `ziweiSihuaDeep.generateSihuaDeepReading` 的结果（**口径唯一，不重复实现**）；
+- 无四化的宫 → 生成固定四段结构：
+  1. `本宫底色`：宫位领域（GONG_DOMAIN）+ 主星本质（STAR_NATURE）+ 该宫专属维度文案 + 庙陷亮度；空宫走借对宫论。
+  2. `星曜组合的力道`：双星走 PAIR_TRAITS；单星讲纯与缺；群星讲聚焦；空宫讲"力道来自外部"；辅星分吉/煞。
+  3. `三方四正的加持与牵制`：对宫 + 三合宫的坐星，说明外部环境。
+  4. `未见四化的含义与经营方向`：说明"先天没有在这里下重注"，是中性底盘 + GONG_ADVICE 经营方向。
+
+⚠️ **段数恒定为 4**（含空宫）——页面按段渲染，缺段会让不同宫的解读深度看起来不一致。
+⚠️ 真实盘必有未涉四化的宫，测试用 `@ziweijs/core` 真盘断言"无四化宫段数 = 4 且各段非空"。
+
+## 五、神煞「本局解释」（shenShaExplain.ts，2026-10 新增）
+
+**问题**：`SHENSHA_PLAIN` 按名字取静态释义，同名同柱在任何盘上输出一字不差——
+用户读不出"这颗煞在我的盘里到底怎样"。
+
+**方案**：`explainShenSha(input)` / `explainShenShaMap(input)`，把 `shenShaPower` 的结构化因子
+翻成盘面绑定的人话，五段递进：定位（落柱+干支+十二长生+档位）→ 作用领域（同柱十神）
+→ 兑现条件（喜忌）→ 强弱交互（身强担得起／身弱要借力）→ 落空与制化。
+
+**不变量**：同名神煞换柱位，解释必须不同（得地不同 → 定位句不同，柱位不同 → 阶段句不同）。
+测试 `shenShaExplain.test.ts` 钉住该不变量。
+
+## 六、命格判定依据与要素对应（mingGe.ts，2026-10 新增）
+
+`analyzeMingGeDetailed` 除原有 `desc/details` 外，新增三件：
+
+- `basis: string[]`：**判定依据链**——从「月令藏干/本气十神 → 是否透干 → 日主强弱/根气 → 结论」逐步推导，
+  每步都落到具体干支与十神，让人看懂"为什么是这个格"。
+- `keyFactors`：**要素对应表**（月令 / 天干透出 / 日主强弱 / 用神 / 格局）→ 本盘取值 → 对格局的作用。
+  用神需通过第 5 个参数传入（页面已传 `yongRec.yongShen`）。
+- `successKey`：**成败关键**（格局喜忌）——这个格靠什么成、怕什么破，按格局关键字分派（正官忌伤官见官、
+  七杀喜制化、印格忌财坏印、财格忌比劫夺财、专旺忌官杀、从格忌印比、化气忌克化神……）。
+
+⚠️ 改格局判定时，`basis` / `keyFactors` / `successKey` 要一起同步——三者是同一判定的三种表述。
+⚠️ 页面 `Bazi.tsx` 里原先还有一份本地简化版命格实现（`MingGeResult`/`analyzeMingGe`），
+   与 `mingGe.ts` 规则漂移且从未被调用，**已删除**；页面只消费 `mingGe.ts` 这一个真源。
+
+## 七、改格子的检查清单
 
 1. 引擎实现（mingGe.ts / ziweiGe.ts）
 2. 对应测试（mingGe.test.ts / ziweiGe.test.ts / ziweiSihua.test.ts）
