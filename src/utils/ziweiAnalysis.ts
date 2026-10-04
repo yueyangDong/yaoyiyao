@@ -959,6 +959,46 @@ function getPalaceSpecificContext(
 // ========== 公开 API ==========
 
 /**
+ * 宫位 × 主星 的专属解释（十二维之一）。
+ * 供 ziweiPalaceDeep（无四化宫的深度解读）复用同一份文案，避免两处漂移。
+ * 缺星或缺维时返回空字符串。
+ */
+export function getStarPalaceTrait(starName: string, palaceName: string): string {
+  const trait = MAIN_STAR_TRAITS[starName];
+  if (!trait) return '';
+  const dim = palaceName === '命宫' ? trait.personality
+    : palaceName === '兄弟' ? trait.siblings
+    : palaceName === '夫妻' ? trait.love
+    : palaceName === '子女' ? trait.children
+    : palaceName === '财帛' ? trait.fortune
+    : palaceName === '疾厄' ? trait.health
+    : palaceName === '迁移' ? trait.outing
+    : palaceName === '交友' ? trait.friends
+    : palaceName === '官禄' ? trait.career
+    : palaceName === '田宅' ? trait.estate
+    : palaceName === '福德' ? trait.spirit
+    : palaceName === '父母' ? trait.elder
+    : trait.personality;
+  return dim || '';
+}
+
+/** 双星同宫专属文案（24 组合）；非同宫组合返回空字符串 */
+export function getPairTrait(a: string, b: string): string {
+  return PAIR_TRAITS[pairKey(a, b)] || '';
+}
+
+/** 单宫主星的核心特质（用于无四化宫的底色句） */
+export function getStarTraitCore(starName: string): { positive: string; negative: string } | null {
+  const t = MAIN_STAR_TRAITS[starName];
+  return t ? { positive: t.positive, negative: t.negative } : null;
+}
+
+/** 宫位经营建议（导出：无四化宫的收尾段复用，口径与有向解读一致） */
+export function getGongAdvice(palaceName: string): string {
+  return GONG_ADVICE[palaceName] || '';
+}
+
+/**
  * 为单个宫位生成200-400字的白话解读
  *
  * @param palaceName - 宫位名称（命宫/兄弟/夫妻/子女/财帛/疾厄/迁移/交友/官禄/田宅/福德/父母）

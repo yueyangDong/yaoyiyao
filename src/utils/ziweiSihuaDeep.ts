@@ -14,8 +14,8 @@ export interface SihuaDeepReading {
   sections: SihuaDeepSection[];
 }
 
-// 十二宫管辖领域
-const GONG_DOMAIN: Record<string, string> = {
+// 十二宫管辖领域（导出：ziweiPalaceDeep 生成"无四化宫"解读时复用同一份领域口径）
+export const GONG_DOMAIN: Record<string, string> = {
   '命宫': '命宫管的是你的人格底色、处世姿态和一生大方向。命宫的星，就是"你"本身。',
   '兄弟': '兄弟宫管的是兄弟姐妹与平辈缘分，也管你的"资源分身"——合作、竞争与人际带宽。',
   '夫妻': '夫妻宫管的是亲密关系模式、配偶画像和你对婚姻的深层期待。',
@@ -46,8 +46,8 @@ const GONG_JI_PAIN: Record<string, string> = {
   '父母': '与长辈的隔阂。和父母沟通有代沟、聚少离多，或童年管束过严留下心结；升学、考证、签约等文书事宜要多留心细节。',
 };
 
-// 主星本质特质
-const STAR_NATURE: Record<string, string> = {
+// 主星本质特质（导出：ziweiPalaceDeep 复用同一份星性口径，避免两处漂移）
+export const STAR_NATURE: Record<string, string> = {
   '紫微': '帝星，天生的自尊与掌控欲，要的是"被认可的主导权"',
   '天机': '智多星，思虑极深、善变善谋，脑子一刻停不下来',
   '太阳': '博爱之星，付出型人格，把光给了别人、烧的是自己',

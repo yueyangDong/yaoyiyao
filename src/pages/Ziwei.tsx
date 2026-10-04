@@ -24,7 +24,7 @@ import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
 import { enrichGongData, getMingShenGongBranch } from '../utils/ziweiPalaceData';
-import { getAllSihuaDeepReadings } from '../utils/ziweiSihuaDeep';
+import { getAllPalaceDeepReadings } from '../utils/ziweiPalaceDeep';
 import { recalcSihua, describeFlyIn, describeFlyOutJi } from '../utils/ziweiSihuaFlying';
 import { BIRTH_SIHUA_PALACE, SELF_SIHUA_PALACE } from '../utils/ziweiSihuaPalaceContent';
 
@@ -561,10 +561,11 @@ export default function Ziwei() {
     return generateZiweiPlainConclusion(summarized.overall, highlight);
   }, [summarized]);
 
-  // 四化深度解读（生年四化 + 自化的分层剖析，仅对有故事可讲的宫生成）
-  const sihuaDeep = useMemo(() => {
+  // 十二宫深度解读：有四化的宫讲四化故事（生年四化 + 自化分层），
+  // 无四化的宫由 ziweiPalaceDeep 补齐四段（底色 / 星曜组合 / 三方四正 / 无化含义），十二宫全覆盖。
+  const palaceDeep = useMemo(() => {
     if (!ziweiData) return [];
-    return getAllSihuaDeepReadings(ziweiData.gongData);
+    return getAllPalaceDeepReadings(ziweiData.gongData);
   }, [ziweiData]);
 
   // 命宫性格画像（主星 1-2 颗；空宫借迁移宫主星论）
@@ -1164,15 +1165,15 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
           </Card>
             </CollapsibleCard>
 
-          {/* 四化深度解读（生年四化 + 自化分层剖析） */}
-          {sihuaDeep.length > 0 && (
+          {/* 十二宫深度解读：有四化的宫讲四化故事，无四化的宫讲底色与经营（十二宫全覆盖） */}
+          {palaceDeep.length > 0 && (
             <CollapsibleCard
-              title="四化深度解读"
-              summary={`${sihuaDeep.length}个宫有四化故事：真实的处境、体面的面具、致命矛盾与健康影响`}
+              title="十二宫深度解读"
+              summary={`十二宫逐一详解：${palaceDeep.filter((r) => r.sihua || r.sihuaSelf).length}个宫带四化故事，其余宫讲星曜底色与三方四正`}
               accordionGroup="ziwei-analysis"
             >
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-                {sihuaDeep.map((r) => (
+                {palaceDeep.map((r) => (
                   <Card
                     key={r.gongName}
                     size="small"
@@ -1197,12 +1198,16 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                     }
                     style={{
                       marginBottom: 12,
-                      border: `1px solid ${r.sihua === '忌' ? 'rgba(194,59,43,0.15)' : 'rgba(107,154,122,0.15)'}`,
+                      border: `1px solid ${
+                        r.sihua === '忌' ? 'rgba(194,59,43,0.15)'
+                          : (r.sihua || r.sihuaSelf) ? 'rgba(107,154,122,0.15)'
+                            : 'rgba(0,0,0,0.08)'
+                      }`,
                     }}
                   >
                     {r.sections.map((sec, i) => (
                       <div key={i} style={{ marginBottom: i < r.sections.length - 1 ? 10 : 0 }}>
-                        <Text strong style={{ fontSize: 13, color: r.sihua === '忌' ? 'var(--wx-fire)' : 'var(--wx-wood)', display: 'block', marginBottom: 2 }}>
+                        <Text strong style={{ fontSize: 13, color: r.sihua === '忌' ? 'var(--wx-fire)' : (r.sihua || r.sihuaSelf) ? 'var(--wx-wood)' : 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
                           {i + 1}. {sec.heading}
                         </Text>
                         <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
