@@ -1,9 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import {
   Card, Form, InputNumber, Button,
   Typography, Space, Tag, message, Radio, Row, Col,
-  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox,
+  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox, Tabs,
 } from 'antd';
 import { Solar, Lunar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
@@ -25,6 +25,8 @@ import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
 import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
+import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
+import { buildLiuYueList } from '../utils/liuyueReading';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -123,47 +125,8 @@ function getShiShenComboAnalysis(pillars: any[], dayGan: string): string[] {
   return combos;
 }
 
-// 五行旺衰统计
-function calcWuxingStats(pillars: any[]): Record<string, { count: number; level: string; desc: string }> {
-  const wxCount: Record<string, number> = { '金': 0, '木': 0, '水': 0, '火': 0, '土': 0 };
-  const tgWx: Record<string, string> = {
-    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-  };
-  const dzWx: Record<string, string> = {
-    '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
-    '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
-  };
-
-  for (const p of pillars) {
-    const tg = p.tianGan;
-    const dz = p.diZhi;
-    if (tgWx[tg]) wxCount[tgWx[tg]]++;
-    if (dzWx[dz]) wxCount[dzWx[dz]]++;
-    if (p.cangGan) {
-      for (const cg of p.cangGan) {
-        const gan = cg.charAt(0);
-        if (tgWx[gan]) wxCount[tgWx[gan]]++;
-      }
-    }
-  }
-
-  const counts = Object.values(wxCount);
-  const total = counts.reduce((a, b) => a + b, 0);
-  const avg = total / 5;
-  const maxCount = Math.max(...counts, 1);
-  const result: Record<string, { count: number; level: string; desc: string }> = {};
-  for (const [wx, count] of Object.entries(wxCount)) {
-    let level = '适中';
-    let desc = '';
-    if (count === 0) { level = '缺'; desc = `命局中缺${wx}，不代表没有${wx}的能量，而是在大运流年中遇到${wx}时会特别明显。`; }
-    // 旧阈值 count >= maxCount*0.7 会让「五行均衡」的盘全部判旺；改为与全局均值比较。
-    else if (count === maxCount && count > avg * 1.2) { level = '旺'; desc = `${wx}比较旺，注意不要过犹不及，追求平衡。`; }
-    else if (count < avg * 0.7) { level = '弱'; desc = `${wx}偏弱，需要对应的五行来补充和扶持。`; }
-    result[wx] = { count, level, desc };
-  }
-  return result;
-}
+// 五行旺衰统计：已迁移至 utils/wuxingFlow.ts 的 calcWuxingStats（口径不变，含藏干全量）。
+// 五行流通分析（生克链路/通关/归聚）同文件 analyzeWuxingFlow——页面不再各留一份实现。
 
 // 日主强弱判断：统一使用 baziAnalysis.ts 的五档实现（身极强/身强/中和/身弱/身极弱）。
 // 校准说明：此前本文件另有一份本地简化版（基础分2、只加不减，永远输出三档），
@@ -515,6 +478,12 @@ export default function Bazi() {
   const [loading, setLoading] = useState(false);
   const [liunianYears, setLiunianYears] = useState<LiuNianItem[] | null>(null);
   const [activeRow, setActiveRow] = useState<string | null>(null);
+  // 四柱表进阶字段开关（支神/纳音/空亡/地势/自坐偏专业，默认收起，点击对应 pill 会自动开启）
+  const [showAdvancedRows, setShowAdvancedRows] = useState(false);
+  // 命格判定细节（依据链/要素表/成败关键）默认折叠，想核验再展开
+  const [geDetailOpen, setGeDetailOpen] = useState(false);
+  // 神煞一览默认只亮力量前 6 颗，其余收起
+  const [showAllSha, setShowAllSha] = useState(false);
   const [liuYueMonths, setLiuYueMonths] = useState<Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> | null>(null);
   const [liuRiYear, setLiuRiYear] = useState<number | null>(null);
   const [liuRiMonth, setLiuRiMonth] = useState<number | null>(null);
@@ -782,9 +751,11 @@ export default function Bazi() {
       });
 
       message.success('排盘完成');
-      // 十年流年（今年起）+ 未来一年流月（自动展示）
+      // 十年流年（今年起）+ 未来一年流月（自动展示，叠加当前大运与月令的生克——见 utils/liuyueReading.ts）
       setLiunianYears(buildLiuNianList(currentYear, dayGan, dayWx));
-      buildFutureMonths(dayGan, dayWx);
+      const ageNow = calcCurrentAge(solarDate.getYear(), solarDate.getMonth(), solarDate.getDay());
+      const curDayunStep = dayunSteps.find((s) => !s.isPreStart && ageNow >= s.startAge && ageNow < s.endAge);
+      setLiuYueMonths(buildLiuYueList({ dayWx, dayunGanZhi: curDayunStep?.ganZhi }));
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
@@ -827,82 +798,8 @@ export default function Bazi() {
     handleCalc();
   }, [pendingReplay]);
 
-// 流月模板池：每类关系 5 条，按 i 索引选取避免简单轮转
-const LIUYUE_TEMPLATES: Record<string, string[]> = {
-  same: [
-    '比和之月，运势平稳',
-    '同气之月，宜稳扎稳打',
-    '比肩当令，适合与同伴协作，共担共进',
-    '同频之月，能量守恒，宜巩固既有阵地',
-    '气场合拍，本月不用太费力也能稳步推进',
-  ],
-  yin: [
-    '印星之月，利学业贵人',
-    '印绶当令，宜进修充电、亲近长辈',
-    '印星照临，学习效率高，易得提携',
-    '印气护体，本月精神状态好，适合啃硬骨头',
-    '贵人暗中相助，多问多得，少说多做更佳',
-  ],
-  shishang: [
-    '食伤之月，利创意发挥',
-    '才华之月，表达欲强，作品易被看见',
-    '食伤吐秀，灵感涌现，适合输出',
-    '表达欲爆棚，多写、多画、多讲，回报率高于埋头执行',
-    '思维活跃期，是解决疑难问题的好月份',
-  ],
-  guansha: [
-    '官杀之月，有压力挑战',
-    '官杀当值，责任加身，宜迎难而上',
-    '压力之月，扛过去就是成长',
-    '外部期待变高，主动揽责反而是机会',
-    '本月规则大于灵活，按部就班比临场发挥更稳',
-  ],
-  cai: [
-    '财运之月，利求财',
-    '财星当令，宜开源、谈合作',
-    '财星照临，进账机会增多，注意理财',
-    '现金流佳，适合结算、回款、谈价格',
-    '本月贵在"主动出击"，而不是"等米下锅"',
-  ],
-};
-
-// 流月推算
-// 流月：当前月起未来 12 个自然月逐月运势（自动计算，跨年）
-  const buildFutureMonths = (dayGan: string, dayWx: string) => {
-    const tgWx: Record<string, string> = {
-      '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-      '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-    };
-    const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-    const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-
-    const now = new Date();
-    const result: Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> = [];
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() + i, 15);
-      const y = d.getFullYear();
-      const m = d.getMonth() + 1;
-      let gz = '';
-      try {
-        // 关键点：先把公历 → 农历，再取节气月柱（getMonthInGanZhi 内部按节气和年上起月计算）
-        const sol = Solar.fromYmdHms(y, m, 15, 12, 0, 0);
-        const lu = sol.getLunar();
-        gz = lu.getMonthInGanZhi();
-      } catch {
-        gz = '--';
-      }
-      const gan = gz.charAt(0);
-      const wx = tgWx[gan] || '';
-      let desc = '';
-      if (dayWx === wx) desc = LIUYUE_TEMPLATES.same[i % LIUYUE_TEMPLATES.same.length];
-      else if (wxSheng[dayWx] === wx) desc = LIUYUE_TEMPLATES.yin[i % LIUYUE_TEMPLATES.yin.length];
-      else if (wxSheng[wx] === dayWx) desc = LIUYUE_TEMPLATES.shishang[i % LIUYUE_TEMPLATES.shishang.length];
-      else if (wxKe[dayWx] === wx) desc = LIUYUE_TEMPLATES.guansha[i % LIUYUE_TEMPLATES.guansha.length];
-      else if (wxKe[wx] === dayWx) desc = LIUYUE_TEMPLATES.cai[i % LIUYUE_TEMPLATES.cai.length];
-      result.push({ monthName: `${y}年${m}月`, ganZhi: gz, wx, desc });
-    }
-    setLiuYueMonths(result);
-  };
+  // 流月推算：已抽至 utils/liuyueReading.ts（月令 vs 日主五类模板 + 月令 vs 当前大运生克后缀），
+  // handleCalc 里直接调用 buildLiuYueList——页面不再保留模板池，方便 node 环境测试。
 
   // 流日推算
   const handleLiuRi = (year: number, month: number) => {
@@ -967,6 +864,18 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
     if (!baziData) return [];
     return analyzeRelations(baziData.pillars);
   }, [baziData]);
+
+  // 五行流通（生克链路 + 通关 + 归聚）：与五行旺衰统计同源计数，用神传入做同向提示
+  const wuxingFlow = useMemo(() => {
+    if (!baziData || !wxStats) return null;
+    return analyzeWuxingFlow(baziData.pillars, baziData.dayWx, yongShenRec?.yongShen);
+  }, [baziData, wxStats, yongShenRec]);
+
+  // 大运应期：流通断点映射到各步大运（补齐断链/通关得力/壅塞加剧注记 + 汇总）
+  const dayunFlow = useMemo(() => {
+    if (!wuxingFlow || !baziData) return null;
+    return annotateDayunFlow(baziData.dayun.steps, wuxingFlow);
+  }, [wuxingFlow, baziData]);
 
   const shiShenCombos = useMemo(() => {
     if (!baziData) return [];
@@ -1311,12 +1220,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               修改信息
             </Button>
 
-          {/* 基本信息 */}
-          <Card style={{ marginBottom: 16 }} size="small">
-            <Text type="secondary">{baziData.lunarInfo}</Text>
-          </Card>
-
-          {/* 日主信息行 */}
+          {/* 日主信息行（含农历基本盘） */}
           <Card
             style={{
               marginBottom: 16,
@@ -1324,6 +1228,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               border: '1px solid var(--border-light)',
             }}
           >
+            <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12.5 }}>{baziData.lunarInfo}</Text>
             <Row align="middle" gutter={[16, 8]}>
               <Col xs={24} md={8}>
                 <Space size="middle">
@@ -1391,25 +1296,31 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                 overflowX: 'auto',
               }}>
               {(() => {
+                const ADV_KEYS = ['zhishen', 'nayin', 'kongwang', 'dishi', 'zizuo'];
                 const ROWS = [
                   { key: 'shishen', label: '十神' },
                   { key: 'tiangan', label: '天干' },
                   { key: 'dizhi', label: '地支' },
                   { key: 'canggan', label: '藏干' },
+                  { key: 'shensha', label: '神煞' },
                   { key: 'zhishen', label: '支神' },
                   { key: 'nayin', label: '纳音' },
                   { key: 'kongwang', label: '空亡' },
                   { key: 'dishi', label: '地势' },
                   { key: 'zizuo', label: '自坐' },
-                  { key: 'shensha', label: '神煞' },
                 ];
+                const onPill = (key: string) => {
+                  // 点进阶字段的说明 pill：顺手把进阶行打开，避免「说明亮了、行却不在表里」的错位
+                  if (ADV_KEYS.includes(key)) setShowAdvancedRows(true);
+                  setActiveRow((v) => (v === key ? null : key));
+                };
                 return ROWS.map(row => {
                   const isActive = activeRow === row.key;
                   return isMobile ? (
                     <button
                       key={row.key}
                       className={`pill-btn${isActive ? ' active' : ''}`}
-                      onClick={() => setActiveRow(isActive ? null : row.key)}
+                      onClick={() => onPill(row.key)}
                     >
                       {row.label}
                     </button>
@@ -1419,13 +1330,24 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                       size="small"
                       type={isActive ? 'primary' : 'default'}
                       style={{ fontSize: 12, padding: '2px 10px' }}
-                      onClick={() => setActiveRow(isActive ? null : row.key)}
+                      onClick={() => onPill(row.key)}
                     >
                       {row.label}
                     </Button>
                   );
                 });
               })()}
+            </div>
+
+            {/* 进阶视图开关：支神/纳音/空亡/地势/自坐偏专业，默认收起（首屏信息密度降四成） */}
+            <div style={{ marginBottom: 8 }}>
+              <Checkbox
+                checked={showAdvancedRows}
+                onChange={(e) => setShowAdvancedRows(e.target.checked)}
+                style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}
+              >
+                进阶视图（支神 · 纳音 · 空亡 · 地势 · 自坐）
+              </Checkbox>
             </div>
 
             {/* 说明面板 */}
@@ -1685,7 +1607,10 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                       </tr>
                     );
 
-                    return [row1, row2, row3, row4, row5, row6, row7, row8, row9, row10];
+                    // 分级渲染：默认只留 干支/十神/藏干/神煞；支神/纳音/空亡/地势/自坐 属进阶视图
+                    return showAdvancedRows
+                      ? [row1, row2, row3, row4, row5, row6, row7, row8, row9, row10]
+                      : [row1, row2, row3, row4, row10];
                   })()}
                 </tbody>
               </table>
@@ -1694,12 +1619,6 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
           {/* 刑冲合害（四柱关系：子午相冲、相害、地支相合等） */}
           <CollapsibleCard title="刑冲合害关系分析" summary="四柱之间的互动关系，理解命局动态" style={{ marginTop: 12 }}>
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Alert
-              message="刑冲合害反映了四柱之间的互动关系，是理解命局动态的关键。"
-              type="info"
-              showIcon
-              style={{ marginBottom: 12 }}
-            />
             {relationAnalysis.length === 0 ? (
               <Alert message="✅ 此八字四柱之间无特殊刑冲合害关系" type="success" showIcon />
             ) : (
@@ -1723,79 +1642,81 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
             </CollapsibleCard>
           </Card>
 
-          {/* 神煞 */}
+          {/* 神煞：按实际发力降序，每颗一段「本局解释」（通用释义见四柱表内 Popover，不在此重复） */}
           <Card title="神煞一览" style={{ marginBottom: 16 }}>
             {baziData.shenSha.length === 0 ? (
               <Alert message="此八字四柱中未发现常见神煞，但不代表不好——平凡也是一种福气。" type="info" showIcon />
-            ) : (
-              <>
-                <Row gutter={[8, 8]}>
-                  {baziData.shenSha.map((sha, i) => (
-                    <Col xs={24} sm={12} md={8} key={i}>
-                      <Card
-                        size="small"
-                        style={{
-                          borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
-                          background: sha.type === '吉' ? 'rgba(107,154,122,0.06)' : sha.type === '凶' ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)',
-                        }}
-                      >
-                        <Space>
-                          <Tag style={{
-                            background: sha.type === '吉' ? 'rgba(107,154,122,0.08)' : sha.type === '凶' ? 'rgba(194,59,43,0.08)' : 'rgba(42,51,64,0.08)',
-                            color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
-                            border: 'none',
-                          }}>
-                            {sha.type}
-                          </Tag>
-                          <Text strong>{sha.name}</Text>
-                          <Tag>{sha.pillar}</Tag>
-                          {(() => {
-                            const pw = shenShaPowerMap[`${sha.name}|${sha.pillar}`];
-                            if (!pw) return null;
-                            const why = [
-                              `得地${pw.factors.changSheng || '—'}（${pw.factors.deDi}）`,
-                              `宫位${pw.factors.palace}`,
-                              pw.factors.relationType ? `被${pw.factors.relationType}（${pw.factors.relation}）` : '',
-                              pw.factors.kong < 1 ? `落空亡（${pw.factors.kong}）` : '',
-                              pw.factors.xiJi !== 1 ? `喜忌（${pw.factors.xiJi}）` : '',
-                            ].filter(Boolean).join(' × ');
-                            return (
-                              <Tag
-                                title={`实际发力 ${pw.power.toFixed(2)}｜${why}`}
-                                style={{
-                                  fontSize: 11,
-                                  border: 'none',
-                                  background: pw.level === '强' ? 'rgba(212,107,8,0.10)' : pw.level === '中' ? 'rgba(42,51,64,0.08)' : 'rgba(0,0,0,0.04)',
-                                  color: pw.level === '强' ? '#d46b08' : pw.level === '中' ? 'var(--text-body)' : '#8c8c8c',
-                                }}
-                              >
-                                力量{pw.level}
-                              </Tag>
-                            );
-                          })()}
-                        </Space>
+            ) : (() => {
+                // 力量降序：前 6 颗直接亮，其余收进「查看其余 N 颗」——避免 15+ 张小卡刷屏
+                const TOP_N = 6;
+                const sorted = [...baziData.shenSha]
+                  .sort((a, b) => (shenShaPowerMap[`${b.name}|${b.pillar}`]?.power ?? -1) - (shenShaPowerMap[`${a.name}|${a.pillar}`]?.power ?? -1));
+                const shown = showAllSha ? sorted : sorted.slice(0, TOP_N);
+                const rest = sorted.length - shown.length;
+                return (
+                  <>
+              <Row gutter={[8, 8]}>
+                {shown.map((sha, i) => (
+                  <Col xs={24} sm={12} md={8} key={`${sha.name}-${sha.pillar}-${i}`}>
+                    <Card
+                      size="small"
+                      style={{
+                        borderLeft: `4px solid ${sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)'}`,
+                        background: sha.type === '吉' ? 'rgba(107,154,122,0.06)' : sha.type === '凶' ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)',
+                        height: '100%',
+                      }}
+                    >
+                      <Space>
+                        <Tag style={{
+                          background: sha.type === '吉' ? 'rgba(107,154,122,0.08)' : sha.type === '凶' ? 'rgba(194,59,43,0.08)' : 'rgba(42,51,64,0.08)',
+                          color: sha.type === '吉' ? 'var(--wx-wood)' : sha.type === '凶' ? 'var(--wx-fire)' : 'var(--wx-water)',
+                          border: 'none',
+                        }}>
+                          {sha.type}
+                        </Tag>
+                        <Text strong>{sha.name}</Text>
+                        <Tag>{sha.pillar}</Tag>
                         {(() => {
-                          const ex = shenShaExplainMap[`${sha.name}|${sha.pillar}`];
-                          if (!ex) {
-                            return <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0 }}>{sha.desc}</Paragraph>;
-                          }
+                          const pw = shenShaPowerMap[`${sha.name}|${sha.pillar}`];
+                          if (!pw) return null;
                           return (
-                            <>
-                              <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 2, color: 'var(--text-body)', lineHeight: 1.75 }}>
-                                <strong style={{ color: 'var(--text-secondary)' }}>本局：</strong>{ex.text}
-                              </Paragraph>
-                              <Paragraph style={{ fontSize: 11, marginBottom: 0, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-                                <strong>释义：</strong>{sha.desc}
-                              </Paragraph>
-                            </>
+                            <Tag
+                              title={`实际发力 ${pw.power.toFixed(2)}`}
+                              style={{
+                                fontSize: 11,
+                                border: 'none',
+                                background: pw.level === '强' ? 'rgba(212,107,8,0.10)' : pw.level === '中' ? 'rgba(42,51,64,0.08)' : 'rgba(0,0,0,0.04)',
+                                color: pw.level === '强' ? '#d46b08' : pw.level === '中' ? 'var(--text-body)' : '#8c8c8c',
+                              }}
+                            >
+                              力量{pw.level}
+                            </Tag>
                           );
                         })()}
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              </>
-            )}
+                      </Space>
+                      <Paragraph style={{ fontSize: 12, marginTop: 6, marginBottom: 0, color: 'var(--text-body)', lineHeight: 1.75 }}>
+                        {(() => {
+                          const ex = shenShaExplainMap[`${sha.name}|${sha.pillar}`];
+                          return ex ? ex.text : sha.desc;
+                        })()}
+                      </Paragraph>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+                    {rest > 0 && !showAllSha && (
+                      <div style={{ textAlign: 'center', marginTop: 8 }}>
+                        <Button size="small" onClick={() => setShowAllSha(true)}>查看其余 {rest} 颗神煞</Button>
+                      </div>
+                    )}
+                    {showAllSha && sorted.length > TOP_N && (
+                      <div style={{ textAlign: 'center', marginTop: 8 }}>
+                        <Button size="small" type="text" onClick={() => setShowAllSha(false)}>▲ 收起</Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
           </Card>
 
           {/* 日主强弱 + 用神 */}
@@ -1832,18 +1753,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                         ))}
                       </Paragraph>
                       <Paragraph style={{ fontSize: 13 }}>{yongShenRec.desc}</Paragraph>
-                      <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                        生活小建议：{yongShenRec.yongShen.map((wx) => {
-                          const tips: Record<string, string> = {
-                            '木': '多穿绿色衣服，养植物，往东方发展',
-                            '火': '多穿红色衣服，用明火做饭，往南方发展',
-                            '土': '多穿黄色衣服，接触大自然，稳定在一个地方',
-                            '金': '多穿白色衣服，佩戴金属饰品，往西方发展',
-                            '水': '多穿蓝色/黑色衣服，多喝水，养鱼，往北方发展',
-                          };
-                          return tips[wx] || '';
-                        }).join('；')}
-                      </Paragraph>
+                      {/* 「生活小建议」（多穿X色衣服往X方发展）已删：与喜用区重复且偏玄 */}
                     </div>
                   )}
                 </Col>
@@ -1864,7 +1774,7 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                         {WX_ICON[wx]} {wx}
                       </Text>
                       <Progress
-                        percent={Math.min(info.count * 15, 100)}
+                        percent={Math.round((info.count / Math.max(...Object.values(wxStats).map((s) => s.count), 1)) * 100)}
                         size="small"
                         strokeColor={WX_COLORS[wx]}
                         format={() => `${info.count}次`}
@@ -1877,6 +1787,90 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                   </Col>
                 ))}
               </Row>
+            </Card>
+            </CollapsibleCard>
+          )}
+
+          {/* 五行流通分析：生克链路 + 相战通关 + 归聚点 + 疏通建议 */}
+          {wuxingFlow && (
+            <CollapsibleCard
+              title="五行流通分析"
+              summary={`${wuxingFlow.rating} · ${wuxingFlow.links.filter((l) => l.state === '畅通').length}/5 条生路畅通`}
+            >
+              <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
+              <Alert
+                type={
+                  wuxingFlow.rating === '周流不息' || wuxingFlow.rating === '流通顺畅' ? 'success'
+                    : wuxingFlow.rating === '基本流通' ? 'info'
+                      : wuxingFlow.rating === '局部受阻' ? 'warning' : 'error'
+                }
+                showIcon
+                message={wuxingFlow.summary}
+                style={{ marginBottom: 12 }}
+              />
+              {/* 相生环：木→火→土→金→水→（木），链路状态着色 */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, marginBottom: 12, justifyContent: 'center' }}>
+                {wuxingFlow.links.map((l, i) => (
+                  <Fragment key={l.from}>
+                    {i === 0 && (
+                      <Tag style={{ background: WX_BG[l.from], color: WX_COLORS[l.from], border: 'none', margin: 0, fontSize: 13 }}>{l.from}</Tag>
+                    )}
+                    <Tooltip title={l.note}>
+                      <span style={{
+                        fontSize: 14, cursor: 'help', padding: '0 2px',
+                        color: l.state === '畅通' ? 'var(--wx-wood)' : l.state === '偏弱' ? 'var(--color-warn)' : l.state === '壅塞' ? 'var(--wx-fire)' : 'var(--text-disabled)',
+                        textDecoration: l.state === '断链' ? 'line-through' : 'none',
+                      }}>
+                        {l.state === '断链' ? '⇏' : '→'}
+                      </span>
+                    </Tooltip>
+                    <Tag style={{ background: WX_BG[l.to], color: WX_COLORS[l.to], border: 'none', margin: 0, fontSize: 13 }}>{l.to}</Tag>
+                  </Fragment>
+                ))}
+              </div>
+              {/* 相战通关 */}
+              {wuxingFlow.bridges.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>生克关系：</Text>
+                  {wuxingFlow.bridges.map((b, i) => (
+                    <div key={i} style={{
+                      marginTop: 6, padding: '8px 12px', borderRadius: 6, fontSize: 13, lineHeight: 1.8,
+                      background: b.state === '通关' ? 'rgba(107,154,122,0.05)' : 'rgba(212,107,8,0.05)',
+                      borderLeft: `3px solid ${b.state === '通关' ? 'var(--wx-wood)' : 'var(--color-warn)'}`,
+                    }}>
+                      <Tag style={{ background: b.state === '通关' ? 'rgba(107,154,122,0.1)' : 'rgba(212,107,8,0.1)', color: b.state === '通关' ? 'var(--wx-wood)' : '#d46b08', border: 'none', marginBottom: 4 }}>
+                        {b.a}克{b.b} · {b.state}
+                      </Tag>
+                      <Text style={{ fontSize: 12.5, color: 'var(--text-body)' }}>{b.note}</Text>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* 归聚点 */}
+              {wuxingFlow.converge && (
+                <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message={<span style={{ fontSize: 13, lineHeight: 1.8 }}>{wuxingFlow.converge.note}</span>}
+                />
+              )}
+              {/* 疏通建议 */}
+              <div>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>疏通建议：</Text>
+                <ul style={{ paddingLeft: 20, margin: '6px 0 0', fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
+                  {wuxingFlow.tips.map((t, i) => <li key={i} style={{ marginBottom: 2 }}>{t}</li>)}
+                </ul>
+              </div>
+              {/* 大运应期：断点何时补上——静态描述变预测 */}
+              {dayunFlow && dayunFlow.firstFix.length > 0 && (
+                <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: 'rgba(196,164,90,0.05)', borderLeft: '3px solid rgba(196,164,90,0.5)' }}>
+                  <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>大运应期（断点何时补上）：</Text>
+                  <ul style={{ paddingLeft: 20, margin: '6px 0 0', fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
+                    {dayunFlow.firstFix.map((f, i) => <li key={i} style={{ marginBottom: 2 }}>{f}</li>)}
+                  </ul>
+                </div>
+              )}
             </Card>
             </CollapsibleCard>
           )}
@@ -1902,53 +1896,70 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
               </Col>
             </Row>
 
-            {/* 判定依据：从月令/透干/日主状态一步步推到格名，让结论可追溯 */}
-            {baziData.mingGe.basis?.length > 0 && (
-              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(196,164,90,0.05)', borderLeft: '3px solid rgba(196,164,90,0.5)' }}>
-                <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>判断依据（逐步推导）：</Text>
-                <ol style={{ paddingLeft: 20, margin: '6px 0 0', fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
-                  {baziData.mingGe.basis.map((b, i) => (
-                    <li key={i}>{b}</li>
-                  ))}
-                </ol>
-              </div>
-            )}
+            {/* 核验依据（判定链/要素表/成败关键）：有价值但很长，默认折叠，想核验的人自己展开 */}
+            {(baziData.mingGe.basis?.length > 0 || baziData.mingGe.keyFactors?.length > 0 || baziData.mingGe.successKey) && (
+              <div style={{ marginTop: 12, borderTop: '1px dashed var(--border-light)', paddingTop: 8 }}>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => setGeDetailOpen((v) => !v)}
+                  style={{ fontSize: 12.5, color: 'var(--text-secondary)', padding: '2px 0' }}
+                >
+                  {geDetailOpen ? '▲ 收起核验依据' : '▼ 展开核验依据：判定链 · 要素表 · 成败关键'}
+                </Button>
+                {geDetailOpen && (
+                  <>
+                    {/* 判定依据：从月令/透干/日主状态一步步推到格名，让结论可追溯 */}
+                    {baziData.mingGe.basis?.length > 0 && (
+                      <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 8, background: 'rgba(196,164,90,0.05)', borderLeft: '3px solid rgba(196,164,90,0.5)' }}>
+                        <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>判断依据（逐步推导）：</Text>
+                        <ol style={{ paddingLeft: 20, margin: '6px 0 0', fontSize: 13, color: 'var(--text-body)', lineHeight: 1.9 }}>
+                          {baziData.mingGe.basis.map((b, i) => (
+                            <li key={i}>{b}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
 
-            {/* 要素对应：月令/透干/日主强弱/用神 各自对格局起什么作用 */}
-            {baziData.mingGe.keyFactors?.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>要素对应关系：</Text>
-                <div style={{ overflowX: 'auto', marginTop: 6 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
-                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>要素</th>
-                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>本盘取值</th>
-                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600 }}>对格局的作用</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {baziData.mingGe.keyFactors.map((k, i) => (
-                        <tr key={i}>
-                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>{k.factor}</td>
-                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontFamily: 'var(--font-mono, monospace)' }}>{k.value}</td>
-                          <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', lineHeight: 1.7 }}>{k.meaning}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                    {/* 要素对应：月令/透干/日主强弱/用神 各自对格局起什么作用 */}
+                    {baziData.mingGe.keyFactors?.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <Text strong style={{ fontSize: 13, color: 'var(--text-secondary)' }}>要素对应关系：</Text>
+                        <div style={{ overflowX: 'auto', marginTop: 6 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
+                                <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>要素</th>
+                                <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>本盘取值</th>
+                                <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)', fontWeight: 600 }}>对格局的作用</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {baziData.mingGe.keyFactors.map((k, i) => (
+                                <tr key={i}>
+                                  <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>{k.factor}</td>
+                                  <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', fontFamily: 'var(--font-mono, monospace)' }}>{k.value}</td>
+                                  <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-light)', color: 'var(--text-body)', lineHeight: 1.7 }}>{k.meaning}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
-            {/* 成败关键：这个格靠什么成、怕什么破 */}
-            {baziData.mingGe.successKey && (
-              <Alert
-                type="warning"
-                showIcon
-                style={{ marginTop: 12 }}
-                message={<span style={{ fontSize: 13, lineHeight: 1.8 }}><strong>格局成败关键：</strong>{baziData.mingGe.successKey}</span>}
-              />
+                    {/* 成败关键：这个格靠什么成、怕什么破 */}
+                    {baziData.mingGe.successKey && (
+                      <Alert
+                        type="warning"
+                        showIcon
+                        style={{ marginTop: 12 }}
+                        message={<span style={{ fontSize: 13, lineHeight: 1.8 }}><strong>格局成败关键：</strong>{baziData.mingGe.successKey}</span>}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </Card>
             </CollapsibleCard>
@@ -2010,6 +2021,18 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
                         <Text type="secondary" style={{ fontSize: 12 }}>{step.startAge}~{step.endAge}岁</Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>{step.startYear}~{step.endYear}年</Text>
                         {isCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none' }}>当前大运</Tag>}
+                        {/* 流通应期标注：此运补齐断链 / 通关得力 / 壅塞加剧（见 utils/wuxingFlow.ts annotateDayunFlow） */}
+                        {(dayunFlow?.stepNotes[i] || []).map((n, ni) => (
+                          <Tooltip key={ni} title={n}>
+                            <Tag style={{
+                              fontSize: 10, margin: 0, border: 'none', cursor: 'default',
+                              background: n.includes('壅塞') ? 'rgba(212,107,8,0.08)' : 'rgba(107,154,122,0.10)',
+                              color: n.includes('壅塞') ? '#d46b08' : 'var(--wx-wood)',
+                            }}>
+                                {n.includes('壅塞') ? '⚠ 壅塞加剧' : n.includes('通关') ? '⚡ 通关得力' : '⚡ 补齐断链'}
+                              </Tag>
+                          </Tooltip>
+                        ))}
                       </Space>
                     </Card>
                   </Col>
@@ -2065,104 +2088,114 @@ const LIUYUE_TEMPLATES: Record<string, string[]> = {
           </Card>
             </CollapsibleCard>
 
-          {/* 流年：今年起连续十年 */}
-          <CollapsibleCard title="流年分析" summary={liunianYears ? `今年起连续十年流年运势` : '排盘后自动展示未来十年流年'}>
+          {/* 运势节奏：流年/流月/流日三合一（原三张结构雷同的卡，合并为单卡页签切换） */}
+          <CollapsibleCard title="运势节奏" summary="流年 · 流月 · 流日，页签切换">
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            {liunianYears ? (
-              <Row gutter={[8, 8]}>
-                {liunianYears.map((y) => {
-                  const isYearCurrent = y.year === currentYear;
-                  return (
-                    <Col xs={12} sm={8} md={6} key={y.year}>
-                      <Card size="small" style={{
-                        height: '100%',
-                        borderColor: isYearCurrent ? 'var(--wx-fire)' : 'var(--border-light)',
-                        background: isYearCurrent ? 'rgba(194,59,43,0.05)' : undefined,
-                      }}>
-                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                          <Space>
-                            <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
-                            <Tag style={{ background: WX_BG[y.wx], color: WX_COLORS[y.wx], border: 'none', fontSize: 12, margin: 0 }}>{y.ganZhi}</Tag>
-                            {isYearCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none', fontSize: 11, margin: 0 }}>本年</Tag>}
-                          </Space>
-                          <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
+              <Tabs
+                defaultActiveKey="liunian"
+                size="small"
+                items={[
+                  {
+                    key: 'liunian',
+                    label: '流年（十年）',
+                    children: liunianYears ? (
+                      <Row gutter={[8, 8]}>
+                        {liunianYears.map((y) => {
+                          const isYearCurrent = y.year === currentYear;
+                          return (
+                            <Col xs={12} sm={8} md={6} key={y.year}>
+                              <Card size="small" style={{
+                                height: '100%',
+                                borderColor: isYearCurrent ? 'var(--wx-fire)' : 'var(--border-light)',
+                                background: isYearCurrent ? 'rgba(194,59,43,0.05)' : undefined,
+                              }}>
+                                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                  <Space>
+                                    <Text strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>{y.year}年</Text>
+                                    <Tag style={{ background: WX_BG[y.wx], color: WX_COLORS[y.wx], border: 'none', fontSize: 12, margin: 0 }}>{y.ganZhi}</Tag>
+                                    {isYearCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none', fontSize: 11, margin: 0 }}>本年</Tag>}
+                                  </Space>
+                                  <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
+                                </Space>
+                              </Card>
+                            </Col>
+                          );
+                        })}
+                      </Row>
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示今年起连续十年的流年运势。</Text>
+                    ),
+                  },
+                  {
+                    key: 'liuyue',
+                    label: '流月（一年）',
+                    children: liuYueMonths ? (
+                      <Row gutter={[6, 6]}>
+                        {liuYueMonths.map((m, i) => {
+                          const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
+                          const isBad = m.desc.includes('官杀') || m.desc.includes('压力');
+                          const bgColor = isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)';
+                          return (
+                            <Col xs={8} sm={6} md={4} key={i}>
+                              <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
+                                <Text style={{ fontSize: 14 }}>{m.monthName}</Text>
+                                <br />
+                                <Tag style={{ background: WX_BG[m.wx], color: WX_COLORS[m.wx], border: 'none', fontSize: 13, margin: 0 }}>{m.ganZhi}</Tag>
+                                <br />
+                                <Text style={{ fontSize: 11, color: isGood ? 'var(--wx-wood)' : isBad ? 'var(--wx-fire)' : 'var(--text-secondary)' }}>{m.desc}</Text>
+                              </Card>
+                            </Col>
+                          );
+                        })}
+                      </Row>
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示当前月起未来一年的逐月运势。</Text>
+                    ),
+                  },
+                  {
+                    key: 'liuri',
+                    label: '流日（逐日）',
+                    children: (
+                      <>
+                        <Space style={{ marginBottom: 12 }} wrap>
+                          <Text strong>年：</Text>
+                          <InputNumber min={1900} max={2100} placeholder={String(currentYear)}
+                            value={liuRiYear} onChange={(v) => setLiuRiYear(v || null)} style={{ width: 100 }} />
+                          <Text strong>月：</Text>
+                          <InputNumber min={1} max={12} placeholder={String(new Date().getMonth() + 1)}
+                            value={liuRiMonth} onChange={(v) => setLiuRiMonth(v || null)} style={{ width: 70 }} />
+                          <Button onClick={() => liuRiYear && liuRiMonth && handleLiuRi(liuRiYear, liuRiMonth)}>查看流日</Button>
                         </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            ) : (
-              <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示今年起连续十年的流年运势。</Text>
-            )}
-          </Card>
-            </CollapsibleCard>
-
-          {/* 流月：未来一年 12 个月 */}
-          <CollapsibleCard title="流月推算" summary={liuYueMonths ? '未来一年逐月运势' : '排盘后自动展示未来一年逐月运势'}>
-            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            {liuYueMonths ? (
-              <Row gutter={[6, 6]}>
-                {liuYueMonths.map((m, i) => {
-                  const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
-                  const isBad = m.desc.includes('官杀') || m.desc.includes('压力');
-                  const bgColor = isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)';
-                  return (
-                    <Col xs={8} sm={6} md={4} key={i}>
-                      <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
-                        <Text style={{ fontSize: 14 }}>{m.monthName}</Text>
-                        <br />
-                        <Tag style={{ background: WX_BG[m.wx], color: WX_COLORS[m.wx], border: 'none', fontSize: 13, margin: 0 }}>{m.ganZhi}</Tag>
-                        <br />
-                        <Text style={{ fontSize: 11, color: isGood ? 'var(--wx-wood)' : isBad ? 'var(--wx-fire)' : 'var(--text-secondary)' }}>{m.desc}</Text>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            ) : (
-              <Text type="secondary" style={{ fontSize: 13 }}>排盘后自动展示当前月起未来一年的逐月运势。</Text>
-            )}
-          </Card>
-            </CollapsibleCard>
-
-          {/* 流日 */}
-          <CollapsibleCard title="流日推算" summary={liuRiYear && liuRiMonth ? `${liuRiYear}年${liuRiMonth}月逐日` : '查看逐日干支运势'}>
-            <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
-            <Space style={{ marginBottom: 12 }}>
-              <Text strong>年：</Text>
-              <InputNumber min={1900} max={2100} placeholder={String(currentYear)}
-                value={liuRiYear} onChange={(v) => setLiuRiYear(v || null)} style={{ width: 100 }} />
-              <Text strong>月：</Text>
-              <InputNumber min={1} max={12} placeholder={String(new Date().getMonth() + 1)}
-                value={liuRiMonth} onChange={(v) => setLiuRiMonth(v || null)} style={{ width: 70 }} />
-              <Button onClick={() => liuRiYear && liuRiMonth && handleLiuRi(liuRiYear, liuRiMonth)}>查看流日</Button>
-            </Space>
-            {liuRiDays && (
-              <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                <Row gutter={isMobile ? ([0, 4] as [number, number]) : [4, 4]} style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 } : undefined}>
-                  {liuRiDays.map((d) => {
-                    const isGood = d.desc === '印生' || d.desc === '财运';
-                    const isBad = d.desc === '官杀';
-                    const isWeekend = !!d.weekend;
-                    return (
-                      <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
-                        <Card size="small" style={{
-                          textAlign: 'center',
-                          padding: 2,
-                          background: isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
-                          borderColor: isWeekend ? '#ccc' : undefined,
-                        }}>
-                          <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
-                          <br />
-                          <Text strong style={{ fontSize: 12, color: WX_COLORS[d.wx] }}>{d.ganZhi}</Text>
-                        </Card>
-                      </Col>
-                    );
-                  })}
-                </Row>
-              </div>
-            )}
+                        {liuRiDays && (
+                          <div style={{ maxHeight: 400, overflow: 'auto' }}>
+                            <Row gutter={isMobile ? ([0, 4] as [number, number]) : [4, 4]} style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 } : undefined}>
+                              {liuRiDays.map((d) => {
+                                const isGood = d.desc === '印生' || d.desc === '财运';
+                                const isBad = d.desc === '官杀';
+                                const isWeekend = !!d.weekend;
+                                return (
+                                  <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
+                                    <Card size="small" style={{
+                                      textAlign: 'center',
+                                      padding: 2,
+                                      background: isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
+                                      borderColor: isWeekend ? '#ccc' : undefined,
+                                    }}>
+                                      <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
+                                      <br />
+                                      <Text strong style={{ fontSize: 12, color: WX_COLORS[d.wx] }}>{d.ganZhi}</Text>
+                                    </Card>
+                                  </Col>
+                                );
+                              })}
+                            </Row>
+                          </div>
+                        )}
+                      </>
+                    ),
+                  },
+                ]}
+              />
           </Card>
             </CollapsibleCard>
 
