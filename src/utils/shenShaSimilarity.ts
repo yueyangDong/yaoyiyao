@@ -31,12 +31,18 @@ export interface ShaSimilarityResult {
  *   分布 p50 = 0.158、p90 = 0.264、p95 = 0.300、max = 0.815
  * 故取 high = 0.30（≈ 前 5%，真·高度重合）、medium = 0.22（≈ 前 21%）。
  *
- * 对照：同样这批盘对，旧判据「共同神煞 ≥ 3」会判出 93.9% 高重合——
- * 新口径在 0.30 处只判 5.0%，判别力提升约 19 倍。
+ * 2026-10-05 重锚：新增德秀贵人（高频吉神，88.8% 的盘带、平均 1.86 落点/盘）后
+ * 相似度整体上移——新分布 p50 = 0.174、p79 = 0.237、p90 = 0.279、p95 = 0.314。
+ * 档位跟随分位移动：high = 0.31、medium = 0.24，维持「高 ≈ 前 5%、中 ≈ 前 21%」语义。
+ * 合盘的神煞共振分不受影响（走原始分数 + SHENSHA_HEPAN_SCALE，不走档位带）。
  *
- * ⚠️ 这两个数是量纲锚点，改后必须同步测试里的占比/分位断言。
+ * 对照：同样这批盘对，旧判据「共同神煞 ≥ 3」会判出 93.9% 高重合——
+ * 新口径在 0.31 处只判约 5%，判别力不变。
+ *
+ * ⚠️ 这两个数是量纲锚点，改后必须同步测试里的占比/分位断言
+ * （shenShaSimilarity.test.ts 与 chartCompare.test.ts 各有一份钉值）。
  */
-export const SHENSHA_SIMILARITY_BANDS = { high: 0.3, medium: 0.22 } as const;
+export const SHENSHA_SIMILARITY_BANDS = { high: 0.31, medium: 0.24 } as const;
 
 export function shaSimilarityLevel(score: number): '高' | '中' | '低' {
   if (score >= SHENSHA_SIMILARITY_BANDS.high) return '高';

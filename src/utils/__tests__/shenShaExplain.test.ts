@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { explainShenSha, explainShenShaMap } from '../shenShaExplain';
+import { explainShenSha, explainShenShaMap, SHA_TRAIT } from '../shenShaExplain';
+import { SHENSHA_PLAIN } from '../shenSha';
 import type { PillarData } from '../../pages/Bazi';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, shiShen: string): PillarData => ({
@@ -103,5 +104,63 @@ describe('explainShenSha 本局解释', () => {
     });
     expect(Object.keys(map).sort()).toEqual(['天乙贵人|时柱', '天乙贵人|月柱']);
     expect(map['天乙贵人|月柱'].text).not.toBe(map['天乙贵人|时柱'].text);
+  });
+
+  it('每颗神煞的解释都先报家门——包含该煞的本职短语', () => {
+    const map = explainShenShaMap({
+      pillars: pillars(),
+      shenSha: [
+        { name: '驿马', pillar: '时柱', type: '平' },
+        { name: '羊刃', pillar: '月柱', type: '凶' },
+        { name: '桃花', pillar: '日柱', type: '平' },
+      ],
+      strengthLevel: '身强', yongShen: [],
+    });
+    expect(map['驿马|时柱'].text).toContain(SHA_TRAIT['驿马']);
+    expect(map['羊刃|月柱'].text).toContain(SHA_TRAIT['羊刃']);
+    expect(map['桃花|日柱'].text).toContain(SHA_TRAIT['桃花']);
+  });
+
+  it('同盘同处境的不同神煞 → 措辞各不相同，不再共用一套话', () => {
+    // 三颗都落月柱（同柱位、同喜忌处境），但类目不同：助力 / 才学 / 锋芒
+    const map = explainShenShaMap({
+      pillars: pillars(),
+      shenSha: [
+        { name: '天乙贵人', pillar: '月柱', type: '吉' },
+        { name: '文昌', pillar: '月柱', type: '吉' },
+        { name: '将星', pillar: '月柱', type: '吉' },
+      ],
+      strengthLevel: '身弱', yongShen: ['木'],
+    });
+    const t1 = map['天乙贵人|月柱'].text;
+    const t2 = map['文昌|月柱'].text;
+    const t3 = map['将星|月柱'].text;
+    expect(t1).not.toBe(t2);
+    expect(t2).not.toBe(t3);
+    expect(t1).not.toBe(t3);
+    // 类目主语各不相同：庇护 / 才气 / 锋芒
+    expect(t1).toContain('庇护');
+    expect(t2).toContain('才气');
+    expect(t3).toContain('锋芒');
+  });
+
+  it('同类目不同煞（天乙贵人 vs 天德）同柱同处境 → 仍因报家门而不同', () => {
+    const map = explainShenShaMap({
+      pillars: pillars(),
+      shenSha: [
+        { name: '天乙贵人', pillar: '年柱', type: '吉' },
+        { name: '天德', pillar: '年柱', type: '吉' },
+      ],
+      strengthLevel: '中和', yongShen: [],
+    });
+    const t1 = map['天乙贵人|年柱'].text;
+    const t2 = map['天德|年柱'].text;
+    expect(t1).not.toBe(t2);
+    expect(t1).toContain('贵人提携');
+    expect(t2).toContain('化险为夷');
+  });
+
+  it('SHA_TRAIT 与 SHENSHA_PLAIN 键集严格一致（新增神煞必须同步本职短语）', () => {
+    expect(Object.keys(SHA_TRAIT).sort()).toEqual(Object.keys(SHENSHA_PLAIN).sort());
   });
 });
