@@ -154,7 +154,10 @@ type ShaCategory = 'assist' | 'talent' | 'romance' | 'edge' | 'motion' | 'hazard
 
 const SHA_CATEGORY: Record<string, ShaCategory> = {
   天乙贵人: 'assist', 天德: 'assist', 天德贵人: 'assist', 月德: 'assist', 月德贵人: 'assist',
-  天医: 'assist', 天赦: 'assist', 福星贵人: 'assist', 国印贵人: 'assist', 日德: 'assist', 德秀贵人: 'assist',
+  天医: 'assist', 天赦: 'assist', 福星贵人: 'assist', 国印贵人: 'assist', 日德: 'assist',
+  // 德秀主「聪明温厚、文业通达」，是气质才学型贵人而非庇护型——与文昌/学堂/词馆同组，
+  // 措辞走「这份才气」：得用（落用神）则清贵倍增，失用则怀才不遇，见德秀专题研究。
+  德秀贵人: 'talent',
   文昌: 'talent', 学堂: 'talent', 词馆: 'talent', 太极贵人: 'talent', 三奇贵人: 'talent',
   六秀日: 'talent', 十灵日: 'talent', 华盖: 'talent', 魁罡: 'talent', 金神: 'talent',
   桃花: 'romance', 红鸾: 'romance', 天喜: 'romance', 红艳: 'romance', 阴差阳错: 'romance',
@@ -371,6 +374,19 @@ export function explainShenSha(input: ShaExplainInput): ShaExplainItem[] {
     午: '火', 未: '土', 申: '金', 酉: '金', 戌: '土', 亥: '水',
   };
 
+  // ---- 德秀专论（依德秀贵人专题研究结论，吉性不叠加、重见有力散之诫）----
+  // ① 「吉神贵乎专精，重见则力散」：神煞是"象"的标记而非"量"的累加，
+  //    三见以上不作叠加论，反提示某行之气过重、秀气不专（贵众则不贵）。
+  // ② 宽版申子辰月水土并德（水土长生同宫于申）：若壬癸与戊己同透，
+  //    两德交战是为「相垢」，清气互战、秀气反浊。
+  const dexiuCount = shenSha.filter((s) => s.name === '德秀贵人').length;
+  const gans = pillars.map((p) => p.tianGan || '');
+  const monthZhi = pillars[1]?.diZhi || '';
+  const dexiuGou =
+    ['申', '子', '辰'].includes(monthZhi) &&
+    gans.some((g) => g === '壬' || g === '癸') &&
+    gans.some((g) => g === '戊' || g === '己');
+
   return items.map((item) => {
     const idx = ['年柱', '月柱', '日柱', '时柱'].indexOf(item.pillar);
     const p = pillars[idx];
@@ -386,7 +402,19 @@ export function explainShenSha(input: ShaExplainInput): ShaExplainItem[] {
     const positioning = `${item.name}主${traitOf(item.name)}。落${item.pillar}${ganZhi ? `（${ganZhi}）` : ''}${cs ? `，此处为日主的${cs}之地，${deDiText(cs)}` : ''}，${levelWord}。`;
 
     // 作用句
-    const verdict = verdictOf(item, item.type, { strengthLevel, yongShen, inYong, shiShen, name: item.name });
+    let verdict = verdictOf(item, item.type, { strengthLevel, yongShen, inYong, shiShen, name: item.name });
+
+    // 德秀专论追加（全盘口径，每颗德秀落点都带上同一提醒）
+    if (item.name === '德秀贵人') {
+      const notes: string[] = [];
+      if (dexiuCount >= 3) {
+        notes.push(`本局德秀之气多见（${dexiuCount} 处）——秀气不专，力散而不聚，反不如一二处精纯来得有力`);
+      }
+      if (dexiuGou) {
+        notes.push('水土两德并透，德秀相垢——清气互战，秀气反浊，文业之秀要打折扣');
+      }
+      if (notes.length) verdict += notes.join('；') + '。';
+    }
 
     // 阶段句
     const stageText = stage ? `它主要在你${item.pillar}所主的阶段显威——${stage}，用法上要顺着这个时间段的重心来。` : '';

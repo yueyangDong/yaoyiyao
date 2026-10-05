@@ -163,4 +163,75 @@ describe('explainShenSha 本局解释', () => {
   it('SHA_TRAIT 与 SHENSHA_PLAIN 键集严格一致（新增神煞必须同步本职短语）', () => {
     expect(Object.keys(SHA_TRAIT).sort()).toEqual(Object.keys(SHENSHA_PLAIN).sort());
   });
+
+  // ---- 德秀贵人专题（依研究报告结论工程化）----
+
+  /** 德秀专题研究命例三：壬子年 壬子月 丙午日 戊子时（子月，德=壬癸戊、秀=丙，德秀四见且水土两德并透） */
+  const gouPillars = (): PillarData[] => [
+    mk('年柱', '壬', '子', '七杀'),
+    mk('月柱', '壬', '子', '七杀'),
+    mk('日柱', '丙', '午', '日主'),
+    mk('时柱', '戊', '子', '食神'),
+  ];
+  const dexiuFour = (pillar: string) => ({ name: '德秀贵人', pillar, type: '吉' as const });
+
+  it('德秀为才学型贵人——措辞走「这份才气」而非「这份庇护」', () => {
+    const out = explainShenSha({
+      pillars: gouPillars(),
+      shenSha: [dexiuFour('年柱'), dexiuFour('月柱'), dexiuFour('时柱')],
+      strengthLevel: '身弱', yongShen: ['火'],
+    });
+    expect(out.length).toBeGreaterThan(0);
+    for (const o of out) {
+      expect(o.text).toContain('这份才气');
+      expect(o.text).not.toContain('这份庇护');
+      expect(o.positioning).toContain('聪明温厚、文业通达'); // 报家门保留
+    }
+  });
+
+  it('德秀三见以上——「吉神贵乎专精，重见则力散」，提示秀气不专', () => {
+    const out = explainShenSha({
+      pillars: gouPillars(),
+      shenSha: [dexiuFour('年柱'), dexiuFour('月柱'), dexiuFour('日柱'), dexiuFour('时柱')],
+      strengthLevel: '身弱', yongShen: ['火'],
+    });
+    expect(out).toHaveLength(4);
+    // 每一颗德秀落点都带上同一提醒（全盘口径）
+    for (const o of out) {
+      expect(o.verdict).toContain('秀气不专');
+      expect(o.verdict).toContain('4 处');
+    }
+  });
+
+  it('宽版申子辰月壬癸与戊己并透——德秀相垢，清气互战秀气反浊', () => {
+    const out = explainShenSha({
+      pillars: gouPillars(),
+      shenSha: [dexiuFour('年柱'), dexiuFour('月柱'), dexiuFour('时柱')],
+      strengthLevel: '身弱', yongShen: ['火'],
+    });
+    for (const o of out) {
+      expect(o.verdict).toContain('德秀相垢');
+    }
+  });
+
+  it('德秀一二见且无相垢（巳酉丑月，苏轼年月柱口径）——不附加多见/相垢语', () => {
+    const ps: PillarData[] = [
+      mk('年柱', '辛', '丑', '偏印'),
+      mk('月柱', '辛', '丑', '偏印'),
+      mk('日柱', '癸', '亥', '日主'),
+      mk('时柱', '乙', '卯', '食神'),
+    ];
+    const out = explainShenSha({
+      pillars: ps,
+      shenSha: [dexiuFour('年柱'), dexiuFour('月柱')],
+      strengthLevel: '身强', yongShen: ['木'],
+    });
+    expect(out).toHaveLength(2);
+    for (const o of out) {
+      expect(o.verdict).not.toContain('秀气不专');
+      expect(o.verdict).not.toContain('相垢');
+      // 落用神（丑属土非用神，天干不影响 inYong 判定——此断言只验证不崩且无专论语）
+      expect(o.text).toContain('德秀贵人');
+    }
+  });
 });
