@@ -9,6 +9,17 @@
 //    宽到能容忍小版本漂移"。
 //
 // ⚠️ 改权重/项数/档位阈值后，这个文件必红 —— 那不是 bug，是提醒你重新标定。
+//
+// v5（2026-10-07）重标记录：同日改了三个分项口径（日主五行加喜忌修正、喜用互补改双向
+// 四象限、地支合冲补跨盘三合三会），分布整体下移——p15 由 90 → 83、p55 由 101 → 100、
+// mean 由 100.1 → 97.6（p90 恰好仍为 114）。档位随之由 114/101/90 改为 114/100/83。
+//
+// v5.1（同日）再重标：发现「地支合冲」的分项循环里拿**地支**去查**生肖键**的表
+// （LIU_HE/SAN_HE/LIU_CHONG 的键是 '鼠'/'牛'…），一律 undefined —— 六合/三合/六冲
+// 在该分项里**全部静默失效**，dzScore 退化成"常数 10 + 成局修正"，而 desc 照样写
+// "无大合也无大冲"（400 对实测 99%+ 落在这句）。改用 DZ_ 前缀的表后分布抬回并有真实方差：
+// mean 97.6 → 100.7、p15 83 → 85、p55 100 → 103、p90 114 → 118。档位 → **118/103/85**。
+// 教训：这个 bug 测试全绿也发现不了——除非夹具刻意造一对六冲，且断言里检查 desc 措辞。
 
 import { describe, it, expect } from 'vitest';
 import { buildPerson } from '../personChart';
@@ -52,24 +63,25 @@ describe('合盘分布回归（400 对真实命盘，seed 20261006）', () => {
     }
   });
 
-  it('总分分布：mean ≈ 100、p15 ≈ 90、p55 ≈ 101、p90 ≈ 114（档位锚点）', () => {
+  it('总分分布：mean ≈ 101、p15 ≈ 85、p55 ≈ 103、p90 ≈ 118（档位锚点，v5.1 重标）', () => {
     const mean = totals.reduce((a, b) => a + b, 0) / totals.length;
-    expect(mean).toBeGreaterThan(92);
-    expect(mean).toBeLessThan(108);
-    expect(quantile(totals, 0.15)).toBeGreaterThan(84);
-    expect(quantile(totals, 0.15)).toBeLessThan(96);
-    expect(quantile(totals, 0.55)).toBeGreaterThan(95);
-    expect(quantile(totals, 0.55)).toBeLessThan(107);
-    expect(quantile(totals, 0.9)).toBeGreaterThan(108);
-    expect(quantile(totals, 0.9)).toBeLessThan(120);
+    expect(mean).toBeGreaterThan(95);
+    expect(mean).toBeLessThan(110);
+    expect(quantile(totals, 0.15)).toBeGreaterThan(80);
+    expect(quantile(totals, 0.15)).toBeLessThan(94);
+    expect(quantile(totals, 0.55)).toBeGreaterThan(96);
+    expect(quantile(totals, 0.55)).toBeLessThan(110);
+    expect(quantile(totals, 0.9)).toBeGreaterThan(110);
+    expect(quantile(totals, 0.9)).toBeLessThan(126);
   });
 
   it('档位占比落在合理区间：最高档稀有、最低档可达（这是 v4 修的既有缺陷）', () => {
     // 旧口径实测 天作之合 38.7% / 需磨合 0%，两个档位都失去意义
-    const tian = shares((t) => t >= 114);
-    const liang = shares((t) => t >= 101 && t < 114);
-    const ping = shares((t) => t >= 90 && t < 101);
-    const mo = shares((t) => t < 90);
+    // v5.1 阈值 118/103/85 实测占比 11.5% / 34.8% / 40.3% / 13.5%
+    const tian = shares((t) => t >= 118);
+    const liang = shares((t) => t >= 103 && t < 118);
+    const ping = shares((t) => t >= 85 && t < 103);
+    const mo = shares((t) => t < 85);
     expect(tian).toBeGreaterThan(0.03);
     expect(tian).toBeLessThan(0.2);      // 最高档必须稀有
     expect(liang).toBeGreaterThan(0.25);
@@ -80,6 +92,20 @@ describe('合盘分布回归（400 对真实命盘，seed 20261006）', () => {
     expect(mo).toBeLessThan(0.3);
     // 四档占比之和为 1（无空洞）
     expect(tian + liang + ping + mo).toBeCloseTo(1, 6);
+  });
+
+  it('v5 三项改动确实拉开了分布（不得被基准分压平）', () => {
+    const pick = (title: string) =>
+      results.map((r) => r.items.find((i) => i.title === title)!.score).sort((a, b) => a - b);
+    const ys = pick('喜用互补');
+    const dz = pick('地支合冲');
+    // 「互为忌神」必须可达（v5 新增的最低档）——若被基准分托住就说明忌神判定没生效
+    expect(ys[0]).toBeLessThanOrEqual(6);
+    // 高端也要够得着：互为喜用仍应能拿满
+    expect(ys[ys.length - 1]).toBe(20);
+    // 地支成局（共同用神）要能把合冲分推高
+    expect(dz[dz.length - 1]).toBeGreaterThanOrEqual(18);
+    expect(dz[0]).toBeLessThanOrEqual(4);
   });
 
   it('神煞共振项：中位数是 10 分（沿用"中位即中性分"约定），分布不压平', () => {

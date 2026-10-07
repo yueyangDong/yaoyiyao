@@ -176,6 +176,9 @@ export interface HePanResult {
 
 const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' }; // 我生
 const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };   // 我克
+// 逆查：生我（印）/ 克我（官杀）。用于按旺衰推导忌神——见 deriveJiShen。
+const WX_SHENG_ME: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
+const WX_KE_ME: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
 const DZ_WX: Record<string, string> = {
   '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
@@ -240,6 +243,143 @@ function wxRelText(fromWx: string, toWx: string, fromLabel: string, toLabel: str
   if (WX_KE[toWx] === fromWx) return `${toLabel}之${toWx}克${fromLabel}之${fromWx}，${fromLabel}需要更多表达自己`;
   if (fromWx === toWx) return `${fromLabel}与${toLabel}日主同为${fromWx}，比和相处、默契十足`;
   return `${fromLabel}与${toLabel}五行无直接生克，相处有各自空间`;
+}
+
+// ========== 喜忌判定（v5，2026-10-07）==========
+//
+// 为什么加这一层：v4 之前，「日主五行」只按生克定吉凶（相生一律给高分），
+// 「喜用互补」只比"对方日主是否在我用神列表里"。两者都**不看日主强弱与忌神**，于是：
+//   · 身强者被对方所生（印比助旺）也被判成"被滋养"——方向对、吉凶反；
+//   · 对方日主正好是我的忌神时，最多只被写成"非你喜用"，不扣分。
+// 现按扶抑法补出忌神，再做双向交叉判定。
+
+/**
+ * 由日主五行 + 旺衰档推导忌神五行（扶抑法，与 baziAnalysis.recommendYongShen 同口径）：
+ *   身强（含身极强）→ 忌印（生我）、比劫（同我）
+ *   身弱（含身极弱）→ 忌官杀（克我）、财（我克）、食伤（我生）
+ *   中和 / 未传旺衰 → 无明显忌神，返回空数组（调用方据此退化为 v4 旧行为）
+ * ⚠️ 这是扶抑口径的忌神，不含调候与通关（那需要完整五行统计，HePanInput 未提供）。
+ */
+export function deriveJiShen(dayWx: string, strengthLevel?: string): string[] {
+  if (!dayWx || !strengthLevel) return [];
+  if (strengthLevel.includes('强')) return [WX_SHENG_ME[dayWx], dayWx].filter(Boolean);
+  if (strengthLevel.includes('弱')) return [WX_KE_ME[dayWx], WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean);
+  return [];
+}
+
+/** 对方日主五行对我方的作用方向：+2 落在用神 / −2 落在忌神 / 0 中性
+ *  ⚠️ 未传 strengthLevel 时一律返回 0——喜忌修正整体作为一个开关，
+ *  保证 v4 的手工测试盘（不带旺衰）行为不变。 */
+function xiJiAdjust(me: { yongShen?: string[]; dayWx: string; strengthLevel?: string }, otherWx: string): number {
+  if (!otherWx || !me.strengthLevel) return 0;
+  if ((me.yongShen || []).includes(otherWx)) return 2;
+  if (deriveJiShen(me.dayWx, me.strengthLevel).includes(otherWx)) return -2;
+  return 0;
+}
+
+const clamp20 = (n: number) => Math.max(0, Math.min(20, n));
+
+// ========== 跨盘地支成局（v5）==========
+//
+// v4 的「地支合冲」只做"我的每一支 × 对方的每一支"两两配对，**无法识别三合/三会局**。
+// 于是"你的日支 + 我的年/时支凑成三会"这类结构会被整层漏掉，判成"无大合也无大冲"。
+// 这里补上跨盘成局：三支齐为成局（三合/三会），两支含旺支（子午卯酉）为半合/半会。
+// ⚠️ 跨盘成局的力量**低于**本盘内成局（是"两人补齐"而非自带的合力），故权重刻意取小。
+const WANG_ZHI = ['子', '午', '卯', '酉'];
+const SAN_HE_TRIPLE: Array<[string, string, string, string]> = [
+  ['申', '子', '辰', '水'], ['亥', '卯', '未', '木'], ['寅', '午', '戌', '火'], ['巳', '酉', '丑', '金'],
+];
+const SAN_HUI_TRIPLE: Array<[string, string, string, string]> = [
+  ['寅', '卯', '辰', '木'], ['巳', '午', '未', '火'], ['申', '酉', '戌', '金'], ['亥', '子', '丑', '水'],
+];
+
+interface CrossJu {
+  kind: '三合' | '三会' | '半合' | '半会';
+  wx: string;
+  dzs: string[];
+  /** 该局对双方的喜忌方向：共同用神 / 共同忌神 / 偏一方 / 中性 */
+  verdict: '共用' | '共忌' | '偏用' | '偏忌' | '中性';
+}
+
+/** 识别跨盘成局（必须跨越双方，纯单盘内的局不计——那属于本盘结构，不归合盘管） */
+function findCrossJu(mineDz: string[], partnerDz: string[], yongM: string[], yongP: string[], jiM: string[], jiP: string[]): CrossJu[] {
+  const owned = [
+    ...mineDz.map((dz) => ({ dz, mine: true })),
+    ...partnerDz.map((dz) => ({ dz, mine: false })),
+  ];
+  const out: CrossJu[] = [];
+  const groups: Array<{
+    list: Array<[string, string, string, string]>;
+    full: '三合' | '三会';
+    half: '半合' | '半会';
+  }> = [
+    { list: SAN_HE_TRIPLE, full: '三合', half: '半合' },
+    { list: SAN_HUI_TRIPLE, full: '三会', half: '半会' },
+  ];
+  for (const { list, full: fullKind, half: halfKind } of groups) {
+    for (const [x, y, z, wx] of list) {
+      const hits = [x, y, z].map((d) => owned.filter((o) => o.dz === d));
+      const present = hits.filter((h) => h.length > 0);
+      const spansBoth = hits.some((h) => h.some((o) => o.mine)) && hits.some((h) => h.some((o) => !o.mine));
+      if (present.length === 3 && spansBoth) {
+        out.push({ kind: fullKind, wx, dzs: [x, y, z], verdict: juVerdict(wx, yongM, yongP, jiM, jiP) });
+      } else if (present.length === 2 && spansBoth && [x, y, z].some((d, i) => hits[i].length > 0 && WANG_ZHI.includes(d))) {
+        const dzs = [x, y, z].filter((_d, i) => hits[i].length > 0);
+        out.push({ kind: halfKind, wx, dzs, verdict: juVerdict(wx, yongM, yongP, jiM, jiP) });
+      }
+    }
+  }
+  return out;
+}
+
+function juVerdict(wx: string, yongM: string[], yongP: string[], jiM: string[], jiP: string[]): CrossJu['verdict'] {
+  const goodM = yongM.includes(wx), goodP = yongP.includes(wx);
+  const badM = jiM.includes(wx), badP = jiP.includes(wx);
+  if (goodM && goodP) return '共用';
+  if (badM && badP) return '共忌';
+  if (goodM || goodP) return '偏用';
+  if (badM || badP) return '偏忌';
+  return '中性';
+}
+
+/** 成局对地支合冲分的增减：三合/三会成局权重 3，半合/半会权重 1 */
+function juScoreDelta(ju: CrossJu): number {
+  const w = ju.kind === '三合' || ju.kind === '三会' ? 3 : 1;
+  if (ju.verdict === '共用') return w;
+  if (ju.verdict === '共忌') return -w;
+  if (ju.verdict === '偏用') return 1;
+  if (ju.verdict === '偏忌') return -1;
+  return 0;
+}
+
+const JU_VERDICT_TEXT: Record<CrossJu['verdict'], string> = {
+  '共用': '正是你俩的共同用神，这一层是实打实的加分',
+  '共忌': '却是你俩的共同忌神——合出来的正好是彼此都不需要的东西',
+  '偏用': '对其中一方是用神',
+  '偏忌': '对其中一方是忌神',
+  '中性': '不在双方喜忌之内，属中性结构',
+};
+
+/**
+ * 「日主五行」的喜忌补充层：把"相生/相克"的吉凶含义按双方旺衰与忌神校准。
+ * 这是 v5 新增——旧版相生一律说"被滋养"，但身强者被生其实是助旺（忌）。
+ */
+function wxXiJiNote(
+  mine: HePanInput['mine'], partner: HePanInput['partner'], myJi: string[], paJi: string[],
+): string {
+  const mLabel = mine.name ? `「${mine.name}」` : '你';
+  const pLabel = partner.name ? `「${partner.name}」` : '对方';
+  const mYong = (mine.yongShen || []).includes(partner.dayWx);
+  const pYong = (partner.yongShen || []).includes(mine.dayWx);
+  const mJi = myJi.includes(partner.dayWx);
+  const pJi = paJi.includes(mine.dayWx);
+  const bits: string[] = [];
+  if (mYong) bits.push(`${pLabel}之${partner.dayWx}正落在${mLabel}用神（${(mine.yongShen || []).join('、')}）上，这份助力实打实`);
+  else if (mJi) bits.push(`${pLabel}之${partner.dayWx}正落在${mLabel}忌神（${myJi.join('、')}）上——${mLabel}本已偏旺，被生是"帮身过头"，舒服不等于有利`);
+  if (pYong) bits.push(`${mLabel}之${mine.dayWx}正落在${pLabel}用神（${(partner.yongShen || []).join('、')}）上，${pLabel}也因此受益`);
+  else if (pJi) bits.push(`${mLabel}之${mine.dayWx}正落在${pLabel}忌神（${paJi.join('、')}）上，${pLabel}会为此更耗力`);
+  if (bits.length === 0) return '';
+  return `按喜忌再核一层：${bits.join('；')}。`;
 }
 
 // 双向爱情建议生成（基于双方各自的十神配偶星 / 夫妻宫日支）
@@ -319,11 +459,17 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const { mine, partner } = input;
   const items: HePanItem[] = [];
 
-  // 1) 日主五行（20 分）——双向计算取均分（对称）
+  // 双方忌神（扶抑口径）——「日主五行 / 地支成局 / 喜用互补」三项共用。
+  // 未传 strengthLevel 时为空数组，三项自动退化为 v4 旧行为（hepan.test.ts 的手工盘即此情况）。
+  const myJi = deriveJiShen(mine.dayWx, mine.strengthLevel);
+  const paJi = deriveJiShen(partner.dayWx, partner.strengthLevel);
+
+  // 1) 日主五行（20 分）——双向计算取均分（对称），再叠加双向喜忌修正
   const mWx = mine.dayWx, pWx = partner.dayWx;
   const wxAB = wxDirScore(mWx, pWx); // 我 → 对方
   const wxBA = wxDirScore(pWx, mWx); // 对方 → 我
-  const wxScore = Math.round((wxAB + wxBA) / 2);
+  // 喜忌修正：相生不等于得利——身强者被对方所生（印比助旺）该扣分。
+  const wxScore = clamp20(Math.round((wxAB + wxBA) / 2) + xiJiAdjust(mine, pWx) + xiJiAdjust(partner, mWx));
   let wxDesc: string;
   if (WX_SHENG[mWx] === pWx) {
     wxDesc = `你的日主${mWx}生对方${pWx}：你更愿意付出与滋养对方；反向看对方处于受生位，能安心接收你的好。单向流动明显，注意别让付出失衡。` +
@@ -344,12 +490,20 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     // 防御：五行相异的组合必有生克关系，正常不应到达此分支
     wxDesc = `两人日主${mWx}与${pWx}无直接生克，关系平淡但有各自空间。`;
   }
+  // 喜忌补充层：把生克的吉凶含义按双方旺衰与忌神校准（v5）
+  const xiJiNote = wxXiJiNote(mine, partner, myJi, paJi);
+  if (xiJiNote) wxDesc += xiJiNote;
   items.push({ title: '日主五行', score: wxScore, desc: wxDesc });
 
   // 2) 地支关系（20 分）：合冲刑害统计（白话列出具体对，生活化解读）
   const myDz = mine.pillars.map(p => p.diZhi);
   const paDz = partner.pillars.map(p => p.diZhi);
   const posLabel = ['年', '月', '日', '时'];
+  // ⚠️ 这里必须用 **DZ_ 前缀（地支键）** 的表。曾误用上面的 LIU_HE/SAN_HE/LIU_CHONG
+  // ——那三张是**生肖键**的表（'鼠'→'牛' …），拿地支去查一律 undefined，
+  // 于是六合/三合/六冲在这一层**全部静默失效**（不报错，只是 heCount/chongCount 恒为 0，
+  // 「地支合冲」退化成常数 10 分 + 成局修正），而 desc 却照旧输出"无大合也无大冲"。
+  // 症状与"没写这个功能"完全一样，无法从测试发现——除非夹具刻意造一对六冲。
   let heCount = 0, chongCount = 0;
   const hePairs: string[] = [];   // 具体合对（带柱位）
   const chongPairs: string[] = []; // 具体冲刑对
@@ -357,23 +511,31 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     for (let j = 0; j < paDz.length; j++) {
       const a = myDz[i], b = paDz[j];
       if (a === b) continue;
-      if (LIU_HE[a] === b) { heCount += 2; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六合`); }
-      else if ((SAN_HE[a] || []).includes(b)) { heCount += 1; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}三合`); }
-      if (LIU_CHONG[a] === b) { chongCount += 2; chongPairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六冲`); }
+      if (DZ_LIU_HE[a] === b) { heCount += 2; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六合`); }
+      else if ((DZ_SAN_HE[a] || []).includes(b)) { heCount += 1; hePairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}三合`); }
+      if (DZ_LIU_CHONG[a] === b) { chongCount += 2; chongPairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}六冲`); }
       else if ((a === '寅' && ['巳', '申'].includes(b)) || (a === '巳' && ['申', '寅'].includes(b)) || (a === '申' && ['寅', '巳'].includes(b))) { chongCount += 1; chongPairs.push(`你的${posLabel[i]}支${a}与对方${posLabel[j]}支${b}相刑`); } // 三刑近似
     }
   }
-  const dzScore = Math.max(0, Math.min(20, 10 + heCount - chongCount));
+  // 跨盘成局（v5）：三合/三会/半合/半会——单支两两配对看不出成局，会整层漏判
+  const crossJu = findCrossJu(myDz, paDz, mine.yongShen || [], partner.yongShen || [], myJi, paJi);
+  const juDelta = crossJu.reduce((s, j) => s + juScoreDelta(j), 0);
+  const dzScore = clamp20(10 + heCount - chongCount + juDelta);
   const heShow = hePairs.slice(0, 3).join('；');
   const chongShow = chongPairs.slice(0, 3).join('；');
   let dzDesc = '';
   if (hePairs.length > 0) dzDesc += `相合：${heShow}${hePairs.length > 3 ? `等${hePairs.length}处` : ''}。`;
   if (chongPairs.length > 0) dzDesc += `冲刑：${chongShow}${chongPairs.length > 3 ? `等${chongPairs.length}处` : ''}。`;
-  if (heCount > chongCount) {
+  if (crossJu.length > 0) {
+    dzDesc += `成局：${crossJu.map((j) => `${j.dzs.join('')}${j.kind}${j.wx}局（${JU_VERDICT_TEXT[j.verdict]}）`).join('；')}。成局的地支牵引力大于单支相合，这一层要单独算。`;
+  }
+  if (heCount === 0 && chongCount === 0 && crossJu.length > 0) {
+    dzDesc += `单支层面没有合也没有冲，但上面的成局才是你们真正的地支结构——你们不是"互不干扰"，而是被某一行绑在一起：绑在共同用神上是天然的默契，绑在共同忌神上是一起犯同一个错。`;
+  } else if (heCount > chongCount) {
     dzDesc += `合多于冲——你们的气场有天然的接口：想法容易对上，相处不容易内耗。地支相合，尤其是六合，意味着在某些特定场合你们会莫名地站在同一边，属于越处越顺的底子。`;
   } else if (chongCount > heCount) {
     dzDesc += `冲多于合——你们是节奏型差异的组合：不是三观不合，而是快慢、急缓、先说后做的直觉常常相反。冲的杀伤力不在吵架本身，而在日积月累的拧巴。对策就一条：分歧当场摊开说，别让小事在心里发酵成大事。`;
-  } else if (heCount === 0 && chongCount === 0) {
+  } else if (heCount === 0 && chongCount === 0 && crossJu.length === 0) {
     dzDesc += `双方地支无大合也无大冲，气场各自独立、互不干扰——这样的组合少了一见如故的默契，但也少了先天的不对付，关系成色完全由后天相处决定。`;
   } else {
     dzDesc += `合冲相当——你们既有投缘的接口，也有要磨合的点，属于处得好是缘分、处不好是功课的组合。多在彼此投缘的领域共处，冲的部分提前知道对方的雷区，就能大事化小。`;
@@ -424,21 +586,50 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   }
   items.push({ title: '生肖配对', score: sxScore, desc: sxDesc });
 
-  // 5) 喜用神互补（20 分）——按"受益方向"对称打分
-  const partnerHelps = mine.yongShen.includes(partner.dayWx); // 对方补我（我受益）
-  const mineHelps = partner.yongShen.includes(mine.dayWx);    // 我补对方（对方受益）
-  let ysScore: number; let ysDesc: string;
-  if (partnerHelps && mineHelps) {
-    ysScore = 20; ysDesc = `互为喜用：对方日主${partner.dayWx}补你的用神，你的${mine.dayWx}也补对方，彼此是对方的贵人。` +
-      `白话一点：你们是彼此的"补品"——你缺的对方恰好有，对方缺的你刚好补。这种组合过日子越久越舒服，是合婚里最实惠的一档。唯一提醒：别因为"旺"就懒得经营，再好的底子也怕消耗。`;
+  // 5) 喜用神互补（20 分）——v5：双向四象限（用神 × 忌神交叉）
+  // 旧版只判"对方日主是否在我用神列表里"，于是"对方日主正好是我的忌神"这一最坏情况
+  // 只会被写成"非你喜用"，不扣分，还会因为反向互补拿 15 分。现补上忌神一侧。
+  const partnerHelps = (mine.yongShen || []).includes(partner.dayWx); // 对方补我（我受益）
+  const mineHelps = (partner.yongShen || []).includes(mine.dayWx);    // 我补对方（对方受益）
+  const partnerHurts = myJi.includes(partner.dayWx);                  // 对方日主是我的忌神
+  const mineHurts = paJi.includes(mine.dayWx);                        // 我的日主是对方的忌神
+  let ysScore = 8; // 基准：平缘（互不在喜忌之列）
+  if (partnerHelps) ysScore += 6;
+  if (mineHelps) ysScore += 6;
+  if (partnerHurts) ysScore -= 6;
+  if (mineHurts) ysScore -= 6;
+  ysScore = clamp20(ysScore);
+  let ysDesc: string;
+  if (partnerHurts && mineHurts && !partnerHelps && !mineHelps) {
+    ysDesc = `互为忌神：对方日主${partner.dayWx}正落在你的忌神（${myJi.join('、')}）上，而你的${mine.dayWx}也正落在对方的忌神（${paJi.join('、')}）上——两人是互相踩在对方的雷区上。` +
+      `白话一点：这不是"缘分浅"，而是"互相加码"——你越靠近，对方越旺过头；对方越靠近，你也越旺过头。这类组合要过得好，靠的是后天建立的边界感：各自管好自己的节奏，别指望对方替你"泄火"，你们都不是彼此的泄火人。`;
+  } else if (partnerHurts && mineHelps) {
+    ysDesc = `一进一出：你的日主${mine.dayWx}正补对方的喜用神（${(partner.yongShen || []).join('、')}）——你确实在旺对方；但对方日主${partner.dayWx}落在你的忌神（${myJi.join('、')}）上，你这一侧的获益是打折的。` +
+      `白话一点：这段关系里你是给出方、对方是收受方。你对TA加码，TA的状态会肉眼可见地变好；但TA对你的"好"，未必真能让你变好——要分清"被照顾的舒服"和"对自己真的有利"是两回事。`;
+  } else if (partnerHelps && mineHurts) {
+    ysDesc = `一进一出：对方日主${partner.dayWx}正补你的喜用神（${(mine.yongShen || []).join('、')}）——你在受益；但你的日主${mine.dayWx}落在对方的忌神（${paJi.join('、')}）上，对方为你承担了额外的消耗。` +
+      `白话一点：你是受益的一方，对方是默默付出的那一方。别把这份"顺"当成理所当然——对方不是不累，只是没说出来。`;
+  } else if (partnerHelps && mineHelps) {
+    const cross = [
+      partnerHurts ? `对方${partner.dayWx}也在你忌神（${myJi.join('、')}）上` : '',
+      mineHurts ? `你的${mine.dayWx}也在对方忌神（${paJi.join('、')}）上` : '',
+    ].filter(Boolean).join('，');
+    ysDesc = `互为喜用：对方日主${partner.dayWx}补你的用神，你的${mine.dayWx}也补对方，彼此是对方的贵人；不过${cross}——互相有补，也互相有耗。` +
+      `白话一点：你们是彼此的"补品"，你缺的对方恰好有，对方缺的你刚好补。这种组合过日子越久越舒服，是合婚里最实惠的一档。唯一提醒：别因为"旺"就懒得经营，再好的底子也怕消耗。`;
   } else if (partnerHelps) {
-    ysScore = 15; ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起你的运势有助益（你更受益）；而你的${mine.dayWx}不在对方喜用之列，记得在情感之外也给对方实际的支持。` +
+    ysDesc = `对方日主${partner.dayWx}正是你的喜用神，与你在一起你的运势有助益（你更受益）；而你的${mine.dayWx}不在对方喜用之列，记得在情感之外也给对方实际的支持。` +
       `白话一点：跟对方在一起，你会不知不觉变顺——这是"旺你"的缘分。但别只做受益方：对方累的时候、低落的时候，记得你也伸把手。只进不出的好运气，迟早会用完。`;
   } else if (mineHelps) {
-    ysScore = 15; ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方（对方更受益）；但对方${partner.dayWx}非你喜用，别把"我对他好"当成关系好的全部保证。` +
+    ysDesc = `你的日主${mine.dayWx}是对方的喜用神，你能旺对方（对方更受益）；但对方${partner.dayWx}不在你喜用之列，别把"我对他好"当成关系好的全部保证。` +
       `白话一点：你是对方的贵人——TA跟你在一起后状态肉眼可见地变好。你旺对方不等于你吃亏，但要看清一件事：对方怎么对待你的付出，决定这段感情值不值得继续加码。`;
+  } else if (partnerHurts) {
+    ysDesc = `对方日主${partner.dayWx}落在你的忌神（${myJi.join('、')}）上：与你在一起，对方的属性会持续助长你本已过头的那一行，不是滋养，是加压。` +
+      `白话一点：你会觉得跟TA在一起很舒服、被托着，但状态上容易"越来越重"——拖延、依赖、下不了决心，都是这一行的典型表现。别把舒服当成合适。`;
+  } else if (mineHurts) {
+    ysDesc = `你的日主${mine.dayWx}落在对方的忌神（${paJi.join('、')}）上：你的存在会持续助长对方本已过头的那一行，对方未必说得出哪里不对，但会越来越累。` +
+      `白话一点：你是付出型，但你的付出对TA未必是补——找对"给的方式"比给多少更重要：多给TA用神方向的东西（${(partner.yongShen || []).join('、')}），少用自己的方式硬给。`;
   } else {
-    ysScore = 6; ysDesc = `双方日主都不在对方喜用神之列，互补性一般，需靠后天经营。` +
+    ysDesc = `双方日主都不在对方喜用神之列，互补性一般，需靠后天经营。` +
       `白话一点：五行上谁也不旺谁，属于"平缘"——好消息是你们的感情不受命理绑架，全凭真心换真心；坏消息是没有外挂，所有甜蜜都得靠两个人亲手挣。`;
   }
   items.push({ title: '喜用互补', score: ysScore, desc: ysDesc });
@@ -598,23 +789,35 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   // 满分口径（v4）：八字六项各 20 分（日主五行/地支合冲/纳音年命/生肖配对/喜用互补/神煞共振）
   // + 紫微两项各 20 分 = 160 分。
   //
-  // 档位阈值（v4，2026-10-04）：**不是等比换算来的，是按实测分布分位数标定的**。
-  // 600 对真实合盘（seed 20261006）实测：8 项总分 mean 100.1、min 65、p15 90、p50 100、
-  // p55 101、p90 114、max 130。取 p90 / p55 / p15 → 114 / 101 / 90。
+  // 档位阈值（v5.1，2026-10-07）：**不是等比换算来的，是按实测分布分位数标定的**。
+  // 400 对真实合盘（seed 20261006）实测：8 项总分 mean 100.7、min 63、p15 85、p50 101、
+  // p55 103、p90 118、max 136。取 p90 / p55 / p15 → **118 / 103 / 85**。
+  // 档位占比：天作之合 11.5% / 良缘 34.8% / 平常 40.3% / 需磨合 13.5%。
+  //
+  // ⚠️ v5 / v5.1 为什么两次重标（同一天改了四个分项的口径，分布必移）：
+  //   ①「日主五行」加喜忌修正（身强者被生不再判为吉）②「喜用互补」改双向四象限
+  //   （对方日主落在忌神要扣分）③「地支合冲」补跨盘三合/三会成局
+  //   ④「地支合冲」修 DZ_ 表误用——六合/三合/六冲在原实现里**全部静默失效**
+  //   （拿地支去查生肖键的表，恒 undefined），该分项退化成"常数 10 + 成局修正"，
+  //   desc 却照旧写"无大合也无大冲"（实测 400 对里 99%+ 都落到这句话）。
+  //   ①②③ 让分布下移（p15 90 → 83、p55 101 → 100、p90 恰好仍 114）；
+  //   ④ 修复后分布又抬回来并有真实方差（mean 100.7、p90 118，dzScore p15 9 / p90 19）。
+  //   **锚点是分布的函数、分布是分项口径的函数**——改任一分项口径都要回来重标，
+  //   否则阈值会与分布脱节（旧口径 107 会变成"人人良缘"）。
   //
   // ⚠️ 为什么不用"等比换算 140→160 = 106/87/66"：
   //   换算后实测占比为 天作之合 32.7% / 良缘 57.8% / 平常 9.3% / 需磨合 0.2%，
   //   与旧口径的 38.7% / 54.7% / 6.7% / 0% 同样失衡——"天作之合"近四成、"需磨合"不可达，
   //   档位等于没有区分度。等比换算的前提是"新项分布与旧项同量纲"，而神煞共振项
-  //   均分 10.2/20（p50 恰为 10）低于旧项均分 12.97/20，前提不成立。
-  //   所以借这次满分口径必变的机会把档位定到合理分布：10% / 37.7% / 37.3% / 15%。
+  //   均分 10.4/20（p50 恰为 10）低于旧项均分 12.97/20，前提不成立。
+  //   所以借满分口径必变的机会把档位定到合理分布：11.5% / 34.8% / 40.3% / 13.5%。
   //   若将来要回到"高分宽松"的口径，改回 106/87/66 即可（这两个数字保留在此供对照）。
-  const level = totalScore >= 114 ? '天作之合' : totalScore >= 101 ? '良缘' : totalScore >= 90 ? '平常' : '需磨合';
-  const levelNote = totalScore >= 114
+  const level = totalScore >= 118 ? '天作之合' : totalScore >= 103 ? '良缘' : totalScore >= 85 ? '平常' : '需磨合';
+  const levelNote = totalScore >= 118
     ? '这个分数段意味着：你们先天的"合"远多于"冲"——不是不会有矛盾，而是矛盾总有化解的底子。别辜负这份出厂配置。'
-    : totalScore >= 101
+    : totalScore >= 103
       ? '这个分数段意味着：底子是好的，磨合点也明确——知道坑在哪的情侣，比稀里糊涂的情侣走得远。'
-      : totalScore >= 90
+      : totalScore >= 85
         ? '这个分数段意味着：先天缘分平平，既不算天造地设，也绝非无缘——这样的感情像白手起家，挣来的每一分都是自己的。'
         : '这个分数段意味着：先天的差异点多，要付出的功课也多——但请记住：合盘量的是"出厂配置"，量不出"两个人愿意为彼此改多少"。多少低分发盘过成了一流感情，靠的就是这件事。';
   const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}${levelNote}合盘看的是趋势，最终经营在两人。`;
@@ -642,9 +845,20 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   // 交换输入后 mine/partner 内容随"人"走（不是随输入位置走），总分解读不变。
   const mLabel = mine.name ? `「${mine.name}」` : '我';
   const pLabel = partner.name ? `「${partner.name}」` : '对方';
+  // 视角里的喜忌判定分三层：补用神 / 落忌神 / 中性（v5 起把"落忌神"单列）
+  const mxNote = partnerHelps
+    ? `对方日主${pWx}正补${mLabel}的喜用神，${mLabel}在这段关系里运势更受益`
+    : partnerHurts
+      ? `对方日主${pWx}落在${mLabel}忌神（${myJi.join('、')}）上，${mLabel}的获益要靠自己从别处补`
+      : `对方日主${pWx}不在${mLabel}喜用之列，${mLabel}的获益更依赖日常经营`;
+  const pxNote = mineHelps
+    ? `对方日主${mWx}正补${pLabel}的喜用神，${pLabel}在这段关系里运势更受益`
+    : mineHurts
+      ? `对方日主${mWx}落在${pLabel}忌神（${paJi.join('、')}）上，${pLabel}会为此更耗力`
+      : `对方日主${mWx}不在${pLabel}喜用之列，${pLabel}的获益更依赖日常经营`;
   const perspectives = {
-    mine: `${mLabel}视角：${wxRelText(mWx, pWx, mLabel, pLabel)}；${partnerHelps ? `对方日主${pWx}正补${mLabel}的喜用神，${mLabel}在这段关系里运势更受益` : `对方日主${pWx}不在${mLabel}喜用之列，${mLabel}的获益更依赖日常经营`}。`,
-    partner: `${pLabel}视角：${wxRelText(pWx, mWx, pLabel, mLabel)}；${mineHelps ? `对方日主${mWx}正补${pLabel}的喜用神，${pLabel}在这段关系里运势更受益` : `对方日主${mWx}不在${pLabel}喜用之列，${pLabel}的获益更依赖日常经营`}。`,
+    mine: `${mLabel}视角：${wxRelText(mWx, pWx, mLabel, pLabel)}；${mxNote}。`,
+    partner: `${pLabel}视角：${wxRelText(pWx, mWx, pLabel, mLabel)}；${pxNote}。`,
   };
 
   // 双方日主性格双画像 + 互动动力学
