@@ -120,9 +120,9 @@ describe('comparePersons', () => {
     expect(() => comparePersons(base({ month: 2, day: 30 }), base())).toThrow(/第一张盘/);
   });
 
-  it('档位阈值与被测分布一致（高 ≥0.31 / 中 ≥0.24，2026-10-05 德秀加入后重锚）', () => {
-    expect(SHENSHA_SIMILARITY_BANDS.high).toBe(0.31);
-    expect(SHENSHA_SIMILARITY_BANDS.medium).toBe(0.24);
+  it('档位阈值与被测分布一致（高 ≥0.30 / 中 ≥0.22；2026-10-07 德秀判据修正后回退到加德秀之前的锚点）', () => {
+    expect(SHENSHA_SIMILARITY_BANDS.high).toBe(0.30);
+    expect(SHENSHA_SIMILARITY_BANDS.medium).toBe(0.22);
   });
 
   it('随机抽样：档位分布不过度集中于"高"（否则判据又失效了）', () => {

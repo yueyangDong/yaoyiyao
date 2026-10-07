@@ -253,29 +253,43 @@ describe('词馆：子平法（年干/日干之临官位）', () => {
   });
 });
 
-describe('德秀贵人（以生月查天干，含日干）', () => {
-  it('寅月：丙丁为德、戊癸为秀——月干丙与日干戊各落一柱', () => {
-    const r = calcShenSha([P('甲子'), P('丙寅'), P('戊辰'), P('庚申')]);
-    expect(names(r)).toContain('月柱德秀贵人');
-    expect(names(r)).toContain('日柱德秀贵人');
-    expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(2);
-  });
-
-  it('巳月：庚辛为德、乙庚为秀——年/月/时三柱命中（《三命通会》通行例）', () => {
-    // 对照例：乙亥 辛巳 戊午 庚申
-    const r = calcShenSha([P('乙亥'), P('辛巳'), P('戊午'), P('庚申')]);
-    expect(r.filter(x => x.name === '德秀贵人').map(x => x.pillar)).toEqual(['年柱', '月柱', '时柱']);
+describe('德秀贵人（生月定组、德秀并见、秀须成五合对）', () => {
+  it('寅月：德丙/丁 且 秀戊癸成合对 → 标在承载德干/秀干的柱上（时干庚不入集则不标）', () => {
+    // 月支寅 → 寅午戌局，德=丙丁、秀=戊癸。天干 戊丙癸庚：德有丙、秀有戊癸合
+    const r = calcShenSha([P('戊子'), P('丙寅'), P('癸丑'), P('庚申')]);
+    expect(r.filter(x => x.name === '德秀贵人').map(x => x.pillar)).toEqual(['年柱', '月柱', '日柱']);
     expect(r.find(x => x.name === '德秀贵人')!.type).toBe('吉');
   });
 
-  it('寅月天干无丙丁戊癸则不判', () => {
-    const r = calcShenSha([P('甲子'), P('甲寅'), P('庚午'), P('壬子')]);
+  it('巳月对照例 乙亥 辛巳 戊午 庚申：年/月/时三柱命中（《三命通会》通行例，日干己在秀对中）', () => {
+    const r = calcShenSha([P('乙亥'), P('辛巳'), P('戊午'), P('庚申')]);
+    expect(r.filter(x => x.name === '德秀贵人').map(x => x.pillar)).toEqual(['年柱', '月柱', '时柱']);
+  });
+
+  it('有德无秀不算：壬午 壬子 癸酉 壬戌（子月德有壬癸，但天干无丙辛/甲己之合）', () => {
+    // 主人提供的盘——主流排盘软件不在该盘上显示德秀贵人，本口径必须一致（0 处）
+    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')], 'male');
     expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(0);
   });
 
-  it('申子辰月德面最宽（壬癸戊己）：子月壬干四柱皆可命中', () => {
-    const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')]);
-    expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(4);
+  it('有秀无德不算：子月天干有丙辛合，但无壬癸戊己', () => {
+    const r = calcShenSha([P('丙子'), P('庚子'), P('辛丑'), P('甲寅')]);
+    expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(0);
+  });
+
+  it('秀干只出现一个、未成对 → 不算（子月只透丙不成丙辛合）', () => {
+    const r = calcShenSha([P('壬子'), P('庚子'), P('癸丑'), P('丙辰')]);
+    expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(0);
+  });
+
+  it('申子辰月的第二组合：甲己合亦可作秀（子月甲己合 + 德壬/己）', () => {
+    const r = calcShenSha([P('甲子'), P('庚子'), P('己丑'), P('壬申')]);
+    expect(r.filter(x => x.name === '德秀贵人').map(x => x.pillar)).toEqual(['年柱', '日柱', '时柱']);
+  });
+
+  it('寅月天干无德无秀 → 不判', () => {
+    const r = calcShenSha([P('甲子'), P('甲寅'), P('庚午'), P('壬子')]);
+    expect(r.filter(x => x.name === '德秀贵人')).toHaveLength(0);
   });
 });
 
@@ -284,10 +298,10 @@ describe('整盘校准：壬午 壬子 癸酉 壬戌（男）', () => {
     const r = calcShenSha([P('壬午'), P('壬子'), P('癸酉'), P('壬戌')], 'male');
     const got = r.map(x => `${x.pillar}${x.name}`).sort();
     const want = [
-      '年柱桃花', '年柱将星', '年柱月德贵人', '年柱德秀贵人',
-      '月柱禄神', '月柱灾煞', '月柱词馆', '月柱月德贵人', '月柱德秀贵人',
-      '日柱将星', '日柱金神', '日柱六厄', '日柱红鸾', '日柱勾绞', '日柱德秀贵人',
-      '时柱华盖', '时柱月德贵人', '时柱空亡', '时柱德秀贵人',
+      '年柱桃花', '年柱将星', '年柱月德贵人',
+      '月柱禄神', '月柱灾煞', '月柱词馆', '月柱月德贵人',
+      '日柱将星', '日柱金神', '日柱六厄', '日柱红鸾', '日柱勾绞',
+      '时柱华盖', '时柱月德贵人', '时柱空亡',
     ].sort();
     expect(got).toEqual(want);
   });

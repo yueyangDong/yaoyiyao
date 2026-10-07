@@ -12,6 +12,10 @@
 //
 // ⚠️ 采样口径：1935–2005 × 随机月/日/时 × 固定 seed，与 2026-10-04 审计同一批口径。
 //    不要退化成单样本验证——项目历史踩过"单日样本恰好命中主星，漏掉 16% 空宫盘"的坑。
+//
+// ⚠️ 2026-10-07：德秀贵人判据由「德或秀」改为「德秀并见、秀须成五合对」（覆盖率 87.5% → 7.8%），
+//    相似度分布随之下移，档位由 0.31/0.24 回退到 0.30/0.22（见 shenShaSimilarity.ts 注释）。
+//    改动同时影响下方"每盘落点处数均值""相似度分位""判别力"三组断言——本文件的区间已按新分布复核。
 
 import { describe, it, expect } from 'vitest';
 import { sampleCharts, buildChart, quantile, type ChartFixture } from './fixtures/realCharts';
@@ -243,10 +247,11 @@ describe('3000 张真实命盘：分布分位与新/旧判据判别力', () => {
   sims.sort((a, b) => a - b);
   const pairs = sims.length;
 
-  it('每盘神煞：去重名字数均值约 14.9（审计口径），落点处数均值约 18.6', () => {
+  it('每盘神煞：去重名字数均值约 15.0（审计口径），落点处数均值约 18.9', () => {
     const meanUniq = uniqCounts.reduce((a, b) => a + b, 0) / uniqCounts.length;
     const meanOcc = counts.reduce((a, b) => a + b, 0) / counts.length;
     // 去重名字数是 2026-10-04 审计里"每盘平均 14.93 颗神煞"的同一口径
+    // （2026-10-07 德秀判据收紧后落点均值 20.45 → 18.85、去重均值 15.84 → 15.04）
     expect(meanUniq).toBeGreaterThan(12);
     expect(meanUniq).toBeLessThan(18);
     expect(quantile(uniqCounts, 0.5)).toBeGreaterThan(12);
