@@ -40,6 +40,13 @@ describe('validatePersonForm', () => {
 });
 
 describe('formToChart', () => {
+  it('晚子时流派透传：23:30 出生者，1=日柱算次日 / 2=算当天（缺省 2）', () => {
+    const f = { year: 2002, month: 12, day: 31, hour: 23, minute: 30, gender: 'male' as const };
+    expect(formToChart({ ...base(), ...f }).pillars[2].ganZhi).toBe('癸酉');                          // 缺省 = 算当天
+    expect(formToChart({ ...base(), ...f, ziShiSect: 2 }).pillars[2].ganZhi).toBe('癸酉');
+    expect(formToChart({ ...base(), ...f, ziShiSect: 1 }).pillars[2].ganZhi).toBe('甲戌');
+  });
+
   it('公历排盘：四柱为 4 柱、日主与日柱天干一致', () => {
     const c = formToChart(base());
     expect(c.pillars).toHaveLength(4);

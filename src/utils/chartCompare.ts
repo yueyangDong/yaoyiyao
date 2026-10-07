@@ -7,7 +7,7 @@
 // 禁止在本文件内另写四柱构造 —— 项目曾因此出现"合盘与八字页结论不一致"。
 
 import { getCityLng, correctSolarTime } from '../context/UserContext';
-import { buildPerson, type PersonChart } from './personChart';
+import { buildPerson, normalizeWanZi, type PersonChart, type WanZiSect } from './personChart';
 import { compareShenShaCharts, type ShaSimilarityResult } from './shenShaSimilarity';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from './dateValidation';
 
@@ -23,6 +23,11 @@ export interface PersonForm {
   name?: string;
   /** 出生地（区划编码数组，省/市/区），用于真太阳时校正；不传按东八区 120°E */
   birthplace?: string[];
+  /**
+   * 晚子时（23:00–23:59）日柱归属流派：1=算次日 / 2=算当天（缺省 2）。
+   * 只影响晚子时出生者；八字与紫微两侧同取此值，避免同一张盘里两套口径。
+   */
+  ziShiSect?: WanZiSect;
 }
 
 /** 表单校验：返回错误文案，null = 通过 */
@@ -53,6 +58,7 @@ export function formToChart(f: PersonForm): PersonChart {
     f.year, f.month, f.day, ts.hour, ts.minute,
     f.gender === 'male' ? 'male' : 'female',
     ts.dayOffset || 0, f.calendar, !!f.isLeap, f.name,
+    normalizeWanZi(f.ziShiSect),
   );
 }
 

@@ -20,6 +20,7 @@ import PayWall from '../components/PayWall';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
+import { normalizeWanZi } from '../utils/personChart';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
@@ -295,7 +296,7 @@ export default function Ziwei() {
 
   const handleCalc = async () => {
     const values = form.getFieldsValue();
-    const { year, month, day, hour, minute, gender, birthplace } = values;
+    const { year, month, day, hour, minute, gender, birthplace, ziShiSect } = values;
 
     if (!year || !month || !day || hour === undefined) {
       message.warning('请填写完整的出生信息');
@@ -363,16 +364,22 @@ export default function Ziwei() {
         solarDateStr = `${sol.getYear()}年${sol.getMonth()}月${sol.getDay()}日 ${String(calcHour).padStart(2, '0')}:${String(calcMinute).padStart(2, '0')}`;
       }
 
-      // 晚子时（23点）换日：与 @ziweijs/core 的 fixLateZiHour（_dayDivision='normal'）对齐。
-      // core 排盘在 23 点会把农历日 +1（次日），应用侧身宫/年干支/天刑天姚若仍按当日农历，
-      // 农历月末 23 点出生时会与排盘基准错位（如除夕 23 点生：排盘已按次年正月，应用还在腊月）。
-      if (calcHour === 23) {
+      // 晚子时（23点）流派 —— 全站统一取值（与八字页/合盘页/对比页同档）：
+      //   1 = 日柱算次日：core 原生换日（fixLateZiHour 在 _dayDivision='normal' 下把农历日 +1），
+      //       应用侧 lu 同步 +1，回显与排盘基准一致；
+      //   2 = 日柱算当天（默认，与 Bazi.tsx 表单默认一致）：core 只会换到次日，且 GlobalConfigs 未导出、
+      //       bySolar 不接受配置——故把排盘日期**前移一天**，借用 core 自己的 +1 落回出生日；
+      //       应用侧 lu 不再 +1（回显与命宫/身宫基准也都是出生日）。
+      // 若改口径请同步 utils/personChart.ts 的 buildZiweiChart（合盘/对比页走那条链路）。
+      const wanZi = normalizeWanZi(ziShiSect);
+      if (calcHour === 23 && wanZi === 1) {
         lu = lu.next(1);
       }
       lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
 
       // 排盘统一用转换后的公历日期（农历输入也必须先转公历，否则排盘结果错误）
-      const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay(), calcHour, calcMinute, 0);
+      const wanZiDayShift = calcHour === 23 && wanZi === 2 ? -1 : 0;
+      const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay() + wanZiDayShift, calcHour, calcMinute, 0);
 
       // 使用 @ziweijs/core 排盘
       // 注：真太阳时已在上方完成校正（含均时差与跨日平移），此处不再传 longitude/useTrueSolarTime，
@@ -700,6 +707,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             gender: profile.gender, year: profile.birthYear,
             month: profile.birthMonth, day: profile.birthDay,
             hour: profile.birthHour, minute: profile.birthMinute,
+            ziShiSect: 2,
           }}>
           {/* 公历/农历切换 */}
           <Form.Item label="时间类型" style={{ marginBottom: 12 }}>
@@ -810,6 +818,15 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
                   changeOnSelect
                   style={{ width: '100%' }}
                 />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="ziShiSect" label="晚子时流派（仅 23:00–23:59 出生相关）"
+                tooltip="23 点子时出生者：日柱算当天（默认）或算次日。八字与紫微同取此档，避免同一张盘出现两套「日」。">
+                <Radio.Group>
+                  <Radio.Button value={2}>日柱算当天</Radio.Button>
+                  <Radio.Button value={1}>日柱算次日</Radio.Button>
+                </Radio.Group>
               </Form.Item>
             </Col>
           </Row>

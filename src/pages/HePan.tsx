@@ -8,7 +8,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan, HEPAN_MAX_SCORE } from '../utils/hepan';
-import { buildPerson } from '../utils/personChart';
+import { buildPerson, normalizeWanZi } from '../utils/personChart';
 import PayWall from '../components/PayWall';
 import { hepanTargetKey } from '../lib/payment';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
@@ -47,7 +47,8 @@ export default function HePan() {
       tsDayOffset = r.dayOffset || 0;
     }
     // 复用 buildPerson：四柱/用神/紫微盘构造与对方完全同构，避免两套口径
-    const p = buildPerson(u.birthYear, u.birthMonth, u.birthDay, calcHour, calcMinute, myGender, tsDayOffset, isLunarProfile ? 'lunar' : 'solar', isLeapProfile);
+    // 晚子时流派：个人档案暂无该字段，缺省按默认档（2=日柱算当天），与八字页默认一致
+    const p = buildPerson(u.birthYear, u.birthMonth, u.birthDay, calcHour, calcMinute, myGender, tsDayOffset, isLunarProfile ? 'lunar' : 'solar', isLeapProfile, undefined, normalizeWanZi((u as { ziShiSect?: number }).ziShiSect));
     p.name = u.name;
     p.birthInfo = `${u.birthYear}年${u.birthMonth}月${u.birthDay}日 ${u.birthHour}:${String(u.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`;
     return p;
@@ -59,7 +60,7 @@ export default function HePan() {
       return;
     }
     const values = form.getFieldsValue();
-    const { year, month, day, hour, minute, gender, birthplace } = values;
+    const { year, month, day, hour, minute, gender, birthplace, ziShiSect } = values;
     const calendar: 'solar' | 'lunar' = values.calendar === 'lunar' ? 'lunar' : 'solar';
     const isLeap = calendar === 'lunar' && values.isLeap === true;
     if (!year || !month || !day || hour === undefined) {
@@ -97,7 +98,7 @@ export default function HePan() {
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
-      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar, isLeap);
+      const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar, isLeap, undefined, normalizeWanZi(ziShiSect));
       // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
       const calLabel = calendar === 'lunar' ? `（农历${isLeap ? '闰' : ''}）` : '';
       if (partnerLng !== 120) {
@@ -151,7 +152,7 @@ export default function HePan() {
             nayin={result.partnerDisplay.nayin}
           />
         ) : null}
-        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar' }}>
+        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar', ziShiSect: 2 }}>
           <Alert
             message="默认按公历（阳历）解析生日"
             description="请确认对方生日的历法：如是农历生日，请把下方「历法」切换为农历后再填写（闰月出生请勾选「闰月」），否则排盘会出错。"
@@ -173,6 +174,10 @@ export default function HePan() {
             <Col span={8}><Form.Item name="minute" label="分"><InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="gender" label="性别"><Radio.Group><Radio.Button value="male">男</Radio.Button><Radio.Button value="female">女</Radio.Button></Radio.Group></Form.Item></Col>
           </Row>
+          <Form.Item name="ziShiSect" label="晚子时流派（仅 23:00–23:59 出生相关）" style={{ marginBottom: 12 }}
+            tooltip="23 点子时出生者：日柱算当天（默认）或算次日。八字与紫微两侧同取此档，避免同一张盘出现两套「日」。">
+            <Radio.Group><Radio.Button value={2}>日柱算当天</Radio.Button><Radio.Button value={1}>日柱算次日</Radio.Button></Radio.Group>
+          </Form.Item>
           <Form.Item name="birthplace" label="出生地（可选，用于真太阳时校正）">
             <Cascader
               options={pcaCode}

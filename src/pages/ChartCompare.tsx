@@ -22,7 +22,7 @@ function PersonFormBlock({
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ calendar: 'solar', hour: 12, minute: 0, gender: 'male', ...initial }}
+        initialValues={{ calendar: 'solar', hour: 12, minute: 0, gender: 'male', ziShiSect: 2, ...initial }}
         onValuesChange={() => onValues(form.getFieldsValue() as PersonForm)}
       >
         <Row gutter={[10, 0]}>
@@ -48,6 +48,10 @@ function PersonFormBlock({
           <Col span={4}><Form.Item name="minute" label="分" style={{ marginBottom: 10 }}>
             <InputNumber min={0} max={59} placeholder="0" style={{ width: '100%' }} /></Form.Item></Col>
         </Row>
+        <Form.Item name="ziShiSect" label="晚子时流派（仅 23:00–23:59 出生相关）" style={{ marginBottom: 10 }}
+          tooltip="23 点子时出生者：日柱算当天（默认）或算次日。八字与紫微两侧同取此档，避免同一张盘出现两套「日」。">
+          <Radio.Group size="small"><Radio.Button value={2}>日柱算当天</Radio.Button><Radio.Button value={1}>日柱算次日</Radio.Button></Radio.Group>
+        </Form.Item>
         <Form.Item name="name" label="称呼（可选）" style={{ marginBottom: 10 }}>
           <Input placeholder={`如：${prefix === 'a' ? '我 / 朋友' : '对方'}`} maxLength={12} />
         </Form.Item>

@@ -5,7 +5,7 @@ import {
   Typography, Space, Tag, message, Radio, Row, Col,
   Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox, Tabs,
 } from 'antd';
-import { Solar, Lunar } from 'lunar-typescript';
+import { Solar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
@@ -27,6 +27,8 @@ import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
 import { buildLiuYueList } from '../utils/liuyueReading';
+// 四柱构造的唯一入口（与合盘 / 命盘对比页共用）——页面不得再自行 Solar/Lunar → getEightChar
+import { buildRawChart, normalizeWanZi } from '../utils/personChart';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -588,43 +590,21 @@ export default function Bazi() {
         tsDayOffset = trueSolar.dayOffset || 0;
       }
 
-      let lunar: Lunar;
-      if (inputMode === 'solar') {
-        let solar = Solar.fromYmdHms(year, month, day, calcHour, calcMinute, 0);
-        if (tsDayOffset !== 0) solar = solar.next(tsDayOffset);
-        lunar = solar.getLunar();
-      } else {
-        lunar = Lunar.fromYmdHms(year, leapMonth === month ? -month : month, day, calcHour, calcMinute, 0);
-        if (tsDayOffset !== 0) lunar = lunar.getSolar().next(tsDayOffset).getLunar();
-      }
-
-      const eightChar = lunar.getEightChar();
-      // 晚子时流派：sect=2（默认）晚子时日柱算当天；sect=1 日柱算次日。必须在取柱/起运前设置。
-      if (ziShiSect === 1) eightChar.setSect(1);
+      // 四柱构造统一走 personChart.buildRawChart（全站唯一入口，与合盘 / 命盘对比页同一份实现）。
+      // 此前这里内联了 Solar/Lunar 两条分支 + eightChar + PillarData 拼装，是「改口径要两处同步」的根源；
+      // 现已收回 utils —— 页面只保留大运/起运、命格、空亡、地势、自坐等页面专属派生。
+      const { lunar, eightChar, pillars, dayGan, dayWx } = buildRawChart(
+        year, month, day, calcHour, calcMinute,
+        tsDayOffset,
+        inputMode === 'lunar' ? 'lunar' : 'solar',
+        leapMonth === month,
+        normalizeWanZi(ziShiSect),
+      );
+      // 不知时辰（按午时推定）是八字页独有概念，故在共用构造之外补时柱标记
+      pillars[3].unknown = hourUnknown;
 
       // getYun参数：1=男 0=女，内部自动根据阳年/阴年判断顺逆排
       const yunParam = gender === 'male' ? 1 : 0;
-      const birthYearForAge = year;
-
-      const pillars: PillarData[] = [
-        {
-          pillar: '年柱', ganZhi: eightChar.getYear(), tianGan: eightChar.getYearGan(), diZhi: eightChar.getYearZhi(),
-          cangGan: eightChar.getYearHideGan(), shiShen: eightChar.getYearShiShenGan(), shiShenZhi: (eightChar.getYearShiShenZhi() || []).join('/'), nayin: eightChar.getYearNaYin(),
-        },
-        {
-          pillar: '月柱', ganZhi: eightChar.getMonth(), tianGan: eightChar.getMonthGan(), diZhi: eightChar.getMonthZhi(),
-          cangGan: eightChar.getMonthHideGan(), shiShen: eightChar.getMonthShiShenGan(), shiShenZhi: (eightChar.getMonthShiShenZhi() || []).join('/'), nayin: eightChar.getMonthNaYin(),
-        },
-        {
-          pillar: '日柱', ganZhi: eightChar.getDay(), tianGan: eightChar.getDayGan(), diZhi: eightChar.getDayZhi(),
-          cangGan: eightChar.getDayHideGan(), shiShen: eightChar.getDayShiShenGan(), shiShenZhi: (eightChar.getDayShiShenZhi() || []).join('/'), nayin: eightChar.getDayNaYin(),
-        },
-        {
-          pillar: '时柱', ganZhi: eightChar.getTime(), tianGan: eightChar.getTimeGan(), diZhi: eightChar.getTimeZhi(),
-          cangGan: eightChar.getTimeHideGan(), shiShen: eightChar.getTimeShiShenGan(), shiShenZhi: (eightChar.getTimeShiShenZhi() || []).join('/'), nayin: eightChar.getTimeNaYin(),
-          unknown: hourUnknown,
-        },
-      ];
 
       const yun = eightChar.getYun(yunParam);
       yunRef.current = yun;
@@ -662,12 +642,7 @@ export default function Bazi() {
       const solarDate = lunar.getSolar();
       const lunarInfo = `农历${lunar.getYearInChinese()}年 ${lunar.getMonthInChinese()}月 ${lunar.getDayInChinese()}日 ${lunar.getTimeZhi()}时`;
 
-      const tgWx: Record<string, string> = {
-        '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-        '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-      };
-      const dayGan = eightChar.getDayGan();
-      const dayWx = tgWx[dayGan] || '';
+      // dayGan / dayWx 已在 buildRawChart 返回中给出（页面不再自行用天干五行表推导）
 
       // 命格详细判定（真实强弱 + 五行统计 + 用神忌神透干）
       const strengthLevelGe = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;

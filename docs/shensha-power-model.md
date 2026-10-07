@@ -89,11 +89,20 @@ CI 装到 1.7.x 可能让分布微移，精确断言会假红。
 
 分布回归在 `src/utils/__tests__/hepanCalibration.test.ts`（区间断言，改权重/阈值必红）。
 
-## 排盘口径统一（2026-10-04）
+## 排盘口径统一（2026-10-04 起，2026-10-07 收口）
 
 `buildPerson` / `buildZiweiChart` 已从 `HePan.tsx` 抽到 **`src/utils/personChart.ts`**，
 合盘与命盘对比共用同一入口，避免出现第三套四柱构造。
 真太阳时仍走 `UserContext.correctSolarTime`（八字/紫微/合盘/对比共用）。
 
-⚠️ `Bazi.tsx` 的 `handleCalc` 仍是独立实现（多出大运/起运/晚子时流派开关）。
-**改四柱口径时，`personChart.ts` 与 `handleCalc` 两处都要动。**
+⚠️ 2026-10-07 进一步收口：新增 **`buildRawChart()`** 作为**全站唯一的四柱构造**，
+`buildPerson` 与 `Bazi.tsx` 的 `handleCalc` 都改为调用它。
+
+- `buildRawChart(year, month, day, hour, minute, dayOffset, calendar, isLeap, ziShiSect)`
+  → `{ solar, lunar, eightChar, pillars, dayGan, dayWx }`（历法、闰月、真太阳时跨日、晚子时流派全在此处理）。
+- **新增任何「需要四柱」的功能，一律从 `buildRawChart` / `buildPerson` 取；不得再出现第四处 `lunar.getEightChar()`。**
+- `Bazi.tsx` 如今只保留页面专属派生：大运/起运、命格（含透干）、空亡、地势、自坐，以及时柱 `unknown`（推定）标记。
+- 回归：`__tests__/personChart.test.ts`（公历≡农历、闰月、dayOffset、流派、两入口同源）
+  + `__tests__/baziPage.test.tsx`（页面端到端排出正确四柱）。
+
+晚子时流派口径见 `personChart.ts` 的 `WanZiSect` / `normalizeWanZi`（1=日柱算次日 / 2=算当天，默认 2）。
