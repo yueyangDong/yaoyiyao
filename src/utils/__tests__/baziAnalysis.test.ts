@@ -145,4 +145,114 @@ describe('喜用神调候（穷通宝鉴逐月）', () => {
     const winter = recommendYongShen('金', '中和', undefined, '辛', '子');
     expect(winter.yongShen).toContain('火');
   });
+
+  // ==== 喜用三体系合并（调候×扶抑×格局）——依用户命理反馈修正 ====
+
+  it('冬月癸水身强（用户验收场景）：喜木火土、忌金水——辛金滋扶舍去、食伤补全', () => {
+    const r = recommendYongShen('水', '身强', undefined, '癸', '子');
+    // 调候[火,金]→身强舍金留火；扶抑身强补全食伤木：喜=火土木
+    expect(r.yongShen.sort()).toEqual(['土', '木', '火'].sort());
+    // 忌=印比（金水）；破用若水旺水亦在内
+    expect(r.xiShen).toContain('金');
+    expect(r.xiShen).toContain('水');
+    expect(r.desc).toContain('舍去');
+    // 喜忌互斥（旧版火金同入喜忌的矛盾已修）
+    for (const x of r.xiShen) expect(r.yongShen).not.toContain(x);
+  });
+
+  it('旧版忌神方向修正：调候之金不再推出「忌木」——克用神者才可入忌且须旺', () => {
+    const r = recommendYongShen('水', '身强', undefined, '癸', '子');
+    // 旧 bug：WX_KE['金']='木' 把木推入忌；木现为身强食伤（喜用）
+    expect(r.xiShen).not.toContain('木');
+  });
+
+  it('身弱忌神补全：甲木身弱忌官杀金、财土、食伤火（旧版只忌财）', () => {
+    const r = recommendYongShen('木', '身弱');
+    expect(r.yongShen).toContain('水');
+    expect(r.yongShen).toContain('木');
+    expect(r.xiShen).toContain('金');
+    expect(r.xiShen).toContain('土');
+    expect(r.xiShen).toContain('火');
+  });
+
+  it('破用变忌：土为用神而木旺克土 → 木由平转忌并提示火通关', () => {
+    // 癸亥月身弱：调候取【金土火】（水旺且寒——庚辛金生水、戊土制水、丁火暖局），扶抑取【金水】
+    // → 用神中含【土】，而木是身弱之食伤（不在喜用中）；局中木旺克土 → 木入忌、取火通关。
+    // ⚠️ 不要改用「火旺克金」来构造本用例：癸亥调候本身已含火，火在喜用中会被
+    //    「克用神者若本身在喜用中，以通关论不移忌」的守护跳过（见下一条用例）。
+    const wxStats = { '木': { count: 6, level: '旺' } } as never;
+    const r = recommendYongShen('水', '身弱', wxStats, '癸', '亥');
+    expect(r.yongShen).toContain('土');     // 调候之土在用神中
+    expect(r.yongShen).not.toContain('木'); // 身弱水，木为食伤（忌）
+    expect(r.xiShen).toContain('木');       // 木旺克土 → 破用转忌
+    expect(r.desc).toContain('通关');
+    expect(r.desc).toContain('火');         // 通关神 = 泄木生土（木生火、火生土）
+  });
+
+  it('破用之守护：克用神者若本身已在喜用中，只以通关论、不移忌（癸亥调候含火，火克金而不入忌）', () => {
+    const wxStats = { '火': { count: 6, level: '旺' } } as never;
+    const r = recommendYongShen('水', '身弱', wxStats, '癸', '亥');
+    expect(r.yongShen).toContain('金');
+    expect(r.yongShen).toContain('火');     // 癸亥调候之丁火暖局，本就在喜用内
+    expect(r.xiShen).not.toContain('火');   // 故火虽旺且克金，也不得入忌
+  });
+
+  it('破用不移喜：克用神者若本身在喜用中（身强喜木又木克土），以通关论', () => {
+    // 癸水子月身强：喜用含木（食伤）与土（官杀），木克土但木在喜用中 → 木不入忌
+    const wxStats = { '木': { count: 5, level: '旺' } } as never;
+    const r = recommendYongShen('水', '身强', wxStats, '癸', '子');
+    expect(r.yongShen).toContain('木');
+    expect(r.xiShen).not.toContain('木');
+  });
+
+  it('从财格：身极弱 + 月支本气为财（甲木生丑月）→ 喜财食伤、忌印比（喜忌反转）', () => {
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '丑');
+    // 丑本气己土为甲之财 → 从财：喜土（财）火（食伤），忌水（印）木（比劫）
+    expect(r.yongShen.sort()).toEqual(['土', '火'].sort());
+    expect(r.xiShen.sort()).toEqual(['水', '木'].sort());
+    expect(r.desc).toContain('从财');
+  });
+
+  it('从儿格：身极弱 + 月支本气为食伤（甲木生午月）→ 喜食伤财、忌印官（喜忌反转）', () => {
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '午');
+    // 午本气丁火为甲之伤官 → 从儿：喜火（食伤）土（财），忌水（印）金（官杀）
+    expect(r.yongShen.sort()).toEqual(['火', '土'].sort());
+    expect(r.xiShen.sort()).toEqual(['水', '金'].sort());
+    expect(r.desc).toContain('从儿');
+  });
+
+  it('从杀格：身极弱 + 月支本气为官杀（甲木生酉月）→ 喜官财、忌印比（喜忌反转）', () => {
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '酉');
+    // 酉本气辛金为甲之正官 → 从杀：喜金（官）土（财），忌水（印）木（比劫）
+    expect(r.yongShen.sort()).toEqual(['金', '土'].sort());
+    expect(r.xiShen.sort()).toEqual(['水', '木'].sort());
+    expect(r.desc).toContain('从杀');
+  });
+
+  it('从旺：身极强 + 克泄耗俱弱（甲木满盘水木）→ 喜印比、忌克泄耗（喜忌反转）', () => {
+    const wxStats = {
+      '金': { count: 0, level: '缺' },
+      '土': { count: 1, level: '弱' },
+      '火': { count: 1, level: '弱' },
+    } as never;
+    const r = recommendYongShen('木', '身极强', wxStats, '甲', '寅');
+    // 从旺：喜水（印）木（比劫），忌土（财）金（官杀）火（食伤）
+    expect(r.yongShen.sort()).toEqual(['水', '木'].sort());
+    expect(r.xiShen.sort()).toEqual(['土', '金', '火'].sort());
+    expect(r.desc).toContain('从旺');
+  });
+
+  it('身极强但克泄有力（不从旺）：仍走调候+扶抑正路', () => {
+    const wxStats = {
+      '金': { count: 4, level: '旺' },
+      '土': { count: 3, level: '适中' },
+      '火': { count: 3, level: '适中' },
+    } as never;
+    const r = recommendYongShen('木', '身极强', wxStats, '甲', '寅');
+    // 不从旺 → 身强扶抑：喜财土、官杀金、食伤火
+    expect(r.yongShen).toContain('金');
+    expect(r.yongShen).toContain('土');
+    expect(r.yongShen).toContain('火');
+    expect(r.desc).not.toContain('从旺');
+  });
 });

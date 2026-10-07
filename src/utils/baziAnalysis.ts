@@ -704,11 +704,13 @@ const TIAOHOU_TABLE: Record<string, Record<string, { yong: string[]; reason: str
 
 /**
  * 推荐用神（八字页 / 合盘共用的唯一口径）：
- * 以《穷通宝鉴》调候为第一优先，扶抑（身强身弱）为第二参考。
- * - 调候用神：解决寒暖燥湿，无论强弱都必须优先（如癸水夏生必用金）
- * - 扶抑用神：解决强弱平衡（身强喜克泄耗、身弱喜生扶）
- * 最终喜用 = 调候用神 ∪ 扶抑用神；忌神 = 克泄调候用神之物。
- * wxStats 预留给后续按全局五行统计微调。
+ * 优先级：特殊格局（从格/从旺，喜忌反转）> 调候（《穷通宝鉴》逐月）> 扶抑（身强身弱）。
+ * - 特殊格局：身极弱而月令财/官杀/食伤成势为从格、身极强而克泄耗俱弱为从旺——顺势而断，喜忌反转；
+ * - 调候用神：解决寒暖燥湿，无论强弱都优先（如癸水夏生必用金）；
+ *   但身强时印比性质的调候辅神舍去（冬水身强，丙火解冻保留、辛金滋扶舍去——金未必喜）；
+ * - 扶抑用神：身强喜克泄耗（财/官杀/食伤全取），身弱喜生扶（印/比劫）；
+ * - 破用变忌：旺神克用神时由平转忌并提示通关（如土为用而木旺克土 → 木转忌、取火通关）；
+ * - 忌神：扶抑忌神（身强忌印比、身弱忌官财食）∪ 破用之忌，且与喜用互斥。
  */
 export function recommendYongShen(
   dayWx: string,
@@ -721,44 +723,108 @@ export function recommendYongShen(
   let xiShen: string[] = [];
   let desc = '';
 
-  // ===== 第一优先：调候用神（《穷通宝鉴》逐月）=====
-  let tiaoHouYong: string[] = [];
-  let tiaoHouReason = '';
-  if (dayGan && monthZhi && TIAOHOU_TABLE[dayGan]?.[monthZhi]) {
-    tiaoHouYong = TIAOHOU_TABLE[dayGan][monthZhi].yong;
-    tiaoHouReason = TIAOHOU_TABLE[dayGan][monthZhi].reason;
-    yongShen.push(...tiaoHouYong);
-    desc += `【调候】${dayGan}日生于${monthZhi}月，${tiaoHouReason}。故先取${tiaoHouYong.join('、')}为调候用神。\n`;
-  }
+  // 十神方向（对日主 dayWx 而言）
+  const yin = WX_SHENG[dayWx];          // 印（生我）
+  const bi = dayWx;                      // 比劫（同我）
+  const shiShang = WX_SHENG_CHU[dayWx];  // 食伤（我生）
+  const cai = WX_KE[dayWx];              // 财（我克）
+  const guan = WX_BEI_KE[dayWx];         // 官杀（克我）
 
-  // ===== 第二参考：扶抑用神（身强身弱）=====
-  let fuyiYong: string[] = [];
-  if (strengthLevel.includes('强')) {
-    fuyiYong = [WX_KE[dayWx], WX_BEI_KE[dayWx]];
-    xiShen.push(dayWx);
-    desc += `【扶抑】日主偏强，宜克泄耗——${fuyiYong.filter(Boolean).join('、')}可助平衡。`;
-  } else if (strengthLevel.includes('弱')) {
-    fuyiYong = [WX_SHENG[dayWx], dayWx];
-    xiShen.push(WX_KE[dayWx]);
-    desc += `【扶抑】日主偏弱，宜生扶——${fuyiYong.filter(Boolean).join('、')}可助身。`;
-  } else {
-    fuyiYong = [WX_SHENG[dayWx], WX_KE[dayWx]];
-    desc += `【扶抑】日主中和，生克皆宜。`;
-  }
-
-  // 合并：调候优先，扶抑补充（去重）
-  yongShen = [...new Set([...yongShen, ...fuyiYong.filter(Boolean)])];
-
-  // 忌神：扶抑忌神 ∪ 克调候用神之物
-  if (tiaoHouYong.length > 0) {
-    for (const ty of tiaoHouYong) {
-      // 克调候用神的五行为忌（如火旺水绝时，火克金——火为忌）
-      const keTy = WX_KE[ty];
-      if (keTy) xiShen.push(keTy);
+  // ===== 特殊格局一：从旺（身极强 + 克泄耗俱弱 → 顺势反转，喜印比忌克泄耗） =====
+  if (strengthLevel === '身极强' && _wxStats) {
+    const foe = [cai, guan, shiShang].filter(Boolean);
+    const feeble = foe.every((wx) => {
+      const s = _wxStats[wx];
+      return !s || s.count <= 2 || s.level === '弱' || s.level === '缺';
+    });
+    if (feeble) {
+      yongShen = [yin, bi].filter(Boolean);
+      xiShen = foe;
+      desc = `【从旺】日主一行得势，克泄耗之${foe.join('、')}在局中无力，属从强从旺之象——喜忌反转：喜${yongShen.join('、')}顺势生扶，忌${foe.join('、')}逆势犯旺（岁运见之反主不顺）。调候之意退居其次，寒暖可于岁运中相机补救。`;
+      return { yongShen, xiShen, desc };
     }
   }
-  xiShen = [...new Set(xiShen.filter(Boolean))];
 
+  // ===== 特殊格局二：从格（身极弱 + 月支本气为财/官杀/食伤 → 弃身从势，喜忌反转） =====
+  // 口径与 mingGe 从格分支一致：看月支本气十神，不看月干
+  if (strengthLevel === '身极弱' && dayGan && monthZhi) {
+    const DZ_BEN_QI: Record<string, string> = { '子': '癸', '丑': '己', '寅': '甲', '卯': '乙', '辰': '戊', '巳': '丙', '午': '丁', '未': '己', '申': '庚', '酉': '辛', '戌': '戊', '亥': '壬' };
+    const benQiWx = (DZ_BEN_QI[monthZhi] && TG_WX[DZ_BEN_QI[monthZhi]]) || '';
+    if (benQiWx === cai) {
+      yongShen = [cai, shiShang].filter(Boolean);
+      xiShen = [yin, bi].filter(Boolean);
+      desc = `【从财】日主极弱而月令${monthZhi}财星成势，弃身从财——喜${yongShen.join('、')}（财星与生财之食伤）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。岁运走财食之地则发，逢印比易反复。`;
+      return { yongShen, xiShen, desc };
+    }
+    if (benQiWx === guan) {
+      yongShen = [guan, cai].filter(Boolean);
+      xiShen = [yin, bi].filter(Boolean);
+      desc = `【从杀】日主极弱而月令${monthZhi}官杀成势，弃身从杀——喜${yongShen.join('、')}（官星与生官之财）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。从杀多经磨砺而成器，岁运财官之地最顺。`;
+      return { yongShen, xiShen, desc };
+    }
+    if (benQiWx === shiShang) {
+      yongShen = [shiShang, cai].filter(Boolean);
+      xiShen = [yin, guan].filter(Boolean);
+      desc = `【从儿】日主极弱而月令${monthZhi}食伤成势，弃身从儿——喜${yongShen.join('、')}（从儿又见儿生之财），忌${xiShen.join('、')}（印绶夺食、官杀克身犯旺）。从儿格不论身强弱，喜逢财地忌官乡。`;
+      return { yongShen, xiShen, desc };
+    }
+  }
+
+  // ===== 调候（普通格局第一优先，《穷通宝鉴》逐月） =====
+  let tiaoHouYong: string[] = [];
+  if (dayGan && monthZhi && TIAOHOU_TABLE[dayGan]?.[monthZhi]) {
+    const full = TIAOHOU_TABLE[dayGan][monthZhi].yong;
+    const reason = TIAOHOU_TABLE[dayGan][monthZhi].reason;
+    if (strengthLevel.includes('强')) {
+      // 身强时，印比性质的调候辅神舍去（帮身滋扶已不需）——如冬水身强：丙火解冻保留，辛金滋扶舍去。
+      // 但仅限「有真调候神兜底」时：夏水之金水是制炎刚需（调候全为印比则全保留），调候不可被身强废掉。
+      const zhen = full.filter((wx) => wx !== yin && wx !== bi);
+      if (zhen.length > 0) {
+        tiaoHouYong = zhen;
+        const dropped = full.filter((wx) => wx === yin || wx === bi);
+        desc += `【调候】${dayGan}日生于${monthZhi}月，${reason}。日主已强，调候中属帮身滋扶的${dropped.join('、')}舍去，取${tiaoHouYong.join('、')}。\n`;
+      } else {
+        tiaoHouYong = [...full];
+        desc += `【调候】${dayGan}日生于${monthZhi}月，${reason}。调候之${full.join('、')}为制衡气候之刚需，日主虽强亦不可无，照取。\n`;
+      }
+    } else {
+      tiaoHouYong = [...full];
+      desc += `【调候】${dayGan}日生于${monthZhi}月，${reason}。故先取${tiaoHouYong.join('、')}为调候用神。\n`;
+    }
+    yongShen.push(...tiaoHouYong);
+  }
+
+  // ===== 扶抑（第二参考；忌神一并补全） =====
+  let fuyiYong: string[] = [];
+  if (strengthLevel.includes('强')) {
+    fuyiYong = [cai, guan, shiShang].filter(Boolean); // 身强喜克泄耗：财/官杀/食伤全取
+    xiShen.push(yin, bi);                              // 身强忌印比（滋扶帮身逆平衡）
+    desc += `【扶抑】日主偏强，宜克泄耗——财${cai}、官杀${guan}、食伤${shiShang}皆可助平衡，忌印比滋扶。`;
+  } else if (strengthLevel.includes('弱')) {
+    fuyiYong = [yin, bi].filter(Boolean);              // 身弱喜生扶：印/比劫
+    xiShen.push(guan, cai, shiShang);                  // 身弱忌克泄耗：官杀/财/食伤
+    desc += `【扶抑】日主偏弱，宜生扶——印${yin}、比劫${bi}可助身，忌克泄耗太过。`;
+  } else {
+    fuyiYong = [yin, guan].filter(Boolean);
+    desc += `【扶抑】日主中和，生克皆宜。`;
+  }
+  yongShen = [...new Set([...yongShen, ...fuyiYong.filter(Boolean)])];
+
+  // ===== 破用变忌（旺神克用神 → 由平转忌，并提示通关之神） =====
+  if (_wxStats) {
+    for (const ty of yongShen) {
+      const keTy = WX_BEI_KE[ty]; // 克用神者（勿用 WX_KE——那是用神所克之物）
+      if (!keTy || yongShen.includes(keTy)) continue; // 克者若本身在喜用中，以通关论不移忌（如身强喜木又木克土）
+      const s = _wxStats[keTy];
+      if (s && s.level === '旺') {
+        xiShen.push(keTy);
+        const via = WX_SHENG_CHU[keTy]; // 通关神：泄旺神、生用神（木旺克土，火通关）
+        desc += `【破用】局中${keTy}旺而克用神${ty}——${keTy}由平转忌；宜取${via}通关（泄${keTy}生${ty}），行运走${via}地最顺。`;
+      }
+    }
+  }
+
+  xiShen = [...new Set(xiShen.filter(Boolean).filter((wx) => !yongShen.includes(wx)))];
   return { yongShen, xiShen, desc };
 }
 
