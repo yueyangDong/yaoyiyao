@@ -10,7 +10,7 @@ import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import { generateDomainDeepReadings, type DomainDeepReading } from '../utils/baziDomainDeep';
-import { buildDayunReadings, type DayunReading } from '../utils/dayunReading';
+import { buildDayunReadings, findCurrentDayunStep, toNominalAge, type DayunReading } from '../utils/dayunReading';
 import PayWall from '../components/PayWall';
 import { chartTargetKey } from '../lib/payment';
 import { analyzePersonality } from '../utils/baziPersonality';
@@ -27,6 +27,7 @@ import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
 import { buildLiuYueList } from '../utils/liuyueReading';
+import { buildLiuNianList, calcLiuNianItem, type LiuNianItem } from '../utils/liunianReading';
 // 四柱构造的唯一入口（与合盘 / 命盘对比页共用）——页面不得再自行 Solar/Lunar → getEightChar
 import { buildRawChart, normalizeWanZi } from '../utils/personChart';
 
@@ -344,49 +345,8 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
 // 按「人生阶段 × 十神关系」二维取内容重心——每步大运按其年龄区间归属人生阶段，
 // 60 岁以后（退休生活期/颐养天年期）不再铺陈事业与求财，转向健康、家庭、生活节奏与心性。
 
-// 流年（单年）计算：干支 + 五行 + 与日主生克简述
-interface LiuNianItem {
-  year: number;
-  ganZhi: string;
-  wx: string;
-  desc: string;
-}
-
-function calcLiuNianItem(year: number, dayGan: string, dayWx: string): LiuNianItem {
-  const tiangan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-  const dizhi = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-  const tgWx: Record<string, string> = {
-    '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-    '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-  };
-  const tgIdx = (((year - 4) % 10) + 10) % 10;
-  const dzIdx = (((year - 4) % 12) + 12) % 12;
-  const yearGan = tiangan[tgIdx];
-  const yearZhi = dizhi[dzIdx];
-  const yearWx = tgWx[yearGan];
-
-  let desc = '';
-  if (dayWx === yearWx) {
-    desc = `与日主同属${dayWx}，比和之年，运势平稳，适合巩固成果。`;
-  } else {
-    const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-    const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-    if (wxSheng[dayWx] === yearWx) {
-      desc = `流年「${yearGan}(${yearWx})」生日主——印绶之年！利学业考证、贵人相助，适合进修深造。`;
-    } else if (wxSheng[yearWx] === dayWx) {
-      desc = `日主生流年「${yearGan}(${yearWx})」——食伤之年！利创意发挥、技术提升，勿想多做少。`;
-    } else if (wxKe[dayWx] === yearWx) {
-      desc = `日主克流年「${yearGan}(${yearWx})」——财运之年！利求财，需付出努力。`;
-    } else if (wxKe[yearWx] === dayWx) {
-      desc = `流年「${yearGan}(${yearWx})」克日主——官杀之年！有压力有挑战，也是上升机会。`;
-    }
-  }
-  return { year, ganZhi: yearGan + yearZhi, wx: yearWx, desc };
-}
-
-function buildLiuNianList(startYear: number, dayGan: string, dayWx: string): LiuNianItem[] {
-  return Array.from({ length: 10 }, (_, i) => calcLiuNianItem(startYear + i, dayGan, dayWx));
-}
+// 流年（单年/十年）计算已抽到 src/utils/liunianReading.ts：
+// 页面「流年（十年）」卡片与结论卡共用同一份口径（见该文件头部说明）。
 
 export interface PillarData {
   pillar: string;
@@ -863,37 +823,58 @@ export default function Bazi() {
     return firstReal?.startAge ?? baziData?.dayun.startAge ?? 0;
   }, [baziData]);
 
+  // 大运定位所用虚岁：steps 的 startAge/endAge 是虚岁区间，currentExactAge 是周岁，
+  // 直接混用会在端点落空（见 utils/dayunReading.toNominalAge 的说明）
+  const nominalAge = useMemo(
+    () => (baziData ? toNominalAge(currentYear, baziData.birthYear) : 0),
+    [baziData, currentYear],
+  );
+
+  // 当前所走大运：结论卡 / 大运卡片高亮 / 大运解读列表三处共用，避免各自判定后互相矛盾
+  const currentDayunStep = useMemo(
+    () => (baziData ? findCurrentDayunStep(baziData.dayun.steps, nominalAge) : null),
+    [baziData, nominalAge],
+  );
+
   // 大运白话解读：按「人生阶段 × 十神关系」二维取内容重心（见 utils/dayunReading.ts）
   // 年龄一律用 getDaYun 的虚岁，与大运卡片口径一致；currentExactAge 用于标注「当前大运 / 已走过」
   const dayunReadings = useMemo(() => {
     if (!baziData) return { stageLead: '', currentStage: null, readings: [] as DayunReading[] };
     // 跳过起运前无干支的小运（显示 — 的步骤）
     const steps = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—');
-    return buildDayunReadings(steps, baziData.dayGan, currentExactAge);
-  }, [baziData, currentExactAge]);
+    return buildDayunReadings(steps, baziData.dayGan, currentExactAge, nominalAge);
+  }, [baziData, currentExactAge, nominalAge]);
 
   // 一句话结论（xiShen 实为忌神，不并入结论文案，避免与专业分析自相矛盾）
+  // ⚠️ 入参必须含四柱 / 当前大运 / 今年流年：旧版只传「起运后第一步大运」，
+  // 文案却写「下一步大运」→ 给中年人报十几岁走的运（2026-10-07 修）。
   const plainConclusion = useMemo(() => {
     if (!baziData || !strengthAnalysis || !yongShenRec) return null;
     const wxs = Object.entries(wxStats || {}).sort((a, b) => b[1].count - a[1].count);
     const wxStrongest = wxs[0]?.[0] || '';
     const wxWeakest = wxs[wxs.length - 1]?.[0] || '';
-    // 取第一个有干支的大运（起运前的小运无干支，跳过）
-    const dayunFirst = baziData.dayun.steps.find(s => s.ganZhi && s.ganZhi !== '—')?.ganZhi || null;
     // 用神与喜神可能重叠，但 xiShen（身强时比劫、身弱时财星）实为忌神，不并入结论文案
     const yongShen = yongShenRec.yongShen;
     const xiShen: string[] = [];
+    // 当前大运：直接复用组件级的统一定位（结论卡 / 卡片高亮 / 大运解读同源）
     return generateBaziPlainConclusion({
+      pillars: baziData.pillars.map((p) => p.ganZhi),
       dayGan: baziData.dayGan,
       dayWx: baziData.dayWx,
+      dayZhi: baziData.pillars[2].diZhi,
+      dayShiShenZhi: baziData.pillars[2].shiShenZhi,
+      hourUnknown: baziData.hourUnknown,
       level: strengthAnalysis.level,
       yongShen,
       xiShen,
       wxStrongest,
       wxWeakest,
-      dayunFirst,
+      currentDaYun: currentDayunStep
+        ? { ganZhi: currentDayunStep.ganZhi, startAge: currentDayunStep.startAge, endAge: currentDayunStep.endAge }
+        : null,
+      liuNian: calcLiuNianItem(currentYear, baziData.dayGan, baziData.dayWx),
     });
-  }, [baziData, strengthAnalysis, yongShenRec, wxStats]);
+  }, [baziData, strengthAnalysis, yongShenRec, wxStats, currentDayunStep, currentYear]);
 
 
   // 按柱分组的神煞
@@ -1986,8 +1967,7 @@ export default function Bazi() {
                 }
                 // 起运后的真正大运：用精确年龄判断当前所在
                 // 起运那年的实际周岁可能小于 起运年龄（虚岁），所以"在当前步"的判定用 <= endAge && > startAge
-                const realStart = i === 0 ? 0 : step.startAge;
-                const isCurrent = currentExactAge >= realStart && currentExactAge < step.endAge;
+                const isCurrent = !!currentDayunStep && currentDayunStep.ganZhi === step.ganZhi && currentDayunStep.endAge === step.endAge;
                 return (
                   <Col xs={12} sm={8} md={6} key={i}>
                     <Card size="small" style={{ borderColor: isCurrent ? 'var(--wx-fire)' : undefined, background: isCurrent ? 'rgba(194,59,43,0.06)' : undefined }}>

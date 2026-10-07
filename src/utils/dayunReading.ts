@@ -271,16 +271,47 @@ export interface DayunReadingResult {
 }
 
 /**
+ * 由公历年份换算**虚岁**——大运区间（getStartAge/getEndAge）用的是虚岁口径。
+ * 全站「当前大运」定位一律先过这里，不要用周岁直接比虚岁区间（端点会落空，见下方说明）。
+ */
+export function toNominalAge(currentYear: number, birthYear: number): number {
+  return currentYear - birthYear + 1;
+}
+
+/**
+ * 定位当前所处大运（虚岁**闭区间**；起运前小运不计，未起运返回 null）。
+ *
+ * ⚠️ 端点必须用闭区间：虚岁区间是连续无缝的（甲申 7~16、乙酉 17~26……），
+ * 用半开区间 `[start, end)` 配合周岁会把「周岁恰好等于某步 endAge」的年份判成无运可归。
+ * 三处调用方（结论卡 / 大运卡片高亮 / 大运解读列表）必须共用本函数，否则会出现
+ * 「结论卡说正走丙戌、卡片却没高亮」的自相矛盾。
+ */
+export function findCurrentDayunStep<T extends DayunStep>(steps: T[], nominalAge: number): T | null {
+  return (
+    steps.find(
+      (s) => !s.isPreStart && !!s.ganZhi && s.ganZhi !== '—' && nominalAge >= s.startAge && nominalAge <= s.endAge,
+    ) ?? null
+  );
+}
+
+/**
  * 生成大运白话解读。
  *
- * @param steps      大运步骤（应已过滤掉起运前无干支的小运）
- * @param dayGan     日主天干
- * @param currentAge 当前周岁；用于标注"当前大运"与生成阶段导航
+ * @param steps       大运步骤（应已过滤掉起运前无干支的小运）
+ * @param dayGan      日主天干
+ * @param currentAge  当前**周岁**；仅用于「你今年 X 岁」这类文案与人生阶段导航
+ * @param nominalAge  定位「当前大运」所用的**虚岁**（见 toNominalAge）；不传时退化为 currentAge
+ *
+ * ⚠️ 为什么分两个年龄：steps 的 startAge/endAge 取自 lunar-typescript，是**虚岁**区间，
+ * 而页面持有的 currentExactAge 是精确**周岁**。用周岁去比虚岁区间会在端点落空——
+ * 例：乙酉大运(17~26) 遇周岁 26 → `26 >= 17 && 26 < 26` 为假，下一步丙戌(27~36) 的
+ * `26 >= 27` 也为假 → 整盘没有任何一步被标为「当前大运」（实测 2000-07-20 男、1978-01-09 女）。
  */
 export function buildDayunReadings(
   steps: DayunStep[],
   dayGan: string,
   currentAge: number,
+  nominalAge: number = currentAge,
 ): DayunReadingResult {
   // 同一阶段 + 同一种关系可能落在两步大运上（例：6~15 与 16~25 都在求学成长期，天干同为木）。
   // 这里记录出现次序，第二次起追加"阶段内定位句"，避免两段解读一字不差。
@@ -311,8 +342,8 @@ export function buildDayunReadings(
       stageRange: stage.range,
       stageFocus: stage.focus,
       relationLabel: relation ? RELATION_LABEL[relation] : '五行关系平顺',
-      isPast: s.endAge <= currentAge,
-      isCurrent: currentAge >= s.startAge && currentAge < s.endAge,
+      isPast: s.endAge < nominalAge,
+      isCurrent: nominalAge >= s.startAge && nominalAge <= s.endAge,
       text,
     };
   });

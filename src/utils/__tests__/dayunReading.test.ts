@@ -3,6 +3,8 @@ import {
   resolveLifeStage,
   resolveRelation,
   buildDayunReadings,
+  findCurrentDayunStep,
+  toNominalAge,
   LIFE_STAGES,
   type DayunStep,
 } from '../dayunReading';
@@ -136,5 +138,62 @@ describe('buildDayunReadings 大运阶段解读', () => {
     expect(readings[0].text.length).toBeGreaterThan(10);
     expect(readings[0].relationLabel).toBe('五行关系平顺');
     expect(readings[0].text).toContain('换节奏');
+  });
+});
+
+describe('当前大运定位（虚岁闭区间，端点不落空）', () => {
+  it('toNominalAge：虚岁 = 公历年差 + 1', () => {
+    expect(toNominalAge(2026, 2000)).toBe(27);
+    expect(toNominalAge(2026, 1978)).toBe(49);
+  });
+
+  it('周岁恰好等于某步 endAge 时仍能定位（旧口径此处无运可归）', () => {
+    // 2000-07-20 男：乙酉(17~26) / 丙戌(27~36)；2026 年周岁 26 → 虚岁 27
+    const dayun: DayunStep[] = [
+      { ganZhi: '—', startAge: 1, endAge: 6, isPreStart: true },
+      { ganZhi: '甲申', startAge: 7, endAge: 16 },
+      { ganZhi: '乙酉', startAge: 17, endAge: 26 },
+      { ganZhi: '丙戌', startAge: 27, endAge: 36 },
+    ];
+    expect(findCurrentDayunStep(dayun, toNominalAge(2026, 2000))?.ganZhi).toBe('丙戌');
+    // 1978-01-09 女：丁巳(39~48) / 戊午(49~58)；2026 年虚岁 49
+    const dayun2: DayunStep[] = [
+      { ganZhi: '丁巳', startAge: 39, endAge: 48 },
+      { ganZhi: '戊午', startAge: 49, endAge: 58 },
+    ];
+    expect(findCurrentDayunStep(dayun2, toNominalAge(2026, 1978))?.ganZhi).toBe('戊午');
+  });
+
+  it('起运前返回 null，且端点取闭区间', () => {
+    const dayun: DayunStep[] = [
+      { ganZhi: '—', startAge: 1, endAge: 6, isPreStart: true },
+      { ganZhi: '甲申', startAge: 7, endAge: 16 },
+    ];
+    expect(findCurrentDayunStep(dayun, 5)).toBeNull();
+    expect(findCurrentDayunStep(dayun, 7)?.ganZhi).toBe('甲申');
+    expect(findCurrentDayunStep(dayun, 16)?.ganZhi).toBe('甲申');
+  });
+
+  it('虚岁区间连续无缝：任取一年有且只有一步命中', () => {
+    const dayun: DayunStep[] = Array.from({ length: 10 }, (_, i) => ({
+      ganZhi: '甲子',
+      startAge: 7 + i * 10,
+      endAge: 16 + i * 10,
+    }));
+    for (let a = 7; a <= 106; a++) {
+      const hits = dayun.filter((s) => a >= s.startAge && a <= s.endAge);
+      expect(hits.length, `${a} 虚岁命中 ${hits.length} 步`).toBe(1);
+    }
+  });
+
+  it('buildDayunReadings 收到虚岁后，endAge 那一年仍标为当前大运', () => {
+    const dayun: DayunStep[] = [
+      { ganZhi: '乙丑', startAge: 16, endAge: 25 },
+      { ganZhi: '丙寅', startAge: 26, endAge: 35 },
+    ];
+    const { readings } = buildDayunReadings(dayun, '甲', 26, 26);
+    const cur = readings.filter((r) => r.isCurrent);
+    expect(cur).toHaveLength(1);
+    expect(cur[0].ganZhi).toBe('丙寅');
   });
 });
