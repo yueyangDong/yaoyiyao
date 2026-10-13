@@ -139,9 +139,9 @@ describe('分层保证：动态层随年份变，静态缘分分不变', () => {
     // 子 vs 午：2026 冲、2032（壬子）则是子与子同支伏吟 —— 配偶宫状态必须不同
     expect(y2026.mine.liunian.spousePalace).not.toBe(y2032.mine.liunian.spousePalace);
 
-    // 静态侧：160 分体系不带年份，返回结构里也不应有任何"动态层"字段
+    // 静态侧：200 分体系不带年份，返回结构里也不应有任何"动态层"字段
     const base = analyzeHePan(hepanInput());
-    expect(HEPAN_MAX_SCORE).toBe(160);
+    expect(HEPAN_MAX_SCORE).toBe(200);
     expect((base as unknown as Record<string, unknown>).flow).toBeUndefined();
     expect((base as unknown as Record<string, unknown>).hepanFlow).toBeUndefined();
     expect(Object.keys(base)).not.toContain('year');

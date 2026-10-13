@@ -822,6 +822,7 @@ export default function Bazi() {
       pillars: baziData.pillars,
       dayGan: baziData.dayGan,
       yongShen: yongShenRec?.yongShen,
+      jiShen: yongShenRec?.xiShen,
       strengthLevel: strengthAnalysis?.level,
       gender: baziData.birthGender,
     }));
@@ -872,6 +873,7 @@ export default function Bazi() {
       dayGan: baziData.dayGan,
       dayWx: baziData.dayWx,
       yongShen: yongShenRec?.yongShen,
+      jiShen: yongShenRec?.xiShen,
       strengthLevel: strengthAnalysis?.level,
       gender: baziData.birthGender,
     };
@@ -916,6 +918,7 @@ export default function Bazi() {
       pillars: baziData.pillars,
       dayGan: baziData.dayGan,
       yongShen: yongShenRec?.yongShen,
+      jiShen: yongShenRec?.xiShen,
       strengthLevel: strengthAnalysis?.level,
       gender: baziData.birthGender,
     });
@@ -932,6 +935,7 @@ export default function Bazi() {
       pillars: baziData.pillars,
       dayWx: baziData.dayWx,
       yongShen: yongShenRec?.yongShen,
+      jiShen: yongShenRec?.xiShen,
       strengthLevel: strengthAnalysis?.level,
       gender: baziData.birthGender,
     });
@@ -987,7 +991,6 @@ export default function Bazi() {
     const items = calcShenShaPower({
       pillars: baziData.pillars,
       shenSha: baziData.shenSha,
-      strengthLevel: strengthAnalysis?.level,
       yongShen: yongShenRec?.yongShen,
     });
     const map: Record<string, ShaPowerItem> = {};

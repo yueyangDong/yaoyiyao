@@ -1,8 +1,8 @@
 // ========== 合盘「当年走势」动态层 ==========
 //
-// 为什么必须与 160 分分开（这段是本模块存在的理由，改之前先读）：
-//   合盘 160 分是**静态**的——两人出生那一刻就定死，任何时候打开都是同一个数，
-//   档位 118/103/85 是在 400 对静态盘上按 p90/p55/p15 标定的。
+// 为什么必须与 200 分分开（这段是本模块存在的理由，改之前先读）：
+//   合盘 200 分是**静态**的——两人出生那一刻就定死，任何时候打开都是同一个数，
+//   档位 148/132/115 是在 400 对静态盘上按 p90/p55/p15 标定的。
 //   一旦把"大运流年"塞进总分，分数就会随年份漂移：今天 112、明年 98，
 //   用户读到的不是"今年要注意"，而是"我们是不是不合了"——
 //   而且档位锚点每年都在动，hepanCalibration.test.ts 的区间断言必然失效。
@@ -38,6 +38,8 @@ export interface HePanFlowPartyInput {
   dayGan: string;
   dayWx: string;
   yongShen?: string[];
+  /** 完整忌神（PersonChart.jiShen）——不传则退化为 deriveJiShen 轻量扶抑兜底 */
+  jiShen?: string[];
   strengthLevel?: string;
   /** 'male' | 'female' | '男' | '女' */
   gender?: string;
@@ -112,6 +114,7 @@ function buildParty(input: HePanFlowPartyInput, year: number, gz: string): HePan
     dayGan: input.dayGan,
     dayWx: input.dayWx,
     yongShen: input.yongShen,
+    jiShen: input.jiShen,
     strengthLevel: input.strengthLevel,
     gender: input.gender,
   };

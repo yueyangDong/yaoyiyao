@@ -9,7 +9,7 @@ import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan, HEPAN_MAX_SCORE } from '../utils/hepan';
 import { buildPerson, normalizeWanZi, currentDayunOf } from '../utils/personChart';
-// 合盘「今年关系走势」动态层：只看今年怎么走，**不进 160 分**（理由见 utils/hepanFlow.ts 头部）
+// 合盘「今年关系走势」动态层：只看今年怎么走，**不进 200 分**（理由见 utils/hepanFlow.ts 头部）
 import { analyzeHePanFlow, type HePanFlowResult, type HePanFlowPartyInput } from '../utils/hepanFlow';
 import PayWall from '../components/PayWall';
 import { hepanTargetKey } from '../lib/payment';
@@ -22,7 +22,7 @@ export default function HePan() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof analyzeHePan> | null>(null);
-  /** 今年的关系走势（动态层；不进 160 分） */
+  /** 今年的关系走势（动态层；不进 200 分） */
   const [flowResult, setFlowResult] = useState<HePanFlowResult | null>(null);
   const [chartKey, setChartKey] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,7 @@ export default function HePan() {
       setResult(r);
 
       // 今年的关系走势（动态层）：双方各自的当前大运 × 今年流年，交叉出关系主题。
-      // ⚠️ 与 160 分完全分开——总分是静态的（出生即定、跨年份可比），本层只做"今年怎么走"的预报。
+      // ⚠️ 与 200 分完全分开——总分是静态的（出生即定、跨年份可比），本层只做"今年怎么走"的预报。
       const curYear = new Date().getFullYear();
       const mkFlowParty = (
         p: NonNullable<typeof mine>,
@@ -128,6 +128,8 @@ export default function HePan() {
         dayGan: p.dayGan,
         dayWx: p.dayWx,
         yongShen: p.yongShen,
+        // 完整忌神（含从格/从旺 喜忌反转与破用变忌）——不传则动态层退化为轻量扶抑口径
+        jiShen: p.jiShen,
         strengthLevel: p.strengthLevel,
         gender: p.gender,
         // 当前大运按**虚岁闭区间**定位（personChart.currentDayunOf，与八字页结论卡同源）
@@ -225,7 +227,7 @@ export default function HePan() {
           targetKey={chartKey}
           previewHeight={180}
           benefits={[
-            '缘分总评与八维评分：日主五行、地支合冲、纳音年命、生肖配对、喜用互补、神煞共振、紫微命宫、四化互动逐项打分',
+            '缘分总评与十维评分：日主五行、地支合冲、纳音年命、生肖配对、喜用互补、神煞共振、旺衰互动、气候与用神、紫微命宫、四化互动逐项打分',
             '紫微合盘真算：命宫主星配对 + 夫妻宫互参 + 命宫地支合冲，双方生年四化对彼此命宫的引动',
             '性格互动双画像：你们各自是什么"物种"，在一起会怎样互相影响',
             '双向视角：同一份缘分，你和 TA 的两种真实感受',
@@ -237,7 +239,7 @@ export default function HePan() {
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
             <Progress
               type="circle"
-              /* 满分 160（v4 起加神煞共振项）→ 环按比例画；直接给 totalScore 会让 >100 的值被裁掉 */
+              /* 满分 200（v6 起八字八项 + 紫微两项）→ 环按比例画；直接给 totalScore 会让 >100 的值被裁掉 */
               percent={Math.round((result.totalScore / HEPAN_MAX_SCORE) * 100)}
               format={() => `${result.totalScore}分`}
               strokeColor="var(--wx-metal)"
@@ -258,7 +260,7 @@ export default function HePan() {
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 4 }}>{it.desc}</Text>
             </div>
           ))}
-          {/* 今年的关系走势（动态层：只看"今年怎么走"，不进 160 分） */}
+          {/* 今年的关系走势（动态层：只看"今年怎么走"，不进 200 分） */}
           {flowResult && (
             <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(201,169,110,0.06)', border: '1px solid rgba(201,169,110,0.28)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>

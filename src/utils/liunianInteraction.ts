@@ -13,7 +13,7 @@
 //   · 十神                 → wuXingRelations.tenGodOf。
 //   八字页「流年（十年）」卡片与合盘「今年关系走势」共用本模块，避免两套口径。
 //
-// ⚠️ 本模块只出**判据与文字**，不出分数。合盘 160 分的档位是静态分布的锚点，
+// ⚠️ 本模块只出**判据与文字**，不出分数。合盘 200 分的档位是静态分布的锚点，
 //   不能被"随年份变动"的量污染——理由见 docs/liunian-interaction.md。
 //
 // ⚠️ 大运与流年用**同一个函数**（analyzeGanZhiInteraction）：二者对命局的作用机制相同，
@@ -120,6 +120,12 @@ export interface FlowChartLike {
   dayWx: string;
   /** 用神五行列表（baziAnalysis.recommendYongShen 口径） */
   yongShen?: string[];
+  /**
+   * **完整忌神**（personChart.PersonChart.jiShen = recommendYongShen 的 xiShen）。
+   * 传了就以此为准；不传则退化为 `deriveJiShen(dayWx, strengthLevel, yongShen)` 这套
+   * **轻量扶抑兜底**——那套不认从格/从旺（喜忌反转）与破用变忌。
+   */
+  jiShen?: string[];
   /** 旺衰档（身强/身弱/中和…），缺省时不做喜忌定向 */
   strengthLevel?: string;
   /** 'male' | 'female' | 中文字面量 */
@@ -217,7 +223,7 @@ function mergeHits(hits: FlowHit[]): FlowHit[] {
  * 判据全部来自 diZhiRelations / wuXingRelations，本函数不含任何自留表。
  */
 export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInteraction {
-  const { pillars, dayGan, dayWx, ganZhi, label = '', yongShen = [], strengthLevel, gender, era = 'year' } = input;
+  const { pillars, dayGan, dayWx, ganZhi, label = '', yongShen = [], jiShen: jiShenIn, strengthLevel, gender, era = 'year' } = input;
   const flowGan = ganZhi.charAt(0);
   const flowZhi = ganZhi.charAt(1);
   // 时间词全部集中在这里，避免 10 余处文案各写各的；把流年措辞套到别的尺度上会立刻露馅。
@@ -227,7 +233,8 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
   const YU = ERA_NAME[era];
   // 该尺度下"一段时间"的说法，用于伏吟这类主"反复"的句子
   const PERIOD = ERA_PERIOD[era];
-  const jiShen = deriveJiShen(dayWx, strengthLevel);
+  // 忌神：优先用调用方给的完整口径（含从格/从旺 喜忌反转、破用变忌），否则退化为轻量扶抑兜底。
+  const jiShen = jiShenIn ?? deriveJiShen(dayWx, strengthLevel, yongShen);
 
   const toneOf = (wx: string): Tone => {
     if (!wx) return 'neutral';

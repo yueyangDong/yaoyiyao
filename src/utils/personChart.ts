@@ -17,6 +17,7 @@ import { ziwei } from '@ziweijs/core';
 import type { PillarData } from '../pages/Bazi';
 import { calcShenSha, type ShenShaItem } from './shenSha';
 import { analyzeDayMasterStrength, recommendYongShen } from './baziAnalysis';
+import { calcWuxingStats } from './wuxingFlow';
 import { findCurrentDayunStep, toNominalAge } from './dayunReading';
 
 export const TG_WX: Record<string, string> = {
@@ -37,6 +38,17 @@ export interface PersonChart {
   nayin: string;
   strengthLevel: string;
   yongShen: string[];
+  /**
+   * **完整忌神**（= `recommendYongShen` 的 `xiShen`）：
+   * 特殊格局（从格/从旺，喜忌反转）∪ 扶抑 ∪ 破用变忌，再减去用神。
+   *
+   * ⚠️ 与 `wuXingRelations.deriveJiShen` 的分工——那个是**轻量扶抑兜底**：
+   *    只吃 `dayWx + strengthLevel`（外加可选的用神表做调候减法），拿不到月令与五行统计，
+   *    因此**既不认从格/从旺（会把喜忌整个判反）、也不认破用变忌**。
+   *    凡手里有完整命盘的调用方（合盘 / 岁运互动 / 流月流日 / 大运解读）一律用本字段，
+   *    `deriveJiShen` 只留给拿不到四柱的场景。
+   */
+  jiShen: string[];
   ziwei?: any[];
   birthInfo: string;
   /**
@@ -185,8 +197,14 @@ export function buildPerson(
   // 身强身弱与八字页完全同一口径：analyzeDayMasterStrength 五维评分（月令/根气/印星/比劫/克泄）五档，
   // recommendYongShen 据此取用神。校准：旧版"比劫≥2 即身强"不看月令根气，
   // 且身弱喜用误取 WX_SHENG（我生者=食伤，泄身之物），应为印星（生我者）。
+  //
+  // ⚠️ 第 3 参（全局五行统计）**必须传** —— 它是 `recommendYongShen` 里两条分支的唯一开关：
+  //    ① 从旺格判定（身极强 + 克泄耗俱弱 → 喜忌反转）；② 破用变忌（旺神克用神 → 由平转忌）。
+  //    此前这里传 undefined，导致合盘/对比页的用神与忌神都缺这两条，而八字页一直是传的
+  //    （Bazi.tsx 用同一个 calcWuxingStats）→ 同一张盘在两个页面口径不一致。
+  const wxStats = calcWuxingStats(pillars);
   const strength = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars);
-  const yongRec = recommendYongShen(dayWx, strength.level, undefined, dayGan, pillars[1].diZhi);
+  const yongRec = recommendYongShen(dayWx, strength.level, wxStats, dayGan, pillars[1].diZhi);
   return {
     name: name || (gender === 'male' ? '男方' : '女方'),
     gender,
@@ -196,9 +214,15 @@ export function buildPerson(
     pillars,
     shenSha: calcShenSha(pillars, gender === 'female' ? 'female' : 'male'),
     zodiac: lunar.getYearShengXiao(),
-    nayin: ec.getDayNaYin(),
+    // ⚠️ 取**年柱**纳音（传统说的「年命」），不是日柱纳音。
+    //    合盘的「纳音年命」项文案写的是"年命旺对方""年命相生"，判据必须与文案同口径；
+    //    此前误取 getDayNaYin()，项名与判据不符。实测两口径下年柱纳音 == 日柱纳音仅 3.31%
+    //    （五行一致 19.84%），4000 对随机盘中该项分数不同者 63.5%、|Δ| 均值 5.71/20。
+    //    两口径的分数分布同形（均分 13.13 vs 13.21、p50 均 14），故改动**不需要重标档位锚点**。
+    nayin: ec.getYearNaYin(),
     strengthLevel: strength.level,
     yongShen: yongRec.yongShen,
+    jiShen: yongRec.xiShen,
     ziwei: buildZiweiChart(solar, gender, ziShiSect),
     birthInfo: `${year}年${month}月${day}日 ${hour}:${String(minute).padStart(2, '0')}`,
     eightChar: ec,

@@ -31,13 +31,34 @@ export const YANG_GAN = ['甲', '丙', '戊', '庚', '壬'];
  *   身弱（含身极弱）→ 忌官杀（克我）、财（我克）、食伤（我生）
  *   中和 / 未传旺衰 → 无明显忌神，返回空数组（调用方据此退化为"不做喜忌定向"的旧行为）
  *
- * ⚠️ 这是扶抑口径的忌神，不含调候与通关（那需要完整五行统计）。
+ * `yongShen` 是**可选**的第三参，用于把「调候优先于扶抑」落到实处：
+ *   若某个扶抑忌神同时已经是该盘的用神（典型情形是调候神——冬水需火、夏火需水，
+ *   而火/水在扶抑口径下恰好是财官食伤），那么按"特殊格局 > 调候 > 扶抑"的优先级，
+ *   它应当**从忌神里剔除**，否则会出现"既是第一用神、又是忌神"的自相矛盾。
+ *   recommendYongShen 产出的用神表里已经包含调候神（并在身强时按性质筛过），
+ *   故直接拿它做减法即可，无需再抄一份 TIAOHOU_TABLE。
+ *
+ * ⚠️ 这是**轻量扶抑兜底**，不是完整口径：它拿不到月令、也拿不到全局五行统计，因此
+ *    **既不认从格/从旺**（那里喜忌整个反转——如从财格以财为喜，本函数会把财当忌），
+ *    **也不认破用变忌**（旺神克用神 → 由平转忌）。传了 `yongShen` 只能补上"调候剔除"这一层。
+ *
+ *    **完整忌神在 `baziAnalysis.recommendYongShen(...).xiShen`**，已由 `personChart.buildPerson`
+ *    写进 `PersonChart.jiShen`。凡手里有完整命盘的调用方（合盘 / 岁运互动 / 流月流日 / 大运解读）
+ *    一律优先用 `jiShen`，本函数只留给拿不到四柱的场景（或作为手工夹具的兜底）。
+ *
+ * ⚠️ 不传 `yongShen` 时行为与旧版完全一致（纯扶抑），保证既有调用方不受影响。
  */
-export function deriveJiShen(dayWx: string, strengthLevel?: string): string[] {
+export function deriveJiShen(dayWx: string, strengthLevel?: string, yongShen?: string[]): string[] {
   if (!dayWx || !strengthLevel) return [];
-  if (strengthLevel.includes('强')) return [WX_SHENG_ME[dayWx], dayWx].filter(Boolean);
-  if (strengthLevel.includes('弱')) return [WX_KE_ME[dayWx], WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean);
-  return [];
+  let pool: string[];
+  if (strengthLevel.includes('强')) pool = [WX_SHENG_ME[dayWx], dayWx].filter(Boolean);
+  else if (strengthLevel.includes('弱')) pool = [WX_KE_ME[dayWx], WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean);
+  else return [];
+  if (yongShen && yongShen.length > 0) {
+    const inYong = new Set(yongShen);
+    pool = pool.filter((wx) => !inYong.has(wx));
+  }
+  return [...new Set(pool)];
 }
 
 /**

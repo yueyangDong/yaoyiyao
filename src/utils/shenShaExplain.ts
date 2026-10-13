@@ -368,7 +368,7 @@ function verdictOf(
  */
 export function explainShenSha(input: ShaExplainInput): ShaExplainItem[] {
   const { pillars, shenSha, strengthLevel, yongShen = [] } = input;
-  const items = calcShenShaPower({ pillars, shenSha, strengthLevel, yongShen });
+  const items = calcShenShaPower({ pillars, shenSha, yongShen });
   const ZHI_WX: Record<string, string> = {
     子: '水', 丑: '土', 寅: '木', 卯: '木', 辰: '土', 巳: '火',
     午: '火', 未: '土', 申: '金', 酉: '金', 戌: '土', 亥: '水',

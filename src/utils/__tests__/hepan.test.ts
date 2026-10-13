@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { analyzeHePan, type HePanInput } from '../hepan';
 import type { PillarData } from '../../pages/Bazi';
 
+// ⚠️ 本文件是**手工构造盘**，只用来验证「给定这些输入，判定与打分是否正确」。
+//    `nayin` 等字段是直接写死的合成值，**不对应真实排盘结果**（例如这里 年柱=壬子 却写 '剑锋金'、
+//    年柱=甲寅 却写 '炉中火'），所以**不要**拿这份夹具去反推真实排盘口径——
+//    buildPerson 的 nayin 口径（年柱纳音）见 personChart.ts；真实分布回归见 hepanCalibration.test.ts。
+//    若某条用例需要断言"纳音生克"，请在该用例里显式覆写双方 nayin（见下方「相克对打分」）。
 const mk = (tianGan: string, diZhi: string): PillarData => ({
   pillar: '年柱', ganZhi: tianGan + diZhi, tianGan, diZhi,
   cangGan: [], shiShen: '', shiShenZhi: '', nayin: '',
@@ -52,13 +57,75 @@ describe('analyzeHePan', () => {
     expect(item!.score).toBe(20);
   });
 
+  it('忌神：传了 jiShen（完整口径）即以此为准，不再走扶抑兜底', () => {
+    // 用「从财格」做判据：日主极弱而月令财旺 → 弃身从财，喜财食、**忌印比**，
+    // 与扶抑口径（身弱忌官杀/财/食伤）几乎完全相反。
+    // 扶抑兜底算不出「木(印)为忌」，完整口径能 —— 两者必须给出不同的分。
+    const base = {
+      mine: { ...input().mine, dayGan: '丙', dayWx: '火', strengthLevel: '身极弱', yongShen: ['金', '土'] },
+      partner: { ...input().partner }, // 对方日主木 = 我的印
+    };
+    const noJi = analyzeHePan(input(base as any)).items.find((i) => i.title === '日主五行')!;
+    const withJi = analyzeHePan(input({
+      ...base,
+      mine: { ...base.mine, jiShen: ['木', '火'] }, // 从财：忌印（木）、比劫（火）
+    } as any)).items.find((i) => i.title === '日主五行')!;
+    expect(withJi.score).toBe(noJi.score - 2); // 对方日主木落我忌神 → −2
+    expect(withJi.desc).toContain('忌神');
+    // ⚠️ 措辞必须按旺衰分档：身**极弱**的从格不能说"本已偏旺、帮身过头"
+    expect(withJi.desc).toContain('恰好相反');
+    expect(withJi.desc).not.toContain('帮身过头');
+    // 反过来：身强被生仍走"帮身过头"那套（v5 语义不许丢）
+    const strongJi = analyzeHePan(input({
+      mine: { ...input().mine, dayGan: '癸', dayWx: '水', strengthLevel: '身强', yongShen: ['火', '土', '木'] },
+      partner: { ...input().partner, dayGan: '辛', dayWx: '金' },
+    } as any)).items.find((i) => i.title === '日主五行')!;
+    expect(strongJi.desc).toContain('帮身过头');
+  });
+
   it('总分档位与 items 数量正确', () => {
     const r = analyzeHePan(input());
     expect(r.totalScore).toBeGreaterThanOrEqual(0);
-    // 满分 160 = 八字六项各 20 + 紫微两项各 20（v4 起新增「神煞共振」；紫微自 v3 与八字同权重）
-    expect(r.totalScore).toBeLessThanOrEqual(160);
-    expect(r.items.length).toBe(8); // 八字6项 + 紫微2项
+    // 满分 200 = 八字八项各 20 + 紫微两项各 20（v6 起新增「旺衰互动」「气候与用神」）
+    expect(r.totalScore).toBeLessThanOrEqual(200);
+    expect(r.items.length).toBe(10); // 八字8项 + 紫微2项
     expect(['天作之合', '良缘', '平常', '需磨合']).toContain(r.level);
+  });
+
+  it('v6 新增两项：旺衰互动 / 气候与用神，desc 均非空且随盘变化', () => {
+    const r = analyzeHePan(input());
+    const ws = r.items.find((i) => i.title === '旺衰互动')!;
+    const cl = r.items.find((i) => i.title === '气候与用神')!;
+    expect(ws.score).toBe(10); // 夹具未传旺衰档 → 中性分
+    expect(ws.desc.length).toBeGreaterThan(8);
+    expect(cl.desc).toContain('季节');
+    expect(cl.desc).toContain('用神');
+    // 旺衰互动：一强一弱 → 互补（≥18）；双强 → 硬碰硬（≤10）
+    const dComplement = analyzeHePan(input({
+      mine: { ...input().mine, strengthLevel: '身强', yongShen: ['木', '火'] },
+      partner: { ...input().partner, strengthLevel: '身弱', yongShen: ['水', '金'] },
+    } as any));
+    expect(dComplement.items.find((i) => i.title === '旺衰互动')!.score).toBeGreaterThanOrEqual(18);
+    const dBothStrong = analyzeHePan(input({
+      mine: { ...input().mine, strengthLevel: '身强', yongShen: ['木', '火'] },
+      partner: { ...input().partner, strengthLevel: '身极强', yongShen: ['水', '金'] },
+    } as any));
+    const wsBoth = dBothStrong.items.find((i) => i.title === '旺衰互动')!;
+    expect(wsBoth.score).toBeLessThanOrEqual(10);
+    expect(wsBoth.desc).toContain('都偏强');
+    // 气候与用神：同季 + 用神交集 ≥2 → 满分；寒暖相对（寅=春 × 申=秋 不同气候组）→ 扣分
+    const dSameSeason = analyzeHePan(input({
+      mine: { ...input().mine, pillars: [mk('壬', '子'), mk('癸', '卯'), mk('癸', '酉'), mk('壬', '戌')], yongShen: ['木', '火'] },
+      partner: { ...input().partner, pillars: [mk('甲', '寅'), mk('乙', '辰'), mk('甲', '午'), mk('丙', '巳')], yongShen: ['木', '火'] },
+    }));
+    expect(dSameSeason.items.find((i) => i.title === '气候与用神')!.score).toBe(20);
+    const dOppositeSeason = analyzeHePan(input({
+      mine: { ...input().mine, pillars: [mk('壬', '子'), mk('癸', '寅'), mk('癸', '酉'), mk('壬', '戌')] },
+      partner: { ...input().partner, pillars: [mk('甲', '寅'), mk('乙', '申'), mk('甲', '午'), mk('丙', '辰')] },
+    }));
+    const clRel = dOppositeSeason.items.find((i) => i.title === '气候与用神')!;
+    expect(clRel.score).toBeLessThanOrEqual(9);
+    expect(clRel.desc).toContain('寒暖两端');
   });
 
   // ========== 神煞共振（v4，2026-10-04）==========

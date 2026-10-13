@@ -24,10 +24,13 @@ import { WX_KE, WX_KE_ME, WX_SHENG, WX_SHENG_ME, deriveJiShen } from './wuXingRe
 export { deriveJiShen };
 
 /**
- * 合盘满分（v4）：八字六项 + 紫微两项，共 8 项 × 20 分 = 160 分。
- * ⚠️ 改这里的每一项权重/项数，都要同步 hepan.ts 末尾的档位阈值与 hepan.test.ts 期望值。
+ * 合盘满分（v6）：八字八项 + 紫微两项，共 10 项 × 20 分 = 200 分。
+ * v6（2026-10-13）在原有的八字六项之外补了两项：
+ *   · 「旺衰互动」——两人的旺衰放在一起比（双强硬碰硬 / 双弱互相给不上力 / 一强一弱互补）；
+ *   · 「气候与用神」——月令季节是否同向 + 双方喜用五行的交集。
+ * ⚠️ 改这里的每一项权重/项数，都要同步本文件末尾的档位阈值与 __tests__/hepanCalibration.test.ts。
  */
-export const HEPAN_MAX_SCORE = 160;
+export const HEPAN_MAX_SCORE = 200;
 
 // ========== 紫微合盘：星性分组与经典配对 ==========
 // 中州派星性三分：领导贵气型 / 智谋支援型 / 开创行动型
@@ -123,6 +126,12 @@ export interface HePanInput {
     yongShen: string[];
     /** 日主强弱五档（身极强/身强/中和/身弱/身极弱），与八字页 analyzeDayMasterStrength 同口径 */
     strengthLevel?: string;
+    /**
+     * **完整忌神**（personChart.PersonChart.jiShen = recommendYongShen 的 xiShen，
+     * 含从格/从旺 的喜忌反转与破用变忌）。传了就以此为准；不传则退化为
+     * `deriveJiShen(dayWx, strengthLevel, yongShen)` 那套轻量扶抑兜底。
+     */
+    jiShen?: string[];
     /** 神煞落点（含吉凶类型）。缺省时由契约方按 pillars 自算，元辰/勾绞因无性别会跳过 */
     shenSha?: { name: string; pillar: string; type: '吉' | '凶' | '平' }[];
     ziwei?: any[];
@@ -137,6 +146,8 @@ export interface HePanInput {
     nayin: string;
     yongShen: string[];
     strengthLevel?: string;
+    /** 完整忌神，见 mine.jiShen 的说明 */
+    jiShen?: string[];
     shenSha?: { name: string; pillar: string; type: '吉' | '凶' | '平' }[];
     ziwei?: any[];
     birthInfo?: string;
@@ -241,10 +252,11 @@ function wxRelText(fromWx: string, toWx: string, fromLabel: string, toLabel: str
 /** 对方日主五行对我方的作用方向：+2 落在用神 / −2 落在忌神 / 0 中性
  *  ⚠️ 未传 strengthLevel 时一律返回 0——喜忌修正整体作为一个开关，
  *  保证 v4 的手工测试盘（不带旺衰）行为不变。 */
-function xiJiAdjust(me: { yongShen?: string[]; dayWx: string; strengthLevel?: string }, otherWx: string): number {
+function xiJiAdjust(me: { yongShen?: string[]; dayWx: string; strengthLevel?: string; jiShen?: string[] }, otherWx: string): number {
   if (!otherWx || !me.strengthLevel) return 0;
   if ((me.yongShen || []).includes(otherWx)) return 2;
-  if (deriveJiShen(me.dayWx, me.strengthLevel).includes(otherWx)) return -2;
+  const ji = me.jiShen ?? deriveJiShen(me.dayWx, me.strengthLevel, me.yongShen);
+  if (ji.includes(otherWx)) return -2;
   return 0;
 }
 
@@ -334,6 +346,10 @@ const JU_VERDICT_TEXT: Record<CrossJu['verdict'], string> = {
 /**
  * 「日主五行」的喜忌补充层：把"相生/相克"的吉凶含义按双方旺衰与忌神校准。
  * 这是 v5 新增——旧版相生一律说"被滋养"，但身强者被生其实是助旺（忌）。
+ *
+ * ⚠️ 忌神侧的措辞必须**分旺衰**：v6.1 起忌神改用完整口径，其中含「从格/从旺」的喜忌反转——
+ *    从财/从杀格日主**极弱**却以印比为忌，「本已偏旺、帮身过头」那套说法套上去就是满口错话。
+ *    所以"身强被生"才说帮身过头，其余情形一律说"方向相反、用错了力的好意"。
  */
 function wxXiJiNote(
   mine: HePanInput['mine'], partner: HePanInput['partner'], myJi: string[], paJi: string[],
@@ -346,9 +362,17 @@ function wxXiJiNote(
   const pJi = paJi.includes(mine.dayWx);
   const bits: string[] = [];
   if (mYong) bits.push(`${pLabel}之${partner.dayWx}正落在${mLabel}用神（${(mine.yongShen || []).join('、')}）上，这份助力实打实`);
-  else if (mJi) bits.push(`${pLabel}之${partner.dayWx}正落在${mLabel}忌神（${myJi.join('、')}）上——${mLabel}本已偏旺，被生是"帮身过头"，舒服不等于有利`);
+  else if (mJi) {
+    bits.push((mine.strengthLevel || '').includes('强')
+      ? `${pLabel}之${partner.dayWx}正落在${mLabel}忌神（${myJi.join('、')}）上——${mLabel}本已偏旺，被生是"帮身过头"，舒服不等于有利`
+      : `${pLabel}之${partner.dayWx}正落在${mLabel}忌神（${myJi.join('、')}）上——这一味与${mLabel}所需恰好相反，最需要提防的反而是"用错了力的好意"`);
+  }
   if (pYong) bits.push(`${mLabel}之${mine.dayWx}正落在${pLabel}用神（${(partner.yongShen || []).join('、')}）上，${pLabel}也因此受益`);
-  else if (pJi) bits.push(`${mLabel}之${mine.dayWx}正落在${pLabel}忌神（${paJi.join('、')}）上，${pLabel}会为此更耗力`);
+  else if (pJi) {
+    bits.push((partner.strengthLevel || '').includes('强')
+      ? `${mLabel}之${mine.dayWx}正落在${pLabel}忌神（${paJi.join('、')}）上，${pLabel}会为此更耗力`
+      : `${mLabel}之${mine.dayWx}正落在${pLabel}忌神（${paJi.join('、')}）上——对${pLabel}来说这不是助力而是消耗，付出前先看看对方真正缺什么`);
+  }
   if (bits.length === 0) return '';
   return `按喜忌再核一层：${bits.join('；')}。`;
 }
@@ -430,10 +454,13 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   const { mine, partner } = input;
   const items: HePanItem[] = [];
 
-  // 双方忌神（扶抑口径）——「日主五行 / 地支成局 / 喜用互补」三项共用。
-  // 未传 strengthLevel 时为空数组，三项自动退化为 v4 旧行为（hepan.test.ts 的手工盘即此情况）。
-  const myJi = deriveJiShen(mine.dayWx, mine.strengthLevel);
-  const paJi = deriveJiShen(partner.dayWx, partner.strengthLevel);
+  // 双方忌神——「日主五行 / 地支成局 / 喜用互补 / 气候与用神」四项共用。
+  // 优先用调用方给的**完整口径**（PersonChart.jiShen = recommendYongShen 的 xiShen：
+  // 从格/从旺的喜忌反转 ∪ 扶抑 ∪ 破用变忌，再减去用神）；
+  // 手工构造的调用方（无 jiShen）才退化为 deriveJiShen 那套轻量扶抑兜底——
+  // 后者不认从格/从旺（会把喜忌整个判反）、也不认破用变忌。
+  const myJi = mine.jiShen ?? deriveJiShen(mine.dayWx, mine.strengthLevel, mine.yongShen);
+  const paJi = partner.jiShen ?? deriveJiShen(partner.dayWx, partner.strengthLevel, partner.yongShen);
 
   // 1) 日主五行（20 分）——双向计算取均分（对称），再叠加双向喜忌修正
   const mWx = mine.dayWx, pWx = partner.dayWx;
@@ -614,7 +641,6 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     pillars: p.pillars,
     // 缺 shenSha 时兜底自算（性别未知 → 元辰/勾绞按无性别跳过，不影响其余神煞）
     shenSha: p.shenSha ?? calcShenSha(p.pillars),
-    strengthLevel: p.strengthLevel,
     yongShen: p.yongShen,
   });
   const shaCmp = compareShenShaCharts(shaInputOf(mine), shaInputOf(partner));
@@ -644,6 +670,125 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     shaDesc += `各自的独有触发点是：${mineOnly ? `${shaMineLabel}带${mineOnly}` : ''}${mineOnly && partnerOnly ? '，' : ''}${partnerOnly ? `${shaPartnerLabel}带${partnerOnly}` : ''}——这部分不是"不合"，而是各自带着不同的课题进场。`;
   }
   items.push({ title: '神煞共振', score: shaScore, desc: shaDesc });
+
+  // 7) 旺衰互动（20 分，v6 新增）
+  // 为什么单列一项：v5 起"身强身弱"虽然已进合盘，但只以「忌神」的形式**间接**出现
+  // （身强者被生 = 帮身过头 → 扣分），从来没有把**两人的旺衰放在一起比**。
+  // 于是"双强"（谁都不肯让）与"双弱"（互相给不上力）在旧口径里与"一强一弱"同分，
+  // 而这三类在现实里的相处难度完全不同。本项只看这一件事，不看五行生克（那是第 1 项的事）。
+  const STRENGTH_AXIS: Record<string, number> = { '身极强': 2, '身强': 1, '中和': 0, '身弱': -1, '身极弱': -2 };
+  const mA = mine.strengthLevel ? STRENGTH_AXIS[mine.strengthLevel] : undefined;
+  const pA = partner.strengthLevel ? STRENGTH_AXIS[partner.strengthLevel] : undefined;
+  const wsMine = mine.name ? `「${mine.name}」` : '你';
+  const wsPartner = partner.name ? `「${partner.name}」` : '对方';
+  let wsScore = 10;
+  let wsDesc: string;
+  if (mA === undefined || pA === undefined) {
+    // 正常流程（合盘页 buildPerson）必定带旺衰档；只有手工构造的调用方会缺。
+    wsScore = 10;
+    wsDesc = '双方旺衰档未随盘传入，本项按中性分计——正常排盘流程不会走到这里，其余各项不受影响。';
+  } else if (mA === 0 && pA === 0) {
+    wsScore = 16;
+    wsDesc = '两人都是中和——这是最"不挑"的旺衰组合：谁也不特别旺、谁也不特别弱，相处里的强弱拉扯最少，'
+      + '谁也不需要长期"让着"谁。代价是少了强弱互补带来的张力，同频有余、互相拉扯成长的机会少，关系更多靠日常经营的默契。';
+  } else if (mA === 0 || pA === 0) {
+    // 一方中和 → 中和自带"百搭"属性（既能接住强的，也不至于被弱的拖住）
+    wsScore = 15;
+    const neutralSide = mA === 0 ? wsMine : wsPartner;
+    const otherSide = mA === 0 ? wsPartner : wsMine;
+    const otherLv = mA === 0 ? partner.strengthLevel : mine.strengthLevel;
+    wsDesc = `${neutralSide}是中和——旺衰上属于"百搭"体质：既能接住强势的一方，也不至于被弱势的一方拖住，`
+      + `${otherSide}的${otherLv}在这段关系里都能找到自己的位置。这一项因此主要由另一方定分：中和的一方更像关系里的稳定器，而不是发力点。`;
+  } else if (mA * pA < 0) {
+    // 一强一弱 → 互补
+    wsScore = Math.abs(mA) + Math.abs(pA) >= 3 ? 20 : 18;
+    const strongSide = mA > 0 ? wsMine : wsPartner;
+    const weakSide = mA > 0 ? wsPartner : wsMine;
+    const strongLv = mA > 0 ? mine.strengthLevel : partner.strengthLevel;
+    const weakLv = mA > 0 ? partner.strengthLevel : mine.strengthLevel;
+    const extreme = Math.abs(mA) === 2 && Math.abs(pA) === 2;
+    wsDesc = `${strongSide}${strongLv}、${weakSide}${weakLv}——一个能撑、一个能软，是合盘里少见的"互补结构"：`
+      + `${strongSide}天然给出方向与底气，${weakSide}带来细腻与回旋。`
+      + (extreme
+        ? '只是两侧都到了"极"，这个互补会走得很极端：强的一方压得住场，也容易压过头；弱的一方接得住宠，也容易退到没声音。'
+          + '强的一方要刻意"往后半步"、弱的一方要刻意"往前半步"，这个结构才转得起来。'
+        : '只要强的一方别把"照顾"演成"掌控"、弱的一方别把"依赖"当成理所当然，这一项是实打实的加分。')
+      + '但互补不等于单方面供养——能撑的人也会累，别让"你比我强"变成"所以都该你来"。';
+  } else if (mA > 0) {
+    // 同强 → 硬碰硬
+    wsScore = Math.abs(mA) + Math.abs(pA) >= 3 ? 7 : 10;
+    wsDesc = `两人都偏强（${mine.strengthLevel} / ${partner.strengthLevel}）——两个人都能量足、主意正，谁都扛得住事，也谁都不太习惯让步。`
+      + '这类组合的好处是"靠得住"，难处在"谁来先低头"这道题上天生拿不到分：两个发电机接在一起，火花是真的大，烧保险丝也真容易。'
+      + '出路不是比谁更有道理，而是提前约定一条规矩——"谁更在意这件事，谁先开口"，把让步变成规则而不是输赢。';
+  } else {
+    // 同弱 → 互相给不上力
+    wsScore = Math.abs(mA) + Math.abs(pA) >= 3 ? 7 : 10;
+    wsDesc = `两人都偏弱（${mine.strengthLevel} / ${partner.strengthLevel}）——谁都需要被扶一把，而对方手里恰好也没有那把力气。`
+      + '这类组合最怕"一起沉"：一方情绪落下去，另一方接不住，很容易被同一个浪打翻。'
+      + '别指望对方当你的充电宝——你们更需要一起接电：稳定的作息、可信赖的朋友、共同的长期目标，都是你们共同的"补气"。';
+  }
+  items.push({ title: '旺衰互动', score: wsScore, desc: wsDesc });
+
+  // 8) 气候与用神（20 分，v6 新增）
+  // 两项内容合在一项里，因为它们是同一件事的两个侧面——"我们缺的是不是同一种东西"：
+  //   ① 季节同向：月令所属气候是否同向。生于同一气候的人，怕冷怕热、作息节奏、
+  //      对"热闹还是安静"的需要天生接近，日常摩擦天生就少；寒暖相对则相反。
+  //   ② 用神交集：双方喜用五行的**重合度**。都需火的人天然同频，一方要火一方忌火则是拧着来。
+  //      这与「喜用互补」不是同一件事：那一项看"对方这个**人**能不能补我"，
+  //      这一项看"我们使劲的**方向**是不是同一个"。
+  const SEASON_OF_ZHI: Record<string, string> = {
+    寅: '春', 卯: '春', 辰: '春', 巳: '夏', 午: '夏', 未: '夏',
+    申: '秋', 酉: '秋', 戌: '秋', 亥: '冬', 子: '冬', 丑: '冬',
+  };
+  /** 气候组：寒暖是调候的根，跨季节也可同向（春与夏同属暖、秋与冬同属寒） */
+  const CLIMATE_OF_SEASON: Record<string, string> = { 春: '暖', 夏: '暖', 秋: '寒', 冬: '寒' };
+  const mMonthZhi = mine.pillars?.[1]?.diZhi || '';
+  const pMonthZhi = partner.pillars?.[1]?.diZhi || '';
+  const mSeason = SEASON_OF_ZHI[mMonthZhi] || '';
+  const pSeason = SEASON_OF_ZHI[pMonthZhi] || '';
+  const yongCross = (mine.yongShen || []).filter((wx) => (partner.yongShen || []).includes(wx));
+  const jiCross = myJi.filter((wx) => paJi.includes(wx));
+  let clScore = 10;
+  let seasonText: string;
+  if (mSeason && pSeason) {
+    if (mSeason === pSeason) {
+      clScore += 5;
+      seasonText = `两人同生于${mSeason}季（${mMonthZhi}月 / ${pMonthZhi}月）——寒暖燥湿的体感、作息节奏、对"热闹还是安静"的需要都天生接近，`
+        + '因为"你不觉得冷、我觉得热"这类小事起摩擦的概率天生就低';
+    } else if (CLIMATE_OF_SEASON[mSeason] === CLIMATE_OF_SEASON[pSeason]) {
+      clScore += 2;
+      seasonText = `你生于${mMonthZhi}月（${mSeason}）、对方生于${pMonthZhi}月（${pSeason}）——虽不同季，`
+        + `但同属气候上的"${CLIMATE_OF_SEASON[mSeason]}"（${mSeason}与${pSeason}），体感、作息与日常节奏谈不上冲突，大体同向`;
+    } else {
+      clScore -= 3;
+      seasonText = `你生于${mMonthZhi}月（${mSeason}，气候偏${CLIMATE_OF_SEASON[mSeason]}）、`
+        + `对方生于${pMonthZhi}月（${pSeason}，气候偏${CLIMATE_OF_SEASON[pSeason]}）——正好分处寒暖两端：`
+        + '一方体感偏寒、一方体感偏暖，空调温度、作息早晚、连"什么时候想出门"都容易对不上。这不是三观问题，是体感问题，说开了就好办';
+    }
+  } else {
+    seasonText = '双方月令未取到，季节这一层按中性计';
+  }
+  let yongText: string;
+  if (yongCross.length >= 2) {
+    clScore += 5;
+    yongText = `喜用高度重合（都需${yongCross.join('、')}）——你们缺的是同一种东西、往同一个方向使劲，谁往前推都不会拆对方的台`;
+  } else if (yongCross.length === 1) {
+    clScore += 2;
+    yongText = `喜用有一处重合（共同需要${yongCross[0]}）——同频的地方够你们互相确认，不同频的地方留出各自的空间就好`;
+  } else {
+    yongText = '双方喜用五行没有交集——各自缺的东西不一样，一方觉得"这样最舒服"的安排，另一方可能完全无感。'
+      + '这一层不扣分，但提醒你们：照顾对方要用对方的方式，别用自己的舒适去揣度对方';
+  }
+  let jiText = '';
+  if (jiCross.length >= 2) {
+    clScore -= 3;
+    jiText = `另外，${jiCross.join('、')}在你们双方盘里都是忌神——方向感一致是好事，但一起使劲时也要小心别把这股"共同的方向感"用在彼此都不需要的地方`;
+  } else if (jiCross.length === 1) {
+    clScore -= 1;
+    jiText = `另外，${jiCross[0]}对你们双方都是忌神——共同不爱的东西，反而容易成为"一起躲开"的默契`;
+  }
+  const clDesc = `季节：${seasonText}。用神：${yongText}。${jiText}`;
+  items.push({ title: '气候与用神', score: clamp20(clScore), desc: clDesc });
 
   // 6) 紫微命宫主星（20 分）——命宫主星配对 + 夫妻宫互参 + 命宫地支合冲（三项皆双向对称）
   // v3（2026-09-24）：由 10 分制升为 20 分制，与八字五项同权重，紫微不再只是"点缀分"。
@@ -757,38 +902,45 @@ export function analyzeHePan(input: HePanInput): HePanResult {
   items.push({ title: '四化互动', score: sihuaScore, desc: sihuaDesc });
 
   const totalScore = items.reduce((s, i) => s + i.score, 0);
-  // 满分口径（v4）：八字六项各 20 分（日主五行/地支合冲/纳音年命/生肖配对/喜用互补/神煞共振）
-  // + 紫微两项各 20 分 = 160 分。
+  // 满分口径（v6）：八字八项各 20 分（日主五行/地支合冲/纳音年命/生肖配对/喜用互补/神煞共振/
+  // 旺衰互动/气候与用神）+ 紫微两项各 20 分 = 200 分。
   //
-  // 档位阈值（v5.1，2026-10-07）：**不是等比换算来的，是按实测分布分位数标定的**。
-  // 400 对真实合盘（seed 20261006）实测：8 项总分 mean 100.7、min 63、p15 85、p50 101、
-  // p55 103、p90 118、max 136。取 p90 / p55 / p15 → **118 / 103 / 85**。
-  // 档位占比：天作之合 11.5% / 良缘 34.8% / 平常 40.3% / 需磨合 13.5%。
+  // 档位阈值（v6.1，2026-10-13）：**不是等比换算来的，是按实测分布分位数标定的**。
+  // 400 对真实合盘（seed 20261006，与 hepanCalibration.test.ts 同一批）实测：
+  // 10 项总分 mean 128.2、min 85、p15 113、p50 128、p55 130、p70 137、p90 147、max 160。
+  // 取 p90 / p55 / p15 → **147 / 130 / 113**。
+  // 档位占比：天作之合 10.5% / 良缘 36.8% / 平常 38.5% / 需磨合 14.2%
+  // ——与 v5.1 的 11.5 / 34.8 / 40.3 / 13.5 基本一致，说明加项没有把档位语义打歪。
   //
-  // ⚠️ v5 / v5.1 为什么两次重标（同一天改了四个分项的口径，分布必移）：
-  //   ①「日主五行」加喜忌修正（身强者被生不再判为吉）②「喜用互补」改双向四象限
-  //   （对方日主落在忌神要扣分）③「地支合冲」补跨盘三合/三会成局
-  //   ④「地支合冲」修 DZ_ 表误用——六合/三合/六冲在原实现里**全部静默失效**
-  //   （拿地支去查生肖键的表，恒 undefined），该分项退化成"常数 10 + 成局修正"，
-  //   desc 却照旧写"无大合也无大冲"（实测 400 对里 99%+ 都落到这句话）。
-  //   ①②③ 让分布下移（p15 90 → 83、p55 101 → 100、p90 恰好仍 114）；
-  //   ④ 修复后分布又抬回来并有真实方差（mean 100.7、p90 118，dzScore p15 9 / p90 19）。
-  //   **锚点是分布的函数、分布是分项口径的函数**——改任一分项口径都要回来重标，
-  //   否则阈值会与分布脱节（旧口径 107 会变成"人人良缘"）。
+  // ⚠️ v6 / v6.1 为什么连着重标两次（一轮里动了五处口径，分布必移）：
+  //   ① 新增「旺衰互动」② 新增「气候与用神」→ 项数 8 → 10、满分 160 → 200；
+  //   ③ 忌神改用**完整口径**（`PersonChart.jiShen` = `recommendYongShen` 的 `xiShen`：
+  //      特殊格局(从格/从旺，喜忌反转) ∪ 扶抑 ∪ 破用变忌，再减去用神）。
+  //      它把此前"轻量扶抑兜底"的口径补全了——实测 800 张真实盘有 **28.4%** 的忌神表发生变化
+  //      （人均多 0.43 条、少 0.11 条），且**杜绝了"同一五行既是用神又是忌神"**（实测 0 例）；
+  //      「喜用互补」的方差因此明显变大（mean 12.29 → 11.54、p15 8 → 2），判别力更强；
+  //   ④ 「纳音年命」改用年柱纳音（personChart）——两口径分布同形，单独看不必重标；
+  //   ⑤ `personChart.buildPerson` 改为把全局五行统计喂给 `recommendYongShen`
+  //      （此前传 undefined）→ 合盘/对比页的用神与八字页彻底同口径（从旺格识别从"缺"变"有"）。
+  //   ③⑤ 让分布整体小幅**下移**（mean 129.5 → 128.2、p15 115 → 113、p55 132 → 130、p90 148 → 147），
+  //   故阈值随之下移 1~2 分——这正是"锚点是分布的函数"该有的动作，别把旧数字抄回来。
   //
-  // ⚠️ 为什么不用"等比换算 140→160 = 106/87/66"：
-  //   换算后实测占比为 天作之合 32.7% / 良缘 57.8% / 平常 9.3% / 需磨合 0.2%，
-  //   与旧口径的 38.7% / 54.7% / 6.7% / 0% 同样失衡——"天作之合"近四成、"需磨合"不可达，
-  //   档位等于没有区分度。等比换算的前提是"新项分布与旧项同量纲"，而神煞共振项
-  //   均分 10.4/20（p50 恰为 10）低于旧项均分 12.97/20，前提不成立。
-  //   所以借满分口径必变的机会把档位定到合理分布：11.5% / 34.8% / 40.3% / 13.5%。
-  //   若将来要回到"高分宽松"的口径，改回 106/87/66 即可（这两个数字保留在此供对照）。
-  const level = totalScore >= 118 ? '天作之合' : totalScore >= 103 ? '良缘' : totalScore >= 85 ? '平常' : '需磨合';
-  const levelNote = totalScore >= 118
+  // ⚠️ 历史记录（供对照，别再把旧阈值抄回来）：
+  //   v4 满分 140 → 档位 107/87/66；v5/v5.1 满分 160 → 档位 118/103/85；
+  //   v6 满分 200 → 档位 148/132/115。
+  //
+  // ⚠️ 为什么不用"等比换算 160→200 = 148/129/106"：
+  //   换算的前提是"新项分布与旧项同量纲"，而两个新项（旺衰互动均分 14.2、气候与用神 13.2）
+  //   都**高于**旧 8 项的均分 12.9，前提不成立。所以照旧按分位数直接标定。
+  //
+  // ⚠️ **锚点是分布的函数、分布是分项口径的函数**——改任一分项口径都要回来重标，
+  //   否则阈值会与分布脱节。改完同步 __tests__/hepanCalibration.test.ts 的区间与占比断言。
+  const level = totalScore >= 147 ? '天作之合' : totalScore >= 130 ? '良缘' : totalScore >= 113 ? '平常' : '需磨合';
+  const levelNote = totalScore >= 147
     ? '这个分数段意味着：你们先天的"合"远多于"冲"——不是不会有矛盾，而是矛盾总有化解的底子。别辜负这份出厂配置。'
-    : totalScore >= 103
+    : totalScore >= 130
       ? '这个分数段意味着：底子是好的，磨合点也明确——知道坑在哪的情侣，比稀里糊涂的情侣走得远。'
-      : totalScore >= 85
+      : totalScore >= 113
         ? '这个分数段意味着：先天缘分平平，既不算天造地设，也绝非无缘——这样的感情像白手起家，挣来的每一分都是自己的。'
         : '这个分数段意味着：先天的差异点多，要付出的功课也多——但请记住：合盘量的是"出厂配置"，量不出"两个人愿意为彼此改多少"。多少低分发盘过成了一流感情，靠的就是这件事。';
   const summary = `综合 ${totalScore} 分（${level}）。${wxScore >= 14 ? '五行磁场相合，' : '五行上需要磨合，'}${dzScore >= 14 ? '地支缘分深厚，' : '地支冲合并存，'}${sxScore >= 14 ? '生肖彼此投缘。' : '生肖需多包容。'}${levelNote}合盘看的是趋势，最终经营在两人。`;

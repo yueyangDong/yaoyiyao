@@ -87,7 +87,7 @@ function ShaRow({ item }: { item: ShaPowerItem }) {
 
 function ChartColumn({ chart, label, color }: { chart: PersonChart; label: string; color: string }) {
   const powers = calcShenShaPower({
-    pillars: chart.pillars, shenSha: chart.shenSha, strengthLevel: chart.strengthLevel, yongShen: chart.yongShen,
+    pillars: chart.pillars, shenSha: chart.shenSha, yongShen: chart.yongShen,
   }).sort((a, b) => b.power - a.power);
   return (
     <Card size="small" title={<Text strong style={{ color }}>{label}｜{chart.name}</Text>} style={{ height: '100%' }}>

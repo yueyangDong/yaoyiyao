@@ -20,6 +20,11 @@
 // ⚠️ 刻意【不】建模的东西（避免伪精度，别当成漏做）：
 //   - 不引入「忌神」概念：项目里 yongShen 只是一组五行（baziAnalysis 的 getYongShen 口径），
 //     没有权威的忌神列表，硬推会让系数看起来精确、实际是臆造。
+//   - **不引入「身强身弱」**：本模型的喜忌系数只看"该柱五行落不落用神"，
+//     与旺衰无关。曾经在 ShaPowerInput 上挂过一个 `strengthLevel` 字段并注明
+//     "缺省时不做身强修正"，但 calcShenShaPower 从未读取它——注释承诺了一个不存在的行为，
+//     且会让人误以为 power 已经吃了旺衰。2026-10-13 已删除该字段（旺衰对神煞的解释
+//     由下游 shenShaExplain.verdictOf 自己按 strengthLevel 出吉凶措辞，不进 power）。
 //   - 不做「岁运引动」：原局自带 vs 流年引动是两种性质，但本项目神煞引擎只跑原局。
 //   - 不做「透干加成」：绝大多数神煞本就是支位判定，透干不构成加成依据。
 //
@@ -57,8 +62,6 @@ export interface ShaPowerItem {
 export interface ShaPowerInput {
   pillars: PillarData[];
   shenSha: { name: string; pillar: string; type?: '吉' | '凶' | '平' }[];
-  /** '身强' | '身弱' | '中和' | '身极强' | '身极弱'，缺省时不做身强修正 */
-  strengthLevel?: string;
   /** 用神五行，如 ['木','火']，缺省时喜忌系数按未命中处理 */
   yongShen?: string[];
 }

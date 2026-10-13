@@ -258,6 +258,8 @@ export interface DayunChartLike {
   pillars: PillarData[];
   dayWx: string;
   yongShen?: string[];
+  /** 完整忌神（PersonChart.jiShen）——不传则退化 deriveJiShen 轻量扶抑兜底 */
+  jiShen?: string[];
   strengthLevel?: string;
   gender?: string;
 }
@@ -443,6 +445,7 @@ export function buildDayunReadings(
           label: `${s.startAge}~${s.endAge}岁大运`,
           era: 'decade',
           yongShen: chart.yongShen,
+          jiShen: chart.jiShen,
           strengthLevel: chart.strengthLevel,
           gender: chart.gender,
         })

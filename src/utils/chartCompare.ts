@@ -77,8 +77,8 @@ export function comparePersons(fa: PersonForm, fb: PersonForm): ChartCompareResu
   const a = formToChart(fa);
   const b = formToChart(fb);
   const similarity = compareShenShaCharts(
-    { pillars: a.pillars, shenSha: a.shenSha, strengthLevel: a.strengthLevel, yongShen: a.yongShen },
-    { pillars: b.pillars, shenSha: b.shenSha, strengthLevel: b.strengthLevel, yongShen: b.yongShen },
+    { pillars: a.pillars, shenSha: a.shenSha, yongShen: a.yongShen },
+    { pillars: b.pillars, shenSha: b.shenSha, yongShen: b.yongShen },
   );
   return { a, b, similarity };
 }

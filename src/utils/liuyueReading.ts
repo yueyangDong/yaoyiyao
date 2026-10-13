@@ -96,6 +96,8 @@ export interface LiuYueOpts {
   /** 日主天干：算十神与配偶宫所必需，与 pillars 一起传 */
   dayGan?: string;
   yongShen?: string[];
+  /** 完整忌神（PersonChart.jiShen）——不传则退化 deriveJiShen 轻量扶抑兜底 */
+  jiShen?: string[];
   strengthLevel?: string;
   gender?: string;
 }
@@ -108,7 +110,7 @@ export interface LiuYueOpts {
  * @param opts.pillars / opts.dayGan 命局（可选）——传入则每月附加地支互动
  */
 export function buildLiuYueList(opts: LiuYueOpts): LiuYueItem[] {
-  const { dayWx, dayunGanZhi, pillars, dayGan, yongShen, strengthLevel, gender } = opts;
+  const { dayWx, dayunGanZhi, pillars, dayGan, yongShen, jiShen, strengthLevel, gender } = opts;
   const now = opts.now || new Date();
   // 日主 vs 月令：wxSheng[x] = 生 x 之行
   const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
@@ -163,6 +165,7 @@ export function buildLiuYueList(opts: LiuYueOpts): LiuYueItem[] {
           label: monthName,
           era: 'month',
           yongShen,
+          jiShen,
           strengthLevel,
           gender,
         })
@@ -191,6 +194,8 @@ export interface LiuRiOpts {
   pillars?: PillarData[];
   dayGan?: string;
   yongShen?: string[];
+  /** 完整忌神（PersonChart.jiShen）——不传则退化 deriveJiShen 轻量扶抑兜底 */
+  jiShen?: string[];
   strengthLevel?: string;
   gender?: string;
 }
@@ -203,7 +208,7 @@ export interface LiuRiOpts {
  * @param opts.month 公历月（1-12）
  */
 export function buildLiuRiList(opts: LiuRiOpts): LiuRiItem[] {
-  const { year, month, dayWx, pillars, dayGan, yongShen, strengthLevel, gender } = opts;
+  const { year, month, dayWx, pillars, dayGan, yongShen, jiShen, strengthLevel, gender } = opts;
   const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
   const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
   const canInteract = !!(pillars && pillars.length >= 4 && dayGan);
@@ -233,6 +238,7 @@ export function buildLiuRiList(opts: LiuRiOpts): LiuRiItem[] {
             label,
             era: 'day',
             yongShen,
+            jiShen,
             strengthLevel,
             gender,
           })
