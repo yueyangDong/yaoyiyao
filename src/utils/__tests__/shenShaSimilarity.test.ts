@@ -21,7 +21,7 @@ import { describe, it, expect } from 'vitest';
 import { sampleCharts, buildChart, quantile, type ChartFixture } from './fixtures/realCharts';
 import {
   calcShenShaPower, buildShaFingerprint, changShengOf, branchRelationsOf,
-  powerLevel, SHENSHA_POWER_BANDS, PALACE_WEIGHT,
+  powerLevel, SHENSHA_POWER_BANDS, PALACE_WEIGHT, RELATION_FACTOR,
 } from '../shenShaPower';
 import {
   fingerprintSimilarity, compareShenShaCharts, shaSimilarityLevel, SHENSHA_SIMILARITY_BANDS,
@@ -105,6 +105,32 @@ describe('神煞力量模型：因子语义', () => {
     })[0];
     expect(multi.factors.relation).toBe(0.4);
     expect(branchRelationsOf([P('年柱', '甲申'), P('月柱', '丙戌'), P('日柱', '甲寅'), P('时柱', '甲子')], 2)).toContain('冲');
+  });
+
+  // ⚠️ 回归：自刑的本义是"同支相叠"（辰见辰、午见午、酉见酉、亥见亥）。
+  // 旧实现只问"这一柱地支是不是自刑支"，不看是否真的重复 —— 于是全盘只有一个辰也会被判刑，
+  // 把 relation 系数从 1.0 压到 0.75。这条用例同时钉住"不重复不算"与"重复才算"两侧，
+  // 改回旧口径会立刻变红。
+  it('自刑只在同支重复时成立：单支辰不算刑，两柱皆辰才算', () => {
+    const single = [P('年柱', '甲辰'), P('月柱', '丙午'), P('日柱', '戊子'), P('时柱', '壬申')];
+    expect(branchRelationsOf(single, 0)).not.toContain('刑');
+    // 该盘其余柱与年支辰无冲无合无害（辰辰以外的关系都不成立），故整体为空
+    expect(branchRelationsOf(single, 0)).toEqual([]);
+
+    const doubled = [P('年柱', '甲辰'), P('月柱', '丙辰'), P('日柱', '戊子'), P('时柱', '壬申')];
+    expect(branchRelationsOf(doubled, 0)).toContain('刑');
+    expect(branchRelationsOf(doubled, 1)).toContain('刑');
+
+    // 单支力量应高于被误判为刑的那一支（1.0 vs 0.75）
+    const withoutXing = calcShenShaPower({
+      pillars: single, shenSha: [{ name: 'X', pillar: '年柱', type: '平' }],
+    })[0];
+    const withXing = calcShenShaPower({
+      pillars: doubled, shenSha: [{ name: 'X', pillar: '年柱', type: '平' }],
+    })[0];
+    expect(withoutXing.factors.relation).toBe(1);
+    expect(withXing.factors.relation).toBe(RELATION_FACTOR['刑']);
+    expect(withoutXing.power).toBeGreaterThan(withXing.power);
   });
 
   it('落空亡 → 0.35；但「空亡」这颗煞自身不受自指影响', () => {

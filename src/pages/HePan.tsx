@@ -8,7 +8,9 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
 import { analyzeHePan, HEPAN_MAX_SCORE } from '../utils/hepan';
-import { buildPerson, normalizeWanZi } from '../utils/personChart';
+import { buildPerson, normalizeWanZi, currentDayunOf } from '../utils/personChart';
+// 合盘「今年关系走势」动态层：只看今年怎么走，**不进 160 分**（理由见 utils/hepanFlow.ts 头部）
+import { analyzeHePanFlow, type HePanFlowResult, type HePanFlowPartyInput } from '../utils/hepanFlow';
 import PayWall from '../components/PayWall';
 import { hepanTargetKey } from '../lib/payment';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from '../utils/dateValidation';
@@ -20,6 +22,8 @@ export default function HePan() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof analyzeHePan> | null>(null);
+  /** 今年的关系走势（动态层；不进 160 分） */
+  const [flowResult, setFlowResult] = useState<HePanFlowResult | null>(null);
   const [chartKey, setChartKey] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +115,29 @@ export default function HePan() {
       (partner as any).longitude = partnerLng;
       const r = analyzeHePan({ mine, partner });
       setResult(r);
+
+      // 今年的关系走势（动态层）：双方各自的当前大运 × 今年流年，交叉出关系主题。
+      // ⚠️ 与 160 分完全分开——总分是静态的（出生即定、跨年份可比），本层只做"今年怎么走"的预报。
+      const curYear = new Date().getFullYear();
+      const mkFlowParty = (
+        p: NonNullable<typeof mine>,
+        birthYear: number,
+      ): HePanFlowPartyInput => ({
+        name: p.name,
+        pillars: p.pillars,
+        dayGan: p.dayGan,
+        dayWx: p.dayWx,
+        yongShen: p.yongShen,
+        strengthLevel: p.strengthLevel,
+        gender: p.gender,
+        // 当前大运按**虚岁闭区间**定位（personChart.currentDayunOf，与八字页结论卡同源）
+        dayunGanZhi: currentDayunOf(p.eightChar, p.gender, birthYear, curYear)?.ganZhi || '',
+      });
+      setFlowResult(analyzeHePanFlow({
+        mine: mkFlowParty(mine, currentUser?.birthYear || 0),
+        partner: mkFlowParty(partner, year),
+        year: curYear,
+      }));
       // 权益指纹：绑定"这两人这一盘"，换人/换盘需重新解锁
       setChartKey(hepanTargetKey(mine.pillars, partner.pillars));
       // 保存合盘记录
@@ -231,6 +258,68 @@ export default function HePan() {
               <Text style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, display: 'block', marginTop: 4 }}>{it.desc}</Text>
             </div>
           ))}
+          {/* 今年的关系走势（动态层：只看"今年怎么走"，不进 160 分） */}
+          {flowResult && (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(201,169,110,0.06)', border: '1px solid rgba(201,169,110,0.28)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                <Text strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>📅 今年的关系走势</Text>
+                <Tag style={{
+                  margin: 0, border: 'none', fontSize: 12,
+                  background: flowResult.level === '需留意' ? 'rgba(194,59,43,0.10)' : flowResult.level === '顺' ? 'rgba(107,154,122,0.14)' : 'rgba(0,0,0,0.05)',
+                  color: flowResult.level === '需留意' ? 'var(--wx-fire)' : flowResult.level === '顺' ? 'var(--wx-wood)' : 'var(--text-secondary)',
+                }}>{flowResult.theme}</Tag>
+              </div>
+
+              {flowResult.opportunities.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <Text strong style={{ fontSize: 13, color: 'var(--wx-wood)' }}>顺势的一面</Text>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                    {flowResult.opportunities.map((t, i) => (
+                      <li key={i} style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>{t}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {flowResult.risks.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <Text strong style={{ fontSize: 13, color: 'var(--wx-fire)' }}>要留意的一面</Text>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                    {flowResult.risks.map((t, i) => (
+                      <li key={i} style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>{t}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 双方各自的年度重心与受影响领域 */}
+              <div style={{ marginTop: 10, borderTop: '1px dashed rgba(201,169,110,0.4)', paddingTop: 8 }}>
+                {[flowResult.mine, flowResult.partner].map((side, si) => (
+                  <div key={si} style={{ marginBottom: si === 0 ? 8 : 0 }}>
+                    <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                      「{side.name}」今年{side.dayunGanZhi ? `（当前大运 ${side.dayunGanZhi}）` : '（尚未起运）'}
+                    </Text>
+                    <Paragraph style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 2, marginBottom: 4 }}>
+                      {side.summary}
+                    </Paragraph>
+                    {side.liunian.domains.length > 0 && (
+                      <Space size={4} wrap>
+                        {side.liunian.domains.map((d) => (
+                          <Tag key={d.domain} style={{
+                            margin: 0, fontSize: 11, border: 'none',
+                            background: d.level === '需留意' ? 'rgba(194,59,43,0.10)' : d.level === '顺' ? 'rgba(107,154,122,0.12)' : 'rgba(0,0,0,0.045)',
+                            color: d.level === '需留意' ? 'var(--wx-fire)' : d.level === '顺' ? 'var(--wx-wood)' : 'var(--text-secondary)',
+                          }}>{d.domain}·{d.level}</Tag>
+                        ))}
+                      </Space>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>{flowResult.notice}</Text>
+            </div>
+          )}
           {/* 性格互动双画像 */}
           {result.personalityDuet && (
             <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'rgba(44,90,142,0.04)', border: '1px solid rgba(44,90,142,0.15)' }}>

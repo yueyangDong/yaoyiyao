@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { PillarData } from '../../pages/Bazi';
 import {
   resolveLifeStage,
   resolveRelation,
@@ -7,7 +8,21 @@ import {
   toNominalAge,
   LIFE_STAGES,
   type DayunStep,
+  type DayunChartLike,
 } from '../dayunReading';
+
+const P = (pillar: string, tianGan: string, diZhi: string): PillarData => ({
+  pillar, ganZhi: tianGan + diZhi, tianGan, diZhi,
+  cangGan: [], shiShen: '', shiShenZhi: '', nayin: '',
+});
+const NAMES = ['年柱', '月柱', '日柱', '时柱'];
+
+/** 由 [天干, 地支] 四组造命局；chart 的 dayWx 由日主天干推得 */
+function mkChart(pillars: [string, string][], extra: Partial<DayunChartLike> = {}): DayunChartLike {
+  const list = pillars.map(([g, z], i) => P(NAMES[i], g, z));
+  const dayWx = { '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水' }[list[2].tianGan] || '';
+  return { pillars: list, dayWx, ...extra };
+}
 
 describe('人生阶段划分', () => {
   it('边界取值正确（60 岁起为退休生活期）', () => {
@@ -195,5 +210,65 @@ describe('当前大运定位（虚岁闭区间，端点不落空）', () => {
     const cur = readings.filter((r) => r.isCurrent);
     expect(cur).toHaveLength(1);
     expect(cur[0].ganZhi).toBe('丙寅');
+  });
+});
+
+// ========== 大运 × 命局互动层（2026-10-13 新增） ==========
+// 原实现只看大运**天干**对日主的十神关系，地支一字不参与——"这步运冲了你的日支"
+// 这类最关键的信息缺失。下列用例钉住：①不传 chart 时零影响；②传了之后每步都有；
+// ③文案里的大运称呼不带"当前大运"（历史/未来的运都自称当前）；④晚年阶段不出现事业词。
+describe('大运 × 命局互动（interaction / interactionNote）', () => {
+  const chart = mkChart([['甲', '寅'], ['丙', '寅'], ['戊', '子'], ['壬', '戌']]);
+
+  it('不传 chart 时 interaction / interactionNote 均为 undefined，text 一字不变', () => {
+    const without = buildDayunReadings(steps, '戊', 40);
+    for (const r of without.readings) {
+      expect(r.interaction).toBeUndefined();
+      expect(r.interactionNote).toBeUndefined();
+    }
+    // 传了 chart 也不能改动「阶段 × 十神」那 30 条文案——两者是并行字段，不是替换
+    const withChart = buildDayunReadings(steps, '戊', 40, 40, chart);
+    expect(withChart.readings.map((r) => r.text)).toEqual(without.readings.map((r) => r.text));
+  });
+
+  it('传入 chart 后每步大运都有 interaction 与白话，且 label 带年龄区间', () => {
+    const { readings } = buildDayunReadings(steps, '戊', 40, 40, chart);
+    for (const r of readings) {
+      expect(r.interaction, `${r.ganZhi} 缺 interaction`).toBeDefined();
+      expect(r.interactionNote && r.interactionNote.length).toBeGreaterThan(10);
+      expect(r.interaction!.era).toBe('decade');
+      // ⚠️ 不得写死"当前大运"：列表里过去/未来的运都会自称当前
+      expect(r.interaction!.label).toBe(`${r.startAge}~${r.endAge}岁大运`);
+      expect(r.interaction!.label).not.toContain('当前');
+    }
+  });
+
+  it('互动随大运干支变化：同一步位换干支，落柱与含义必须不同', () => {
+    const a = buildDayunReadings([{ ganZhi: '甲申', startAge: 36, endAge: 45 }], '戊', 40, 40, chart).readings[0];
+    const b = buildDayunReadings([{ ganZhi: '癸巳', startAge: 36, endAge: 45 }], '戊', 40, 40, chart).readings[0];
+    expect(a.text).not.toBe(b.text); // 阶段 × 十神 本来就不同
+    expect(a.interactionNote).not.toBe(b.interactionNote);
+    // 申冲命局月支/年支寅（申寅既冲又刑 → 按优先级取六冲）
+    expect(a.interaction!.hits.some((h) => h.kind === '六冲')).toBe(true);
+  });
+
+  it('晚年阶段：互动白话不得出现事业 / 求财类措辞（领域名要改写）', () => {
+    const FORBIDDEN = ['事业', '升职', '晋升', '创业', '融资', 'KPI', '业绩', '副业', '扩张', '合伙人', '组团队', '人脉'];
+    // 庚申（申冲寅，落月柱 = 事业与家庭根基）落在退休阶段 → 必须改写成"家庭与日常安排"
+    const r = buildDayunReadings([{ ganZhi: '庚申', startAge: 60, endAge: 69 }], '戊', 65, 65, chart).readings[0];
+    expect(r.stage).toBe('retire');
+    expect(r.interactionNote).toBeTruthy();
+    for (const w of FORBIDDEN) {
+      expect(r.interactionNote!.includes(w), `晚年互动白话出现「${w}」：${r.interactionNote}`).toBe(false);
+    }
+    expect(r.interactionNote).toContain('家庭与日常安排');
+  });
+
+  it('无冲无合的大运也要有一句可读的白话（不留空串）', () => {
+    // 命局四支皆寅，大运甲子（子与寅无冲无合无刑无害）
+    const quiet = mkChart([['甲', '寅'], ['丙', '寅'], ['戊', '寅'], ['壬', '寅']]);
+    const r = buildDayunReadings([{ ganZhi: '甲子', startAge: 36, endAge: 45 }], '戊', 40, 40, quiet).readings[0];
+    expect(r.interaction!.hits).toHaveLength(0);
+    expect(r.interactionNote).toContain('没有明显冲合');
   });
 });

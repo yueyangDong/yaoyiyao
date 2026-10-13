@@ -17,6 +17,7 @@ import { ziwei } from '@ziweijs/core';
 import type { PillarData } from '../pages/Bazi';
 import { calcShenSha, type ShenShaItem } from './shenSha';
 import { analyzeDayMasterStrength, recommendYongShen } from './baziAnalysis';
+import { findCurrentDayunStep, toNominalAge } from './dayunReading';
 
 export const TG_WX: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
@@ -38,6 +39,11 @@ export interface PersonChart {
   yongShen: string[];
   ziwei?: any[];
   birthInfo: string;
+  /**
+   * 八字符本体。八字页自己持有，合盘 / 对比页需要它来取「当前大运」
+   * （见 currentDayunOf）——否则要重新排一次盘，或另抄一份起运逻辑。
+   */
+  eightChar?: EightChar;
 }
 
 /**
@@ -195,5 +201,58 @@ export function buildPerson(
     yongShen: yongRec.yongShen,
     ziwei: buildZiweiChart(solar, gender, ziShiSect),
     birthInfo: `${year}年${month}月${day}日 ${hour}:${String(minute).padStart(2, '0')}`,
+    eightChar: ec,
   };
+}
+
+/** 大运步骤（精简版） */
+export interface DayunStepLite {
+  ganZhi: string;
+  startAge: number;
+  /** 虚岁闭区间上界（lunar-typescript 口径） */
+  endAge: number;
+  startYear: number;
+  endYear: number;
+  /** 起运前的"小运"段（干支为 —，不参与"当前大运"定位） */
+  isPreStart: boolean;
+}
+
+/**
+ * 取大运 11 步（含起运前小运一段）。
+ * 与 Bazi.tsx 页面内联实现同口径：`getYun(1=男/0=女)` → `getDaYun(11)`，第一段为起运前小运。
+ * 收在这里供合盘 / 命盘对比复用，避免第二份起运逻辑。
+ */
+export function dayunStepsOf(eightChar: EightChar, gender: string): DayunStepLite[] {
+  const yun = eightChar.getYun(gender === 'male' || gender === '男' ? 1 : 0);
+  const raw = yun.getDaYun(11) as any[];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((d: any, idx: number) => {
+    const rawGanZhi = (d.getGanZhi?.() as string) || '';
+    return {
+      ganZhi: rawGanZhi || '—',
+      startAge: d.getStartAge?.() ?? 0,
+      endAge: d.getEndAge?.() ?? 0,
+      startYear: d.getStartYear?.() ?? 0,
+      endYear: d.getEndYear?.() ?? 0,
+      isPreStart: idx === 0 && (!rawGanZhi || rawGanZhi === '—'),
+    };
+  });
+}
+
+/**
+ * 当前所在大运（**虚岁闭区间**，未起运返回 null）。
+ *
+ * ⚠️ 端点必须闭区间，且必须用虚岁：steps 的 startAge/endAge 取自 lunar-typescript 是虚岁，
+ * 而页面常持有的是周岁；直接混用会在端点落空（详见 dayunReading.findCurrentDayunStep 的说明）。
+ * 这里统一走 toNominalAge + findCurrentDayunStep，与八字页结论卡同源。
+ */
+export function currentDayunOf(
+  eightChar: EightChar | undefined,
+  gender: string,
+  birthYear: number,
+  currentYear: number,
+): DayunStepLite | null {
+  if (!eightChar || !birthYear) return null;
+  const steps = dayunStepsOf(eightChar, gender);
+  return findCurrentDayunStep(steps, toNominalAge(currentYear, birthYear));
 }

@@ -15,6 +15,13 @@ import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
 import { DAY_MASTER_ESSENCE, getDayMasterTitle } from './baziPersonality';
 import { calcShenSha } from './shenSha';
 import { compareShenShaCharts, resonanceScoreFrom } from './shenShaSimilarity';
+// 地支关系走唯一出口（六合/三合/六冲三张表曾在本文件内各存一份，
+// 与 shenShaPower / 流年互动引擎的表重复；见 diZhiRelations.ts 头部说明）。
+import { DZ_CHONG as DZ_LIU_CHONG, DZ_HE as DZ_LIU_HE, DZ_SAN_HE, DZ_WX } from './diZhiRelations';
+// 五行生克与忌神判据走唯一出口（本文件原先自留四张 WX_* 表，与 dayunReading / 流年引擎重复）。
+// deriveJiShen 仍从本模块对外导出（下方 re-export），保持既有调用方与测试不受影响。
+import { WX_KE, WX_KE_ME, WX_SHENG, WX_SHENG_ME, deriveJiShen } from './wuXingRelations';
+export { deriveJiShen };
 
 /**
  * 合盘满分（v4）：八字六项 + 紫微两项，共 8 项 × 20 分 = 160 分。
@@ -174,30 +181,6 @@ export interface HePanResult {
   };
 }
 
-const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' }; // 我生
-const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };   // 我克
-// 逆查：生我（印）/ 克我（官杀）。用于按旺衰推导忌神——见 deriveJiShen。
-const WX_SHENG_ME: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-const WX_KE_ME: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-const DZ_WX: Record<string, string> = {
-  '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
-  '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
-};
-// 地支六合/三合/六冲——用于紫微命宫宫位的合冲合参（注意：与上面按生肖名的 LIU_HE/SAN_HE 是两套表，勿混用）
-const DZ_LIU_HE: Record<string, string> = {
-  '子': '丑', '丑': '子', '寅': '亥', '亥': '寅', '卯': '戌', '戌': '卯',
-  '辰': '酉', '酉': '辰', '巳': '申', '申': '巳', '午': '未', '未': '午',
-};
-const DZ_SAN_HE: Record<string, string[]> = {
-  '申': ['子', '辰'], '子': ['申', '辰'], '辰': ['申', '子'],
-  '寅': ['午', '戌'], '午': ['寅', '戌'], '戌': ['寅', '午'],
-  '亥': ['卯', '未'], '卯': ['亥', '未'], '未': ['亥', '卯'],
-  '巳': ['酉', '丑'], '酉': ['巳', '丑'], '丑': ['巳', '酉'],
-};
-const DZ_LIU_CHONG: Record<string, string> = {
-  '子': '午', '午': '子', '丑': '未', '未': '丑', '寅': '申', '申': '寅',
-  '卯': '酉', '酉': '卯', '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳',
-};
 const NAYIN_WX: Record<string, string> = {
   '海中金': '金', '剑锋金': '金', '白蜡金': '金', '沙中金': '金', '金箔金': '金', '钗钏金': '金',
   '大林木': '木', '杨柳木': '木', '松柏木': '木', '平地木': '木', '桑柘木': '木', '石榴木': '木',
@@ -252,20 +235,8 @@ function wxRelText(fromWx: string, toWx: string, fromLabel: string, toLabel: str
 //   · 身强者被对方所生（印比助旺）也被判成"被滋养"——方向对、吉凶反；
 //   · 对方日主正好是我的忌神时，最多只被写成"非你喜用"，不扣分。
 // 现按扶抑法补出忌神，再做双向交叉判定。
-
-/**
- * 由日主五行 + 旺衰档推导忌神五行（扶抑法，与 baziAnalysis.recommendYongShen 同口径）：
- *   身强（含身极强）→ 忌印（生我）、比劫（同我）
- *   身弱（含身极弱）→ 忌官杀（克我）、财（我克）、食伤（我生）
- *   中和 / 未传旺衰 → 无明显忌神，返回空数组（调用方据此退化为 v4 旧行为）
- * ⚠️ 这是扶抑口径的忌神，不含调候与通关（那需要完整五行统计，HePanInput 未提供）。
- */
-export function deriveJiShen(dayWx: string, strengthLevel?: string): string[] {
-  if (!dayWx || !strengthLevel) return [];
-  if (strengthLevel.includes('强')) return [WX_SHENG_ME[dayWx], dayWx].filter(Boolean);
-  if (strengthLevel.includes('弱')) return [WX_KE_ME[dayWx], WX_KE[dayWx], WX_SHENG[dayWx]].filter(Boolean);
-  return [];
-}
+// （deriveJiShen 的实现已移到 wuXingRelations.ts，本文件在顶部 re-export；
+//   流年 / 大运互动引擎与合盘共用同一份判据，避免"两处各写一遍忌神"。）
 
 /** 对方日主五行对我方的作用方向：+2 落在用神 / −2 落在忌神 / 0 中性
  *  ⚠️ 未传 strengthLevel 时一律返回 0——喜忌修正整体作为一个开关，

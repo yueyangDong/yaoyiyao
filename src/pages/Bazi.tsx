@@ -3,9 +3,8 @@ import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import {
   Card, Form, InputNumber, Button,
   Typography, Space, Tag, message, Radio, Row, Col,
-  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox, Tabs,
+  Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox, Tabs, Modal,
 } from 'antd';
-import { Solar } from 'lunar-typescript';
 import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
@@ -26,8 +25,14 @@ import type { ShenShaItem } from '../utils/shenSha';
 import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
-import { buildLiuYueList } from '../utils/liuyueReading';
+import { buildLiuYueList, buildLiuRiList, type LiuYueItem, type LiuRiItem } from '../utils/liuyueReading';
 import { buildLiuNianList, calcLiuNianItem, type LiuNianItem } from '../utils/liunianReading';
+// 岁运 × 命局的互动（地支冲合刑害 / 伏吟反吟 / 落柱领域 / 喜忌定向）
+// —— 与合盘动态层共用同一份引擎，勿在页面另写判据
+import { analyzeLiunianFlow, type FlowInteraction } from '../utils/liunianInteraction';
+// 天干 / 地支五行表取自 utils 的唯一出口（页面原先自留一份 TG_WX / DZ_WX，属重复表）
+import { GAN_WX as TG_WX } from '../utils/wuXingRelations';
+import { DZ_WX } from '../utils/diZhiRelations';
 // 四柱构造的唯一入口（与合盘 / 命盘对比页共用）——页面不得再自行 Solar/Lunar → getEightChar
 import { buildRawChart, normalizeWanZi } from '../utils/personChart';
 
@@ -36,16 +41,22 @@ const { Title, Text, Paragraph } = Typography;
 // 五行配色 (使用设计系统 CSS 变量)
 const WX_COLORS: Record<string, string> = { '木': 'var(--wx-wood)', '火': 'var(--wx-fire)', '土': 'var(--wx-earth)', '金': 'var(--wx-metal)', '水': 'var(--wx-water)' };
 
-// 天干 → 五行（模块级，供干支五行着色）
-const TG_WX: Record<string, string> = {
-  '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-  '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+// 天干/地支五行（TG_WX / DZ_WX）已改为从 utils/wuXingRelations、utils/diZhiRelations 引入，
+// 页面不再自留副本——五行表只该有一个出口。
+
+// 流年互动里「影响领域」的短名（长名用于弹窗标题，短名用于卡片标签）
+const DOMAIN_SHORT: Record<string, string> = {
+  '长辈与外部环境': '长辈 · 外部',
+  '事业与家庭根基': '事业 · 家庭',
+  '自身与配偶宫': '自身 · 配偶',
+  '子女与居所': '子女 · 居所',
 };
 
-// 地支 → 五行（本气）
-const DZ_WX: Record<string, string> = {
-  '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火',
-  '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
+// 领域档位的配色（顺 / 平 / 需留意）
+const DOMAIN_LEVEL_STYLE: Record<string, { bg: string; color: string }> = {
+  '顺': { bg: 'rgba(107,154,122,0.12)', color: 'var(--wx-wood)' },
+  '平': { bg: 'rgba(0,0,0,0.045)', color: 'var(--text-secondary)' },
+  '需留意': { bg: 'rgba(194,59,43,0.10)', color: 'var(--wx-fire)' },
 };
 const WX_BG: Record<string, string> = { '木': 'rgba(107,154,122,0.08)', '火': 'rgba(194,59,43,0.08)', '土': 'rgba(184,123,74,0.08)', '金': 'rgba(201,169,110,0.08)', '水': 'rgba(42,51,64,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
@@ -365,6 +376,68 @@ export interface PillarData {
   unknown?: boolean;
 }
 
+/**
+ * 某一年的「影响哪些方面」详情（流年卡弹窗内容）。
+ * 文案全部来自 utils/liunianInteraction（冲合刑害 → 落柱领域 → 喜忌定向），
+ * 本组件只负责排版——解读文案不进页面组件是本项目的既定纪律。
+ */
+function FlowDetailBody({ flow }: { flow: FlowInteraction }) {
+  return (
+    <div>
+      <Alert type="info" showIcon style={{ marginBottom: 12 }} message={flow.headline} />
+      {flow.shiShen && (
+        <Paragraph style={{ fontSize: 13, marginBottom: 10 }}>
+          <Text strong>岁运十神：</Text>{flow.shiShen}{flow.shiShenDomain ? ` —— ${flow.shiShenDomain}` : ''}
+        </Paragraph>
+      )}
+      <Divider orientation="left" style={{ margin: '6px 0 10px' }}><Text style={{ fontSize: 12 }}>影响领域</Text></Divider>
+      {flow.domains.length === 0 ? (
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {flow.era === 'day'
+            ? '这天日柱与命局地支无冲无合，平常的一天——照常安排就好。'
+            : flow.era === 'month'
+              ? '这个月月柱与命局地支无冲无合，整体平稳——按既定节奏走即可。'
+              : '这一年岁运与命局地支无冲无合，各方面以平稳为主——不折腾就是好年份。'}
+        </Text>
+      ) : (
+        flow.domains.map((d) => {
+          const st = DOMAIN_LEVEL_STYLE[d.level] || DOMAIN_LEVEL_STYLE['平'];
+          return (
+            <div key={d.domain} style={{
+              marginBottom: 10, padding: '10px 12px', borderRadius: 10,
+              background: st.bg, border: '1px solid var(--border-light)',
+            }}>
+              <Space>
+                <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{d.domain}</Text>
+                <Tag style={{ margin: 0, border: 'none', background: 'rgba(255,255,255,0.65)', color: st.color, fontSize: 11 }}>{d.level}</Tag>
+              </Space>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                {d.notes.map((n, i) => (
+                  <li key={i} style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>{n}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })
+      )}
+      {flow.peach.length > 0 && (
+        <>
+          <Divider orientation="left" style={{ margin: '6px 0 10px' }}><Text style={{ fontSize: 12 }}>流年桃花</Text></Divider>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {flow.peach.map((p, i) => (
+              <li key={i} style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>{p.text}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      <Divider orientation="left" style={{ margin: '6px 0 10px' }}><Text style={{ fontSize: 12 }}>感情提示</Text></Divider>
+      <Paragraph style={{ fontSize: 12, lineHeight: 1.75, color: 'var(--text-secondary)', marginBottom: 0 }}>
+        {flow.loveNote}
+      </Paragraph>
+    </div>
+  );
+}
+
 // 领域深度解读区块（干支 + 十神 + 神煞分层白话）
 function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string }) {
   if (!d) return null;
@@ -439,6 +512,8 @@ export default function Bazi() {
   const [leapMonth, setLeapMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [liunianYears, setLiunianYears] = useState<LiuNianItem[] | null>(null);
+  /** 点开某一年时展示的「影响哪些方面」详情（岁运 × 命局互动） */
+  const [flowDetail, setFlowDetail] = useState<FlowInteraction | null>(null);
   const [activeRow, setActiveRow] = useState<string | null>(null);
   // 四柱表进阶字段开关（支神/纳音/空亡/地势/自坐偏专业，默认收起，点击对应 pill 会自动开启）
   const [showAdvancedRows, setShowAdvancedRows] = useState(false);
@@ -446,10 +521,10 @@ export default function Bazi() {
   const [geDetailOpen, setGeDetailOpen] = useState(false);
   // 神煞一览默认只亮力量前 6 颗，其余收起
   const [showAllSha, setShowAllSha] = useState(false);
-  const [liuYueMonths, setLiuYueMonths] = useState<Array<{ monthName: string; ganZhi: string; wx: string; desc: string }> | null>(null);
+  // 流月（派生见下方 liuYueMonths useMemo；原为 handleCalc 内的 setState，见那里的说明）
   const [liuRiYear, setLiuRiYear] = useState<number | null>(null);
   const [liuRiMonth, setLiuRiMonth] = useState<number | null>(null);
-  const [liuRiDays, setLiuRiDays] = useState<Array<{ day: number; ganZhi: string; wx: string; desc: string; weekend?: boolean }> | null>(null);
+  const [liuRiDays, setLiuRiDays] = useState<LiuRiItem[] | null>(null);
   const now = new Date();
   const currentYear = now.getFullYear();
   /**
@@ -686,11 +761,8 @@ export default function Bazi() {
       });
 
       message.success('排盘完成');
-      // 十年流年（今年起）+ 未来一年流月（自动展示，叠加当前大运与月令的生克——见 utils/liuyueReading.ts）
+      // 十年流年（今年起）——流月/流日改由下方 useMemo 从 baziData 派生（需要用到用神与旺衰）
       setLiunianYears(buildLiuNianList(currentYear, dayGan, dayWx));
-      const ageNow = calcCurrentAge(solarDate.getYear(), solarDate.getMonth(), solarDate.getDay());
-      const curDayunStep = dayunSteps.find((s) => !s.isPreStart && ageNow >= s.startAge && ageNow < s.endAge);
-      setLiuYueMonths(buildLiuYueList({ dayWx, dayunGanZhi: curDayunStep?.ganZhi }));
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
@@ -733,50 +805,26 @@ export default function Bazi() {
     handleCalc();
   }, [pendingReplay]);
 
-  // 流月推算：已抽至 utils/liuyueReading.ts（月令 vs 日主五类模板 + 月令 vs 当前大运生克后缀），
-  // handleCalc 里直接调用 buildLiuYueList——页面不再保留模板池，方便 node 环境测试。
+  // 流月推算：已抽至 utils/liuyueReading.ts（月令 vs 日主五类模板 + 月令 vs 当前大运生克后缀
+  // + 月柱 × 命局地支互动）。页面不再保留模板池与排月逻辑，方便 node 环境测试。
+  // ⚠️ liuYueMonths 的 useMemo 放在下方派生数据区（依赖 yongShenRec / strengthAnalysis / currentDayunStep）。
 
-  // 流日推算
+  // 流日推算：已抽至 utils/liuyueReading.buildLiuRiList（原先内联在此，且自带一份 tgWx 五行表）。
+  // 传参带上用神/旺衰后，每一天也能给出「与命局哪一柱冲合、落到哪个领域」。
   const handleLiuRi = (year: number, month: number) => {
     setLiuRiYear(year);
     setLiuRiMonth(month);
     if (!baziData) return;
-
-    const dayGan = baziData.dayGan;
-    const dayWx = baziData.dayWx;
-    const tgWx: Record<string, string> = {
-      '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-      '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
-    };
-    const wxSheng: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-    const wxKe: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const result = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      try {
-        const s = Solar.fromYmdHms(year, month, d, 12, 0, 0);
-        const l = s.getLunar();
-        const ec = l.getEightChar();
-        const gz = ec.getDay();
-        const gan = gz.charAt(0);
-        const wx = tgWx[gan] || '';
-        let desc = '';
-        if (dayWx === wx) desc = '比和';
-        else if (wxSheng[dayWx] === wx) desc = '印生';
-        else if (wxSheng[wx] === dayWx) desc = '食伤';
-        else if (wxKe[dayWx] === wx) desc = '官杀';
-        else if (wxKe[wx] === dayWx) desc = '财运';
-        // Mark weekends
-        const dow = new Date(year, month - 1, d).getDay();
-        const mark = dow === 0 || dow === 6 ? '周末' : '';
-        // 周末用独立字段标记，不再覆盖 desc（否则周末日的十神/吉凶信息被吞掉）
-        result.push({ day: d, ganZhi: gz, wx, desc, weekend: mark === '周末' });
-      } catch {
-        result.push({ day: d, ganZhi: '--', wx: '', desc: '' });
-      }
-    }
-    setLiuRiDays(result);
+    setLiuRiDays(buildLiuRiList({
+      year,
+      month,
+      dayWx: baziData.dayWx,
+      pillars: baziData.pillars,
+      dayGan: baziData.dayGan,
+      yongShen: yongShenRec?.yongShen,
+      strengthLevel: strengthAnalysis?.level,
+      gender: baziData.birthGender,
+    }));
   };
 
   // --- 以下为计算派生数据 ---
@@ -812,6 +860,24 @@ export default function Bazi() {
     return annotateDayunFlow(baziData.dayun.steps, wuxingFlow);
   }, [wuxingFlow, baziData]);
 
+  // 流年 × 命局互动：回答"这一年会影响哪些方面"
+  // 旧实现只到「流年天干五行 vs 日主」——地支一字不参与，于是「丙午年子午冲」这类
+  // 最常见、也最被追问的互动根本算不出来。这里补上地支层（冲/合/三合/三会/刑/害）与
+  // 伏吟/反吟/天干五合，并把每处互动落到「命局哪一柱 → 哪个人生领域」，再按用神/忌神定向。
+  // ⚠️ 判据在 utils/liunianInteraction.ts（与合盘动态层共用同一份引擎），页面不另写。
+  const liunianFlows = useMemo(() => {
+    if (!baziData || !liunianYears) return null;
+    const chart = {
+      pillars: baziData.pillars,
+      dayGan: baziData.dayGan,
+      dayWx: baziData.dayWx,
+      yongShen: yongShenRec?.yongShen,
+      strengthLevel: strengthAnalysis?.level,
+      gender: baziData.birthGender,
+    };
+    return liunianYears.map((y) => analyzeLiunianFlow(y.year, chart, y.ganZhi));
+  }, [baziData, liunianYears, yongShenRec, strengthAnalysis]);
+
   const shiShenCombos = useMemo(() => {
     if (!baziData) return [];
     return getShiShenComboAnalysis(baziData.pillars, baziData.dayGan);
@@ -836,14 +902,40 @@ export default function Bazi() {
     [baziData, nominalAge],
   );
 
+  // 流月（未来 12 个月）：从 baziData + 用神/旺衰派生。
+  // ⚠️ 为什么必须在这里（而不能像旧版那样在 handleCalc 里 setState）：流月的喜忌定向要用
+  //   yongShenRec / strengthAnalysis，而它们在 handleCalc 执行时还未产出（baziData 刚 set）。
+  //   放进 handleCalc 会让「用神/旺衰」整层静默缺失——不报错，只是所有月份都退回 neutral。
+  // ⚠️ 当前大运一律复用组件级 currentDayunStep（虚岁闭区间口径）：旧代码在这里用周岁
+  //   （calcCurrentAge）另判了一遍 `ageNow >= s.startAge && ageNow < s.endAge`，端点会落空。
+  const liuYueMonths: LiuYueItem[] | null = useMemo(() => {
+    if (!baziData) return null;
+    return buildLiuYueList({
+      dayWx: baziData.dayWx,
+      dayunGanZhi: currentDayunStep?.ganZhi,
+      pillars: baziData.pillars,
+      dayGan: baziData.dayGan,
+      yongShen: yongShenRec?.yongShen,
+      strengthLevel: strengthAnalysis?.level,
+      gender: baziData.birthGender,
+    });
+  }, [baziData, currentDayunStep, yongShenRec, strengthAnalysis]);
+
   // 大运白话解读：按「人生阶段 × 十神关系」二维取内容重心（见 utils/dayunReading.ts）
   // 年龄一律用 getDaYun 的虚岁，与大运卡片口径一致；currentExactAge 用于标注「当前大运 / 已走过」
+  // ⚠️ 第 5 参 chart 必传：不传则每步大运都没有 interaction / interactionNote（地支层整层缺失）
   const dayunReadings = useMemo(() => {
     if (!baziData) return { stageLead: '', currentStage: null, readings: [] as DayunReading[] };
     // 跳过起运前无干支的小运（显示 — 的步骤）
     const steps = baziData.dayun.steps.filter((s) => s.ganZhi && s.ganZhi !== '—');
-    return buildDayunReadings(steps, baziData.dayGan, currentExactAge, nominalAge);
-  }, [baziData, currentExactAge, nominalAge]);
+    return buildDayunReadings(steps, baziData.dayGan, currentExactAge, nominalAge, {
+      pillars: baziData.pillars,
+      dayWx: baziData.dayWx,
+      yongShen: yongShenRec?.yongShen,
+      strengthLevel: strengthAnalysis?.level,
+      gender: baziData.birthGender,
+    });
+  }, [baziData, currentExactAge, nominalAge, yongShenRec, strengthAnalysis]);
 
   // 一句话结论（xiShen 实为忌神，不并入结论文案，避免与专业分析自相矛盾）
   // ⚠️ 入参必须含四柱 / 当前大运 / 今年流年：旧版只传「起运后第一步大运」，
@@ -2038,6 +2130,26 @@ export default function Bazi() {
                   )}
                 </Space>
                 <Paragraph style={{ fontSize: 13, marginBottom: 0, lineHeight: 1.75 }}>{d.text}</Paragraph>
+                {/* 干支互动白话：与上面的「阶段 × 十神」是并行的两套解读（地支层此前完全缺失） */}
+                {d.interactionNote && (
+                  <div style={{
+                    marginTop: 6, padding: '8px 10px', borderRadius: 8,
+                    background: 'rgba(44,90,142,0.045)', border: '1px dashed var(--border-light)',
+                  }}>
+                    <Text style={{ fontSize: 12.5, lineHeight: 1.75, color: 'var(--text-secondary)' }}>{d.interactionNote}</Text>
+                    {d.interaction && (
+                      <div>
+                        <Button
+                          type="link" size="small"
+                          style={{ padding: 0, height: 'auto', fontSize: 11 }}
+                          onClick={() => setFlowDetail(d.interaction!)}
+                        >
+                          看这步运动了哪些方面 →
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </Card>
@@ -2055,8 +2167,9 @@ export default function Bazi() {
                     label: '流年（十年）',
                     children: liunianYears ? (
                       <Row gutter={[8, 8]}>
-                        {liunianYears.map((y) => {
+                        {liunianYears.map((y, yi) => {
                           const isYearCurrent = y.year === currentYear;
+                          const flow = liunianFlows?.[yi];
                           return (
                             <Col xs={12} sm={8} md={6} key={y.year}>
                               <Card size="small" style={{
@@ -2071,6 +2184,28 @@ export default function Bazi() {
                                     {isYearCurrent && <Tag style={{ background: 'rgba(194,59,43,0.08)', color: 'var(--wx-fire)', border: 'none', fontSize: 11, margin: 0 }}>本年</Tag>}
                                   </Space>
                                   <Text style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{y.desc}</Text>
+                                  {/* 影响领域：岁运与命局哪一柱互动，就动哪个领域（地支层，旧版没有） */}
+                                  {flow && flow.domains.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                      {flow.domains.map((d) => {
+                                        const st = DOMAIN_LEVEL_STYLE[d.level] || DOMAIN_LEVEL_STYLE['平'];
+                                        return (
+                                          <Tag key={d.domain} style={{
+                                            margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px',
+                                            border: 'none', background: st.bg, color: st.color,
+                                          }}>
+                                            {DOMAIN_SHORT[d.domain] || d.domain}·{d.level}
+                                          </Tag>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {flow && (
+                                    <Button type="link" size="small" style={{ padding: 0, height: 'auto', fontSize: 11 }}
+                                      onClick={() => setFlowDetail(flow)}>
+                                      看影响哪些方面 →
+                                    </Button>
+                                  )}
                                 </Space>
                               </Card>
                             </Col>
@@ -2090,14 +2225,38 @@ export default function Bazi() {
                           const isGood = m.desc.includes('印星') || m.desc.includes('财运') || m.desc.includes('贵人');
                           const isBad = m.desc.includes('官杀') || m.desc.includes('压力');
                           const bgColor = isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : 'rgba(0,0,0,0.02)';
+                          // 该月与命局哪一柱互动 → 落哪个人生领域（地支层，2026-10-13 新增）
+                          const doms = m.interaction?.domains || [];
                           return (
-                            <Col xs={8} sm={6} md={4} key={i}>
-                              <Card size="small" style={{ textAlign: 'center', background: bgColor }}>
-                                <Text style={{ fontSize: 14 }}>{m.monthName}</Text>
+                            <Col xs={12} sm={8} md={6} key={i}>
+                              <Card
+                                size="small"
+                                style={{ textAlign: 'center', background: bgColor, height: '100%', cursor: m.interaction ? 'pointer' : undefined }}
+                                onClick={m.interaction ? () => setFlowDetail(m.interaction!) : undefined}
+                              >
+                                <Text style={{ fontSize: 13 }}>{m.monthName}</Text>
                                 <br />
-                                <Tag style={{ background: WX_BG[m.wx], color: WX_COLORS[m.wx], border: 'none', fontSize: 13, margin: 0 }}>{m.ganZhi}</Tag>
+                                <Tag style={{ background: WX_BG[m.wx], color: WX_COLORS[m.wx], border: 'none', fontSize: 12, margin: 0 }}>{m.ganZhi}</Tag>
                                 <br />
                                 <Text style={{ fontSize: 11, color: isGood ? 'var(--wx-wood)' : isBad ? 'var(--wx-fire)' : 'var(--text-secondary)' }}>{m.desc}</Text>
+                                {doms.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', marginTop: 4 }}>
+                                    {doms.map((d) => {
+                                      const st = DOMAIN_LEVEL_STYLE[d.level] || DOMAIN_LEVEL_STYLE['平'];
+                                      return (
+                                        <Tag key={d.domain} style={{
+                                          margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px',
+                                          border: 'none', background: st.bg, color: st.color,
+                                        }}>
+                                          {DOMAIN_SHORT[d.domain] || d.domain}·{d.level}
+                                        </Tag>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                {m.interaction && (
+                                  <Text style={{ fontSize: 10, color: 'var(--wx-water)' }}>点卡片看详情 →</Text>
+                                )}
                               </Card>
                             </Col>
                           );
@@ -2122,29 +2281,60 @@ export default function Bazi() {
                           <Button onClick={() => liuRiYear && liuRiMonth && handleLiuRi(liuRiYear, liuRiMonth)}>查看流日</Button>
                         </Space>
                         {liuRiDays && (
-                          <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                            <Row gutter={isMobile ? ([0, 4] as [number, number]) : [4, 4]} style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 } : undefined}>
-                              {liuRiDays.map((d) => {
-                                const isGood = d.desc === '印生' || d.desc === '财运';
-                                const isBad = d.desc === '官杀';
-                                const isWeekend = !!d.weekend;
-                                return (
-                                  <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
-                                    <Card size="small" style={{
-                                      textAlign: 'center',
-                                      padding: 2,
-                                      background: isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
-                                      borderColor: isWeekend ? '#ccc' : undefined,
-                                    }}>
-                                      <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
-                                      <br />
-                                      <Text strong style={{ fontSize: 12, color: WX_COLORS[d.wx] }}>{d.ganZhi}</Text>
-                                    </Card>
-                                  </Col>
-                                );
-                              })}
-                            </Row>
-                          </div>
+                          <>
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                              标记表示当日干支与你的日柱（自身与配偶宫）有互动；点卡片看它究竟动了哪一块。
+                            </Text>
+                            <div style={{ maxHeight: 400, overflow: 'auto' }}>
+                              <Row gutter={isMobile ? ([0, 4] as [number, number]) : [4, 4]} style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 } : undefined}>
+                                {liuRiDays.map((d) => {
+                                  const isGood = d.desc === '印生' || d.desc === '财运';
+                                  const isBad = d.desc === '官杀';
+                                  const isWeekend = !!d.weekend;
+                                  // 与配偶宫（日柱）的互动是流日里信号最强的一条——感情/自身的第一指标。
+                                  // 一天里与另外三柱的冲合太频繁，全标出来只会变成噪声，故只标日柱。
+                                  const sp = d.interaction?.hits.find((h) => h.spousePalace);
+                                  const spStyle = sp
+                                    ? sp.tone === 'bad'
+                                      ? { color: 'var(--wx-fire)', bg: 'rgba(194,59,43,0.14)' }
+                                      : sp.tone === 'good'
+                                        ? { color: 'var(--wx-wood)', bg: 'rgba(107,154,122,0.14)' }
+                                        : { color: 'var(--text-secondary)', bg: 'rgba(0,0,0,0.07)' }
+                                    : null;
+                                  return (
+                                    <Col span={3} key={d.day} style={isMobile ? { minWidth: 0, maxWidth: 'none' } : { minWidth: 80 }}>
+                                      <Tooltip title={d.interaction?.headline || ''}>
+                                        <Card size="small" style={{
+                                          textAlign: 'center',
+                                          padding: 2,
+                                          background: isGood ? 'rgba(107,154,122,0.06)' : isBad ? 'rgba(194,59,43,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : '#fff',
+                                          borderColor: isWeekend ? '#ccc' : undefined,
+                                          cursor: d.interaction ? 'pointer' : undefined,
+                                        }}
+                                        onClick={d.interaction ? () => setFlowDetail(d.interaction!) : undefined}
+                                        >
+                                          <Text style={{ fontSize: 10, color: 'var(--text-disabled)' }}>{d.day}日</Text>
+                                          <br />
+                                          <Text strong style={{ fontSize: 12, color: WX_COLORS[d.wx] }}>{d.ganZhi}</Text>
+                                          {sp && spStyle && (
+                                            <>
+                                              <br />
+                                              <Tag style={{
+                                                margin: 0, fontSize: 9, lineHeight: '14px', padding: '0 3px',
+                                                border: 'none', background: spStyle.bg, color: spStyle.color,
+                                              }}>
+                                                {sp.kind}
+                                              </Tag>
+                                            </>
+                                          )}
+                                        </Card>
+                                      </Tooltip>
+                                    </Col>
+                                  );
+                                })}
+                              </Row>
+                            </div>
+                          </>
                         )}
                       </>
                     ),
@@ -2153,6 +2343,17 @@ export default function Bazi() {
               />
           </Card>
             </CollapsibleCard>
+
+          {/* 某一年的「影响哪些方面」详情：岁运 × 命局互动（判据全在 utils/liunianInteraction） */}
+          <Modal
+            open={!!flowDetail}
+            onCancel={() => setFlowDetail(null)}
+            footer={null}
+            width={620}
+            title={flowDetail ? `${flowDetail.label} ${flowDetail.ganZhi} · 影响哪些方面` : ''}
+          >
+            {flowDetail && <FlowDetailBody flow={flowDetail} />}
+          </Modal>
 
           {/* ========== 六大领域分析（付费详批） ========== */}
           <PayWall

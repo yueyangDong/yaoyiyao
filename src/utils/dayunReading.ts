@@ -13,6 +13,17 @@
 //    避免「同一句话套在所有人身上」。
 //
 // 详见 docs/dayun-life-stage-reading.md
+//
+// 【2026-10-13】接入「干支互动层」：原实现只看**大运天干**对日主的十神关系，
+//   地支一字不参与——于是"这步运冲了你的日支""这步运与月支合成局"这类最关键的信息缺失。
+//   现在每步大运额外产出 interaction（岁运 × 命局互动，复用 utils/liunianInteraction，
+//   与流年卡/合盘动态层同一份引擎）。
+//   ⚠️ 下面 30 条「阶段 × 十神」文案**一个字都没改**——互动是**并行新增**的字段，
+//      不是替换。原因是这批文案带着 60 岁后的措辞黑名单与"同阶段不重复"两条约束，
+//      混进去会让两套逻辑互相污染。页面上两者分块展示。
+
+import type { PillarData } from '../pages/Bazi';
+import { analyzeGanZhiInteraction, type FlowInteraction } from './liunianInteraction';
 
 export type LifeStage = 'student' | 'young' | 'prime' | 'mature' | 'retire' | 'elder';
 export type RelationKind = 'bijie' | 'yin' | 'shishang' | 'guansha' | 'cai';
@@ -242,6 +253,15 @@ export interface DayunStep {
   isPreStart?: boolean;
 }
 
+/** 大运解读所需的命局信息（只取算「岁运 × 命局互动」够用的字段） */
+export interface DayunChartLike {
+  pillars: PillarData[];
+  dayWx: string;
+  yongShen?: string[];
+  strengthLevel?: string;
+  gender?: string;
+}
+
 export interface DayunReading {
   startAge: number;
   endAge: number;
@@ -260,6 +280,16 @@ export interface DayunReading {
   /** 该步大运是否是当前所在 */
   isCurrent: boolean;
   text: string;
+  /**
+   * 岁运 × 命局互动（地支冲合刑害 / 伏吟反吟 / 落柱领域 / 喜忌定向）。
+   * 仅在调用方传入 chart 时产出；与 text 是**并行**的两套解读，不互相替换。
+   */
+  interaction?: FlowInteraction;
+  /**
+   * 互动向的一句话白话（已按人生阶段过滤措辞：60 岁以后不出现事业 / 求财类词）。
+   * 与 text 分开字段，避免"阶段 × 十神"文案被互动叙述污染。
+   */
+  interactionNote?: string;
 }
 
 export interface DayunReadingResult {
@@ -294,6 +324,72 @@ export function findCurrentDayunStep<T extends DayunStep>(steps: T[], nominalAge
   );
 }
 
+const KIND_PHRASE: Record<string, string> = {
+  '六冲': '相冲',
+  '六合': '相合',
+  '三合': '成三合局',
+  '三会': '成三会方',
+  '相刑': '相刑',
+  '相害': '相害',
+  '伏吟': '伏吟（同类的事重演）',
+  '反吟': '天克地冲（变动最剧）',
+  '天干五合': '天干相合',
+};
+
+/** 互动的重要度排序（越小越先讲）：先讲"动得最狠"的，再讲牵引与摩擦 */
+const KIND_WEIGHT: Record<string, number> = {
+  '反吟': 0, '六冲': 1, '六合': 1, '三合': 2, '三会': 2, '伏吟': 2, '天干五合': 3, '相刑': 4, '相害': 5,
+};
+
+/**
+ * 60 岁以后不铺陈事业与求财（见 LIFE_STAGES 的 exclude 与本文档头部）——
+ * 互动文案里的领域名在这一阶段要换生活向的说法，否则会把"事业"这类词带进晚年解读。
+ */
+const LATE_DOMAIN_REWRITE: Record<string, string> = {
+  '事业与家庭根基': '家庭与日常安排',
+};
+/** 晚期阶段的措辞黑名单（与 dayunReading.test.ts 的 FORBIDDEN 一致，作为双保险） */
+const LATE_FORBIDDEN = ['事业', '升职', '晋升', '创业', '融资', 'KPI', '业绩', '副业', '扩张', '合伙人', '组团队', '人脉'];
+
+function isLateStage(stage: LifeStage): boolean {
+  return stage === 'retire' || stage === 'elder';
+}
+
+function domainLabel(domain: string, stage: LifeStage): string {
+  if (!isLateStage(stage)) return domain;
+  return LATE_DOMAIN_REWRITE[domain] || domain;
+}
+
+/**
+ * 把一步大运的「岁运 × 命局互动」提炼成一句白话。
+ * 只取最重要的 1~3 处（反吟/冲 > 合 > 三合三会/伏吟 > 刑害），并按人生阶段过滤措辞——
+ * 晚年阶段的领域名不出现事业/求财类词，这是判据不是修辞（有测试钉着）。
+ */
+function buildInteractionNote(flow: FlowInteraction, stage: LifeStage): string {
+  if (!flow.hits.length) {
+    return '这步大运与命局地支没有明显冲合，是一步可以顺着自己节奏走的运——少折腾、多积累。';
+  }
+  const sorted = [...flow.hits].sort((a, b) => (KIND_WEIGHT[a.kind] ?? 9) - (KIND_WEIGHT[b.kind] ?? 9));
+  const picked = sorted.slice(0, 3);
+  const phrases = picked.map((h) => {
+    const where = h.pillar === '日柱' ? '日柱（你本人与配偶宫）' : h.pillar;
+    return `${where}${h.char}${KIND_PHRASE[h.kind] || h.kind}——${domainLabel(h.domain, stage)}会跟着动`;
+  });
+  const bad = [...new Set(picked.filter((h) => h.tone === 'bad').map((h) => domainLabel(h.domain, stage)))];
+  const good = [...new Set(picked.filter((h) => h.tone === 'good').map((h) => domainLabel(h.domain, stage)))];
+  const tail = bad.length
+    ? `其中${bad.join('、')}宜提前安排、别硬顶。`
+    : good.length
+      ? `其中${good.join('、')}相对顺手，可以主动一些。`
+      : '整体是"变而有序"，按自己的节奏走即可。';
+  const note = `这一步大运与命局的互动：${phrases.join('；')}。${tail}`;
+  // 双保险：万一有词漏过 domainLabel，晚年阶段退回中性表述，绝不输出事业/求财类措辞
+  if (isLateStage(stage) && LATE_FORBIDDEN.some((w) => note.includes(w))) {
+    return `这一步大运与命局的互动：${phrases.map((p) => p.replace(/——.*$/, '')).join('；')}。这一阶段的重点，在把生活节奏与身体照看好。`;
+  }
+  return note;
+}
+
 /**
  * 生成大运白话解读。
  *
@@ -301,6 +397,9 @@ export function findCurrentDayunStep<T extends DayunStep>(steps: T[], nominalAge
  * @param dayGan      日主天干
  * @param currentAge  当前**周岁**；仅用于「你今年 X 岁」这类文案与人生阶段导航
  * @param nominalAge  定位「当前大运」所用的**虚岁**（见 toNominalAge）；不传时退化为 currentAge
+ * @param chart       命局（四柱 + 五行/用神/旺衰/性别）。传入后每步大运额外产出
+ *                    `interaction` 与 `interactionNote`（岁运 × 命局互动）；
+ *                    **不传则行为与接入前完全一致**（既有调用方零影响）。
  *
  * ⚠️ 为什么分两个年龄：steps 的 startAge/endAge 取自 lunar-typescript，是**虚岁**区间，
  * 而页面持有的 currentExactAge 是精确**周岁**。用周岁去比虚岁区间会在端点落空——
@@ -312,6 +411,7 @@ export function buildDayunReadings(
   dayGan: string,
   currentAge: number,
   nominalAge: number = currentAge,
+  chart?: DayunChartLike,
 ): DayunReadingResult {
   // 同一阶段 + 同一种关系可能落在两步大运上（例：6~15 与 16~25 都在求学成长期，天干同为木）。
   // 这里记录出现次序，第二次起追加"阶段内定位句"，避免两段解读一字不差。
@@ -331,6 +431,23 @@ export function buildDayunReadings(
       text += ` ${refine[Math.min(seenCount, refine.length - 1)]}`;
     }
 
+    // 岁运 × 命局互动（可选）：与上面的「阶段 × 十神」并行，不替换任何原有文案
+    // ⚠️ label 带上年龄区间而不写死"当前大运"——大运解读列表里每一段都可能是过去/未来的运，
+    //   写"当前大运"会让历史与未来两步运都自称当前（且该文案会进弹窗标题与正文）。
+    const interaction = chart
+      ? analyzeGanZhiInteraction({
+          pillars: chart.pillars,
+          dayGan,
+          dayWx: chart.dayWx,
+          ganZhi: s.ganZhi,
+          label: `${s.startAge}~${s.endAge}岁大运`,
+          era: 'decade',
+          yongShen: chart.yongShen,
+          strengthLevel: chart.strengthLevel,
+          gender: chart.gender,
+        })
+      : undefined;
+
     return {
       startAge: s.startAge,
       endAge: s.endAge,
@@ -345,6 +462,8 @@ export function buildDayunReadings(
       isPast: s.endAge < nominalAge,
       isCurrent: nominalAge >= s.startAge && nominalAge <= s.endAge,
       text,
+      interaction,
+      interactionNote: interaction ? buildInteractionNote(interaction, stage.key) : undefined,
     };
   });
 

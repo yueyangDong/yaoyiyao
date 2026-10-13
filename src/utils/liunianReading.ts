@@ -23,15 +23,24 @@ export interface LiuNianItem {
 }
 
 /**
+ * 公历年份 → 干支与天干五行。
+ * 甲子起于公元 4 年，故以 (year − 4) 取模；负数年份按模 10/12 归一。
+ * 全站需要"某年是什么干支"时一律走这里（大运/流年互动引擎、流月、结论卡共用）。
+ */
+export function ganZhiOfYear(year: number): { gan: string; zhi: string; ganZhi: string; wx: string } {
+  const tgIdx = (((year - 4) % 10) + 10) % 10;
+  const dzIdx = (((year - 4) % 12) + 12) % 12;
+  const gan = TIAN_GAN[tgIdx];
+  const zhi = DI_ZHI[dzIdx];
+  return { gan, zhi, ganZhi: gan + zhi, wx: TG_WX[gan] };
+}
+
+/**
  * 单年流年：干支 + 天干五行 + 与日主的生克简述。
  * `dayGan` 目前未参与判定（生克只看日主五行），保留参数是为了与列表构造签名一致。
  */
 export function calcLiuNianItem(year: number, dayGan: string, dayWx: string): LiuNianItem {
-  const tgIdx = (((year - 4) % 10) + 10) % 10;
-  const dzIdx = (((year - 4) % 12) + 12) % 12;
-  const yearGan = TIAN_GAN[tgIdx];
-  const yearZhi = DI_ZHI[dzIdx];
-  const yearWx = TG_WX[yearGan];
+  const { gan: yearGan, zhi: yearZhi, wx: yearWx } = ganZhiOfYear(year);
 
   let desc = '';
   if (dayWx === yearWx) {

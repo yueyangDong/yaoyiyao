@@ -30,6 +30,7 @@
 
 import type { PillarData } from '../pages/Bazi';
 import { getKongWang } from './shenSha';
+import { DZ_SELF_XING, isChong, isHai, isLiuHe, isXing } from './diZhiRelations';
 
 export interface ShaPowerItem {
   name: string;
@@ -103,6 +104,13 @@ export const KONG_FACTOR = 0.35;
  * 力量档位阈值——由 3000 张真实命盘（1935–2005，seed 20261004）的 power 分布**分位数**标定：
  *   p30 = 0.20、p50 = 0.28、p70 = 0.40
  * 故取 strong = p70、medium = p30 → 强/中/弱 约为 30% / 40% / 30%。
+ *
+ * 2026-10-13 自刑判据修正（`branchRelationsOf` 改为"同支重复才算自刑"，见该函数注释）后
+ * 重测同一批 3000 盘：p30 = 0.204、p50 = 0.300、p70 = 0.420。
+ * 分布整体**小幅上移**（预期之内：不再把单支按刑压低 relation 系数），但 0.40 / 0.20
+ * 仍分别落在 p70 / p30 附近（0.42 vs 0.40、0.204 vs 0.20），三档占比语义不变 → **阈值未改**。
+ * 相似度档位同样未动——理由见 shenShaSimilarity.ts 的注释（比值对整体缩放不敏感）。
+ *
  * ⚠️ 不要凭直觉改这两个数：它们是分布量纲的锚点，
  *    改后必须同步 __tests__/shenShaSimilarity.test.ts 的分位断言。
  */
@@ -124,37 +132,37 @@ export function changShengOf(gan: string, zhi: string): string {
   return CHANG_SHENG_NAMES[offset];
 }
 
-/** 地支两两关系（六冲/六合/六害/相刑） */
-const CHONG: [string, string][] = [['子', '午'], ['丑', '未'], ['寅', '申'], ['卯', '酉'], ['辰', '戌'], ['巳', '亥']];
-const HE: [string, string][] = [['子', '丑'], ['寅', '亥'], ['卯', '戌'], ['辰', '酉'], ['巳', '申'], ['午', '未']];
-const HAI: [string, string][] = [['子', '未'], ['丑', '午'], ['寅', '巳'], ['卯', '辰'], ['申', '亥'], ['酉', '戌']];
-const XING: [string, string][] = [
-  ['子', '卯'], ['寅', '巳'], ['巳', '申'], ['寅', '申'],
-  ['丑', '戌'], ['戌', '未'], ['丑', '未'],
-  ['辰', '辰'], ['午', '午'], ['酉', '酉'], ['亥', '亥'],
-];
-
-function hasPair(list: [string, string][], a: string, b: string): boolean {
-  return list.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-}
-
-/** 某柱地支与其他三柱的关系类型集合（不看天干，只看地支之间的作用） */
+/**
+ * 某柱地支与其他三柱的关系类型集合（不看天干，只看地支之间的作用）。
+ *
+ * 判据一律取自 diZhiRelations（地支关系**唯一出口**），本文件不再自留一份表。
+ *
+ * ⚠️ 自刑判据于 2026-10-13 修正（由"该支是辰/午/酉/亥即算刑"改为"且四柱中确实再次
+ *    出现同一地支"）。这是**有意的行为变更**，不是搬迁副作用——修完已重测 3000 盘
+ *    的 power 分位数，并按结果确认 SHENSHA_POWER_BANDS / SHENSHA_SIMILARITY_BANDS
+ *    都无需改动（详见 SHENSHA_POWER_BANDS 注释）。
+ */
 export function branchRelationsOf(pillars: PillarData[], idx: number): string[] {
   const self = pillars[idx]?.diZhi;
   if (!self) return [];
   const out: string[] = [];
   for (let j = 0; j < pillars.length; j++) {
     if (j === idx) {
-      // 自刑：辰午酉亥见本支重复（四柱中出现同支）
-      if (XING.some(([x, y]) => x === y && x === self)) out.push('刑');
+      // 自刑：辰 / 午 / 酉 / 亥 —— **且四柱中确实再次出现同一地支**才算。
+      // ⚠️ 2026-10-13 修正：旧实现只问"该柱地支是不是自刑支"，**不看是否真的重复**，
+      //    于是「全盘只有年支一个辰」也会被判成自刑，把 relation 系数从 1.0 压到 0.75。
+      //    自刑的本义是"同支相叠"（辰见辰、午见午…），单支出现不构成自刑，属偏宽误判。
+      //    被误判的柱占四正/墓库支的相当比例，故本修正会让 power 分布整体**小幅上移**
+      //    ——修完必须重测分位数，见 SHENSHA_POWER_BANDS 注释。
+      if (DZ_SELF_XING.includes(self) && pillars.some((p, k) => k !== idx && p?.diZhi === self)) out.push('刑');
       continue;
     }
     const other = pillars[j]?.diZhi;
     if (!other) continue;
-    if (hasPair(CHONG, self, other)) out.push('冲');
-    if (hasPair(HE, self, other)) out.push('合');
-    if (hasPair(XING, self, other)) out.push('刑');
-    if (hasPair(HAI, self, other)) out.push('害');
+    if (isChong(self, other)) out.push('冲');
+    if (isLiuHe(self, other)) out.push('合');
+    if (isXing(self, other)) out.push('刑');
+    if (isHai(self, other)) out.push('害');
   }
   return [...new Set(out)];
 }
