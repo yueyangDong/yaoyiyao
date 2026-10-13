@@ -26,10 +26,10 @@ import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
 import { buildLiuYueList, buildLiuRiList, type LiuYueItem, type LiuRiItem } from '../utils/liuyueReading';
-import { buildLiuNianList, calcLiuNianItem, type LiuNianItem } from '../utils/liunianReading';
+import { buildLiuNianList, calcLiuNianItem } from '../utils/liunianReading';
 // 岁运 × 命局的互动（地支冲合刑害 / 伏吟反吟 / 落柱领域 / 喜忌定向）
 // —— 与合盘动态层共用同一份引擎，勿在页面另写判据
-import { analyzeLiunianFlow, type FlowInteraction } from '../utils/liunianInteraction';
+import { analyzeLiunianFlow, ERA_PERIOD, type FlowInteraction } from '../utils/liunianInteraction';
 // 天干 / 地支五行表取自 utils 的唯一出口（页面原先自留一份 TG_WX / DZ_WX，属重复表）
 import { GAN_WX as TG_WX } from '../utils/wuXingRelations';
 import { DZ_WX } from '../utils/diZhiRelations';
@@ -387,10 +387,13 @@ function FlowDetailBody({ flow }: { flow: FlowInteraction }) {
       <Alert type="info" showIcon style={{ marginBottom: 12 }} message={flow.headline} />
       {flow.shiShen && (
         <Paragraph style={{ fontSize: 13, marginBottom: 10 }}>
-          <Text strong>岁运十神：</Text>{flow.shiShen}{flow.shiShenDomain ? ` —— ${flow.shiShenDomain}` : ''}
+          {/* 旧文案是「岁运十神：正官」——"岁运"要先学命理才看得懂。
+              现在只说「这一年的主星是「正官」」，后面紧跟一句白话释义。 */}
+          <Text strong>{ERA_PERIOD[flow.era]}的主星是「{flow.shiShen}」</Text>
+          {flow.shiShenDomain ? `——${flow.shiShenDomain}` : ''}
         </Paragraph>
       )}
-      <Divider orientation="left" style={{ margin: '6px 0 10px' }}><Text style={{ fontSize: 12 }}>影响领域</Text></Divider>
+      <Divider orientation="left" style={{ margin: '6px 0 10px' }}><Text style={{ fontSize: 12 }}>影响到哪些方面</Text></Divider>
       {flow.domains.length === 0 ? (
         <Text type="secondary" style={{ fontSize: 13 }}>
           {flow.era === 'day'
@@ -511,7 +514,8 @@ export default function Bazi() {
   const [inputMode, setInputMode] = useState<'solar' | 'lunar'>('solar');
   const [leapMonth, setLeapMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [liunianYears, setLiunianYears] = useState<LiuNianItem[] | null>(null);
+  // 流年（十年）已改为下方 useMemo 派生——原为 handleCalc 内的 setState，
+  // 那里拿不到用神/旺衰（见 liunianYears useMemo 处的说明）。
   /** 点开某一年时展示的「影响哪些方面」详情（岁运 × 命局互动） */
   const [flowDetail, setFlowDetail] = useState<FlowInteraction | null>(null);
   const [activeRow, setActiveRow] = useState<string | null>(null);
@@ -761,8 +765,8 @@ export default function Bazi() {
       });
 
       message.success('排盘完成');
-      // 十年流年（今年起）——流月/流日改由下方 useMemo 从 baziData 派生（需要用到用神与旺衰）
-      setLiunianYears(buildLiuNianList(currentYear, dayGan, dayWx));
+      // 十年流年（今年起）与流月/流日一样，改由下方 useMemo 从 baziData 派生
+      //（需要用到用神与旺衰，handleCalc 里拿不到 —— 见 liunianYears useMemo 的说明）
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
@@ -860,6 +864,19 @@ export default function Bazi() {
     if (!wuxingFlow || !baziData) return null;
     return annotateDayunFlow(baziData.dayun.steps, wuxingFlow);
   }, [wuxingFlow, baziData]);
+
+  // 十年流年（今年起）——从 baziData + 用神/旺衰派生。
+  // ⚠️ 旧实现在 handleCalc 里 setState：那时 yongShenRec / strengthAnalysis（都是 useMemo）
+  //   还没产出，于是 desc 的"喜忌定向"整层拿不到、永远退化为中性描述。
+  //   与流月（liuYueMonths）的处置完全一致：凡需要派生数据的，一律 useMemo，不放 handleCalc。
+  const liunianYears = useMemo(() => {
+    if (!baziData) return null;
+    return buildLiuNianList(currentYear, baziData.dayGan, {
+      yongShen: yongShenRec?.yongShen,
+      jiShen: yongShenRec?.xiShen,
+      strengthLevel: strengthAnalysis?.level,
+    });
+  }, [baziData, yongShenRec, strengthAnalysis, currentYear]);
 
   // 流年 × 命局互动：回答"这一年会影响哪些方面"
   // 旧实现只到「流年天干五行 vs 日主」——地支一字不参与，于是「丙午年子午冲」这类
@@ -968,7 +985,12 @@ export default function Bazi() {
       currentDaYun: currentDayunStep
         ? { ganZhi: currentDayunStep.ganZhi, startAge: currentDayunStep.startAge, endAge: currentDayunStep.endAge }
         : null,
-      liuNian: calcLiuNianItem(currentYear, baziData.dayGan, baziData.dayWx),
+      // 流年白话同样吃喜忌：基调由"年干五行 ∈ 用神 / 忌神"决定（忌神走完整口径）
+      liuNian: calcLiuNianItem(currentYear, baziData.dayGan, {
+        yongShen: yongShenRec.yongShen,
+        jiShen: yongShenRec.xiShen,
+        strengthLevel: strengthAnalysis.level,
+      }),
     });
   }, [baziData, strengthAnalysis, yongShenRec, wxStats, currentDayunStep, currentYear]);
 

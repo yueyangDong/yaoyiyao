@@ -61,6 +61,19 @@ export const PILLAR_DOMAIN: Record<string, string> = {
   '时柱': '子女与居所',
 };
 
+/**
+ * 十神**大类** → 白话（弹窗总览用）。
+ * ⚠️ 不直接拼 SHISHEN_DOMAIN：那张表是十神全名的语义，而这里只想说"这一段时光的主题"。
+ *   大类只有 5 个，一句话就说得清，用户不必先学会十神。
+ */
+const RELATION_PLAIN: Record<RelationKind, string> = {
+  yin: '身边帮你、护你的力量——长辈、师长、平台',
+  bijie: '同辈、伙伴与竞争者带来的拉扯',
+  shishang: '你的表达、才华与产出',
+  cai: '收入、资源与务实经营',
+  guansha: '责任、规则与外部压力',
+};
+
 export interface FlowHit {
   kind: InteractionKind;
   /** 命局侧柱位（'年柱'…'时柱'；三合/三会跨柱时用 '/' 连接） */
@@ -193,7 +206,8 @@ const ERA_SPAN_WORD: Record<FlowEra, string> = {
 const ERA_NAME: Record<FlowEra, string> = {
   year: '流年', decade: '大运', month: '流月', day: '流日',
 };
-const ERA_PERIOD: Record<FlowEra, string> = {
+/** 导出：页面弹窗要写「这一X的主星」，但不能自己另抄一张时间词表 */
+export const ERA_PERIOD: Record<FlowEra, string> = {
   year: '这一年', decade: '这十年', month: '这个月', day: '这一天',
 };
 
@@ -283,14 +297,18 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
     const zhi = p.diZhi;
     if (!zhi) continue;
     const pillar = p.pillar;
+    // ⚠️ note 文案里**不再带 label（年份）**：这些句子会被按领域归并后成组展示，
+    //   标签在弹窗标题与 headline 里已经出现过一次，逐条重复只会淹没重点。
+    //   句式统一为「{柱位}被/与{YU}{地支}冲/合/刑/害——{时间词}{领域}…」：
+    //   先给柱位与领域（用户真正关心的），再给干支标注（专业锚点），最后是白话。
     if (isChong(flowZhi, zhi)) {
-      push('六冲', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${label}${flowZhi}冲${zhi}（${pillar}）——${PILLAR_DOMAIN[pillar]}这块${TW}最"动"：容易有位置变动、关系张力，或必须表态的事。`);
+      push('六冲', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${pillar}被${YU}${flowZhi}冲——${TW}${PILLAR_DOMAIN[pillar]}这块最"动"：容易有位置变动、关系张力，或必须表态的事。`);
     } else if (isLiuHe(flowZhi, zhi)) {
-      push('六合', pillar, zhi, toneOf(DZ_WX[zhi]), `${label}${flowZhi}与${zhi}六合（${pillar}）——${PILLAR_DOMAIN[pillar]}有人牵、有人帮，事情容易"绑在一起"；利合作，也怕被绑定。`);
+      push('六合', pillar, zhi, toneOf(DZ_WX[zhi]), `${pillar}与${YU}${flowZhi}相合——${TW}${PILLAR_DOMAIN[pillar]}有人牵、有人帮，事情容易"绑在一起"；利合作，也怕被绑定。`);
     } else if (isXing(flowZhi, zhi)) {
-      push('相刑', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${label}${flowZhi}与${zhi}相刑（${pillar}）——${PILLAR_DOMAIN[pillar]}摩擦增多，多是口舌、细节上的不顺心，不至于伤筋动骨。`);
+      push('相刑', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${pillar}与${YU}${flowZhi}相刑——${TW}${PILLAR_DOMAIN[pillar]}摩擦增多，多是口舌、细节上的不顺心，不至于伤筋动骨。`);
     } else if (isHai(flowZhi, zhi)) {
-      push('相害', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${label}${flowZhi}与${zhi}相害（${pillar}）——${PILLAR_DOMAIN[pillar]}容易有膈应的小事，多半来自误解或暗处的人事。`);
+      push('相害', pillar, zhi, brokenToneOf(DZ_WX[zhi]), `${pillar}与${YU}${flowZhi}相害——${TW}${PILLAR_DOMAIN[pillar]}容易有膈应的小事，多半来自误解或暗处的人事。`);
     }
   }
 
@@ -301,8 +319,8 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
     if (!p.diZhi || p.diZhi !== flowZhi) continue;
     const full = p.tianGan === flowGan;
     push('伏吟', p.pillar, p.tianGan + p.diZhi, full ? 'bad' : 'neutral', full
-      ? `${label}${ganZhi}与${p.pillar}${p.tianGan}${p.diZhi}完全相同（伏吟）——${PILLAR_DOMAIN[p.pillar]}上容易旧事重演、原地打转，宜守不宜大动。`
-      : `${label}${flowZhi}与${p.pillar}${p.diZhi}同支（支伏吟）——${PILLAR_DOMAIN[p.pillar]}上同一类问题会再出现一次，趁这次处理干净。`);
+      ? `${p.pillar}与${YU}${ganZhi}完全相同（伏吟）——${TW}${PILLAR_DOMAIN[p.pillar]}上容易旧事重演、原地打转，宜守不宜大动。`
+      : `${p.pillar}与${YU}${flowZhi}同支（支伏吟）——${TW}${PILLAR_DOMAIN[p.pillar]}上同一类问题会再出现一次，趁这次处理干净。`);
   }
 
   // ---------- 三合 / 三会：以"局"论 ----------
@@ -321,12 +339,12 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
     if (found.length >= 2) {
       const pillarsStr = [flowZhi, ...found.map((f) => f.branch)].join('');
       push('三合', found.map((f) => f.pillar).join('/'), found.map((f) => f.branch).join('/'), toneOf(wx),
-        `${label}${flowZhi}补齐命局${found.map((f) => f.branch).join('、')}，${pillarsStr}全合${sanhe.name}——${wx}的力量${TW}被显著放大，${found.map((f) => PILLAR_DOMAIN[f.pillar]).join('、')}随这个五行主题起落。`);
+        `${YU}${flowZhi}补齐你命盘里的${found.map((f) => f.branch).join('、')}，${pillarsStr}全合${sanhe.name}——${wx}的力量${TW}被显著放大，${found.map((f) => PILLAR_DOMAIN[f.pillar]).join('、')}随这个五行主题起落。`);
     } else if (found.length === 1) {
       const other = found[0].branch;
       const wang = DZ_WANG.includes(flowZhi) || DZ_WANG.includes(other);
       push('三合', found[0].pillar, other, toneOf(wx),
-        `${label}${flowZhi}与命局${other}成半合（${sanhe.name}）——${wang ? '旺支参与，力量不弱' : '缺旺支，力量偏轻'}，${PILLAR_DOMAIN[found[0].pillar]}上会有一股向${wx}聚拢的势。`);
+        `${YU}${flowZhi}与你命盘里的${other}成半合（${sanhe.name}）——${wang ? '旺支参与，力量不弱' : '缺旺支，力量偏轻'}，${TW}${PILLAR_DOMAIN[found[0].pillar]}上会有一股向${wx}聚拢的势。`);
     }
   }
 
@@ -336,10 +354,10 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
     const wx = sanhui.wx;
     if (found.length >= 2) {
       push('三会', found.map((f) => f.pillar).join('/'), found.map((f) => f.branch).join('/'), toneOf(wx),
-        `${label}${flowZhi}与命局${found.map((f) => f.branch).join('、')}成${sanhui.name}——三会方是地支最强的抱团，${wx}之力压过全局，${found.map((f) => PILLAR_DOMAIN[f.pillar]).join('、')}首当其冲。`);
+        `${YU}${flowZhi}与你命盘里的${found.map((f) => f.branch).join('、')}成${sanhui.name}——三会方是地支最强的抱团，${wx}之力压过全局，${found.map((f) => PILLAR_DOMAIN[f.pillar]).join('、')}首当其冲。`);
     } else if (found.length === 1) {
       push('三会', found[0].pillar, found[0].branch, toneOf(wx),
-        `${label}${flowZhi}与命局${found[0].branch}同方（${sanhui.name}），已具抱团之势——${PILLAR_DOMAIN[found[0].pillar]}会往${wx}的方向偏。`);
+        `${YU}${flowZhi}与你命盘里的${found[0].branch}同方（${sanhui.name}），已具抱团之势——${TW}${PILLAR_DOMAIN[found[0].pillar]}会往${wx}的方向偏。`);
     }
   }
 
@@ -354,11 +372,12 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
     const pw = GAN_WX[gan];
     const ganKe = !!gw && !!pw && (WX_KE[gw] === pw || WX_KE[pw] === gw);
     if (zhi && isChong(flowZhi, zhi) && ganKe) {
-      push('反吟', p.pillar, gan + zhi, 'bad', `${label}${ganZhi}与${p.pillar}${gan}${zhi}天克地冲（反吟）——${PILLAR_DOMAIN[p.pillar]}是${TW}变动最剧烈的一块，宜提前安排，别等临事仓促。`);
+      // 「天干地支上下都冲」是反吟的白话；专业名「反吟」放括号里保留。
+      push('反吟', p.pillar, gan + zhi, 'bad', `${p.pillar}与${YU}${ganZhi}上下全冲（反吟）——${TW}${PILLAR_DOMAIN[p.pillar]}是变动最剧烈的一块，宜提前安排，别等临事仓促。`);
       continue;
     }
     if (GAN_HE[flowGan] === gan) {
-      push('天干五合', p.pillar, gan, 'neutral', `${label}天干${flowGan}与${p.pillar}${gan}相合——${PILLAR_DOMAIN[p.pillar]}上人事牵绊加重，机会与约束同时到来。`);
+      push('天干五合', p.pillar, gan, 'neutral', `${YU}天干${flowGan}与${p.pillar}的${gan}相合——${TW}${PILLAR_DOMAIN[p.pillar]}上人事牵绊加重，机会与约束同时到来。`);
     }
   }
 
@@ -402,7 +421,7 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
         branch: t.branch,
         pillar: p.pillar,
         tone: t.name === '咸池' ? 'neutral' : 'good',
-        text: `${label}${t.name}落在${p.pillar}（${t.branch}）——${t.note}，体现在${PILLAR_DOMAIN[p.pillar]}上。`,
+        text: `${YU}${t.name}落在你的${p.pillar}（${t.branch}）——${t.note}，体现在${PILLAR_DOMAIN[p.pillar]}上。`,
       });
     }
   }
@@ -449,13 +468,15 @@ export function analyzeGanZhiInteraction(input: FlowInteractionInput): FlowInter
   const loveNote = [spouseText[spousePalace], starNote, peachNote].filter(Boolean).join(' ');
 
   // ---------- 一句话总览 ----------
-  const kinds = [...new Set(mergedHits.map((h) => h.kind))];
+  // 措辞纪律：不出现「岁运 / 对日主 / 十神全名」这类要先修一门课才看得懂的说法。
+  // 十神**大类**换成一句白话（RELATION_PLAIN）；冲合的具体种类不在这里罗列
+  // ——逐条细节就在下面的领域块里，总览只负责"先给一句人话"。
   const badDomains = domains.filter((d) => d.level === '需留意').map((d) => d.domain);
   const goodDomains = domains.filter((d) => d.level === '顺').map((d) => d.domain);
   const headline = [
-    `岁运${ganZhi}对日主为${shiShen || '无直接十神'}。`,
-    kinds.length ? `与命局构成${kinds.join('、')}${mergedHits.length ? `（共 ${mergedHits.length} 处）` : ''}。` : `与命局地支无冲无合，${SPAN}。`,
-    badDomains.length ? `需留意：${badDomains.join('、')}。` : '',
+    `${label}${ganZhi}带来的，是${relation ? RELATION_PLAIN[relation] : '一段平稳的时光'}。`,
+    mergedHits.length ? `与你命盘有 ${mergedHits.length} 处互动。` : `与你命盘没有冲合，${SPAN}。`,
+    badDomains.length ? `要留意：${badDomains.join('、')}。` : '',
     goodDomains.length ? `相对顺势：${goodDomains.join('、')}。` : '',
   ].filter(Boolean).join('');
 

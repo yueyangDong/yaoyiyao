@@ -19,8 +19,8 @@
 而是"我们是不是不合了"——**分数是"缘分刻度"，流年是"运势读数"，两种量纲混在一起，
 哪个都读不准**。
 
-更硬的约束：档位 `118 / 103 / 85` 是在 400 对**静态盘**上按 p90/p55/p15 标定的
-（`__tests__/hepanCalibration.test.ts` 用区间断言钉住）。分数一旦随年份漂移，
+更硬的约束：档位 `147 / 130 / 113`（v6.1，200 分制）是在 400 对**静态盘**上按 p90/p55/p15
+标定的（`__tests__/hepanCalibration.test.ts` 用区间断言钉住）。分数一旦随年份漂移，
 锚点每天都在动、测试必然失效——那不是 bug，是提醒你别把动态量塞进静态量表。
 
 **2）共同盘不存在 —— 技术理由**
@@ -219,7 +219,8 @@ score <= -3 → 需留意（磨合之年）
 | `utils/personChart.ts` | `PersonChart.jiShen` = **完整忌神**（`recommendYongShen.xiShen`，唯一真源） |
 | `utils/liunianInteraction.ts` | 岁运 × 命局互动引擎（大运/流年/流月/流日**同一个函数**） |
 | `utils/hepanFlow.ts` | 合盘动态层（关系年度主题 / 风险 / 契机） |
-| `utils/liunianReading.ts` | 流年天干层（`ganZhiOfYear` 为全站干支唯一出口） |
+| `utils/liunianReading.ts` | 流年天干层（`ganZhiOfYear` 为全站干支唯一出口）+ 白话 desc（主题 × 喜忌，见第十节） |
+| `components/CollapsibleCard.tsx` | 折叠容器：展开高度由内容实测驱动（见第十节末） |
 | `utils/liuyueReading.ts` | 流月 `buildLiuYueList` + 流日 `buildLiuRiList` |
 | `utils/dayunReading.ts` | 大运阶段解读 + 互动白话（`interactionNote`） |
 | `pages/Bazi.tsx` | 流年卡 / 大运解读 / 流月卡 / 流日卡：领域标签 + 弹窗详情 |
@@ -235,6 +236,11 @@ score <= -3 → 需留意（磨合之年）
 - `__tests__/dayunReading.test.ts` —— 阶段边界 / 黑名单 / 30 条文案 / **互动层（不传零影响、
   传了每步都有、label 不写死"当前大运"、晚年改写、无冲合也有白话）**
 - `__tests__/hepanFlow.test.ts` —— 配偶宫四种状态 / 对称性 / 大运 / 桃花 / **分层保证**
+- `__tests__/liunianReading.test.ts` —— 干支 / **desc 术语黑名单（10 日主 × 10 年全覆盖）** /
+  **desc 长度上限** / **喜忌定向（同为官杀年，用神年与忌神年必须说不同的话）** /
+  忌神完整口径优先于扶抑兜底 / 主题随日主变
+- `components/__tests__/collapsibleCard.test.tsx` —— 展开高度按实测内容放行 /
+  **内容变高后 max-height 跟着放宽（旧实现卡死在这里）** / 量不到高度时宁可丢动画不截断
 - 既有的 `hepan.test.ts`、`hepanCalibration.test.ts`、`shenShaGuard.test.ts` 不受影响
 
 ---
@@ -251,3 +257,85 @@ score <= -3 → 需留意（磨合之年）
    - **为什么相似度不动**：加权 Jaccard 是**比值**，分子分母同向抵消，对整体缩放不敏感
      → `SHENSHA_SIMILARITY_BANDS` 0.30/0.22 与 `SHENSHA_HEPAN_SCALE` 0.32 **都无需重标**。
    - 回归在 `__tests__/shenShaSimilarity.test.ts`（自刑用例）；power 档位 0.40/0.20 未改。
+4. **文案白话化 + 展开高度修复**（用户反馈「手机显示不出所有流年，只能看一半，用户看不懂介绍」）
+   —— 见第十节。
+
+---
+
+## 十、文案语气纪律（2026-10-13）
+
+用户反馈「看不懂介绍」之后立的规矩。一句话概括：**判据层可以专业，呈现层必须是人话。**
+
+### 1. 术语黑名单
+
+给普通用户看的第一句话（流年卡 desc / 弹窗 headline / 弹窗小标题）里禁止出现：
+
+```
+日主  印绶  印星  食伤  官杀  比和  比劫  正官  七杀  正财  偏财  正印  偏印
+劫财  比肩  食神  伤官  天干  地支  十神  五行  命局  岁运  流年  大运  用神  忌神
+```
+
+改造前后：
+
+| 位置 | 旧 | 新 |
+|---|---|---|
+| 流年卡 desc | 流年「丙(火)」生日主——**印绶**之年！利学业考证、贵人相助 | 有靠山的一年，适合进修考试、找贵人，把基础打厚 |
+| 弹窗总览 | **岁运**丙午**对日主为**正官。与**命局**构成六冲、六合 | 2026年丙午带来的，是责任、规则与外部压力。与你命盘有 5 处互动 |
+| 弹窗小标题 | **岁运十神**：正官 —— … | 这一年的主星是「正官」——规则、职位、责任与名誉 |
+| 逐条 note | 2026年午冲子（年柱）——长辈与外部环境这块今年最"动" | 年柱被流年午冲——今年长辈与外部环境这块最"动" |
+
+保留专业锚点的办法是**术语放括号做同位语**（`上下全冲（反吟）`），不是把它删掉——
+`renderWithTerms` 的高亮词表依赖术语存在，删干净会让术语解释功能失效。
+
+⚠️ 逐条 note **不再带 `label`（年份）**：它们会被按领域归并后成组展示，标签在弹窗标题
+与 headline 里已经出现一次，逐条重复只会淹没重点。
+
+### 2. 流年 desc 与领域标签必须同源（本轮修掉的真缺陷）
+
+流年卡上曾同时存在两套说法：
+
+- 上方 desc：只看「流年天干五行 vs 日主」，**不看喜忌** → 对任何盘都写「官杀之年！有压力有挑战」；
+- 下方领域标签：按**用神/忌神**定向 → 同一张卡片上可能是「事业 · 顺」。
+
+**两句话打架。** 现在 desc 也吃喜忌：
+
+```
+theme = relationKindOfShiShen(tenGodOf(dayGan, 年干))        // 比劫/印/食伤/官杀/财
+tone  = 年干五行 ∈ 用神 ? good : 年干五行 ∈ 忌神 ? bad : neutral   // 忌神走完整口径
+desc  = LIUNIAN_PLAIN[theme][tone]                           // 5 × 3 = 15 条 + 3 条兜底
+```
+
+未传喜忌时一律 `neutral`——只讲"这一年是干什么的"、不下吉凶判断，所以**永远不会说反**。
+
+⚠️ **`liunianYears` 必须在 `useMemo` 里派生，不能放 `handleCalc`**（与流月/流日同一条纪律）：
+`yongShenRec` / `strengthAnalysis` 本身是 `useMemo`，`handleCalc` 执行时尚未产出
+→ 喜忌定向整层静默缺失。本轮就是把 `setLiunianYears` 从 `handleCalc` 里搬出来才拿到喜忌。
+
+### 3. 长度是判据，不是修辞
+
+desc 被「一句话看懂你的八字」直接引用，那张卡有 **240 字硬上限**
+（`plainConclusion.test.ts` 长度回归）。新 desc 最长 24 字（旧的「印绶之年」句 35 字），
+余量反而变大。**改 desc 必须同跑那条用例。**
+
+### 4. `SHISHEN_DOMAIN` 不含性别
+
+`wuXingRelations.SHISHEN_DOMAIN` 里原来的「正官……**女命亦为夫星**」「七杀……女命亦为偏夫星」
+已删——男命盘上直接显示就是硬错。性别语义只出现在 `liunianInteraction` 的 `loveNote` 里
+（按 `gender` 分支：男以财为妻星、女以官杀为夫星），**那是唯一该谈性别的地方**。
+
+### 5. 折叠容器的高度必须跟着内容走
+
+`CollapsibleCard` 旧实现：
+
+```tsx
+maxHeight: open ? (contentRef.current?.scrollHeight || 2000) + 'px' : '0px'
+```
+
+那个 `scrollHeight` 只在**点开的那一次 render** 里算一遍，之后内容再长高也不会重算，
+而外层是 `overflow: hidden` → **内容被永久截断**。手机端最容易踩到：中文字体异步加载完成后
+行高变化、十个流年卡片数据后到、地址栏收放导致重排——症状就是「流年只看得到一半」。
+
+现在用 `ResizeObserver` 盯**内层**容器（它不受外层 `max-height` 影响，高度恒等于真实内容高）
+持续同步；量不到高度时（jsdom / 无 RO）兜底 `max-height: none`——**宁可丢掉展开动画，
+也不能把内容截掉**。回归在 `components/__tests__/collapsibleCard.test.tsx`
+（已用旧实现验证过这 4 条会全部变红）。

@@ -21,11 +21,13 @@ describe('plainConclusion', () => {
     wxStrongest: '土',
     wxWeakest: '火',
     currentDaYun: { ganZhi: '乙亥', startAge: 33, endAge: 42 },
+    // desc 取的是 liunianReading.calcLiuNianItem 的真实产出：
+    // 2026 丙午（火）对庚金日主为「官杀」大类，火 ∈ 用神（火、木、土）→ 顺向措辞。
     liuNian: {
       year: 2026,
       ganZhi: '丙午',
       wx: '火',
-      desc: '流年「丙(火)」生日主——印绶之年！利学业考证、贵人相助，适合进修深造。',
+      desc: '责任加身的一年，扛住就是升级，值得拼一把。',
     },
   };
 
@@ -48,7 +50,14 @@ describe('plainConclusion', () => {
   it('bazi: 流年参与生成', () => {
     const text = generateBaziPlainConclusion(base);
     expect(text).toContain('今年走到「丙午」');
-    expect(text).toContain('印绶之年');
+    expect(text).toContain('责任加身');
+  });
+
+  it('bazi: 结论里的流年段不含命理术语（desc 白话化的对外承诺）', () => {
+    // 旧 desc 是「流年「丙(火)」生日主——印绶之年！…」，术语密度过高。
+    // 这里只对"流年那一段"断言：part1 的「日主庚金坐戌土」是有意保留的专业锚点。
+    const tail = generateBaziPlainConclusion(base).split('今年走到')[1] || '';
+    expect(tail).not.toMatch(/印绶|食伤|官杀|比和|日主|岁运/);
   });
 
   it('bazi: 换四柱必须改文案（旧版输出与四柱无关）', () => {
@@ -73,7 +82,7 @@ describe('plainConclusion', () => {
     const a = generateBaziPlainConclusion(base);
     const d = generateBaziPlainConclusion({
       ...base,
-      liuNian: { year: 2027, ganZhi: '丁未', wx: '火', desc: '日主克流年「丁(火)」——财运之年！利求财，需付出努力。' },
+      liuNian: { year: 2027, ganZhi: '丁未', wx: '火', desc: '责任加身的一年，扛住就是升级，值得拼一把。' },
     });
     expect(d).toContain('今年走到「丁未」');
     expect(d).not.toBe(a);
@@ -102,6 +111,8 @@ describe('plainConclusion', () => {
     // 最坏来源：时柱推定标注(+9) / 三藏干自坐(+12) / 身极强 trait / 5 个用神
     // （调候 2 + 扶抑 3 去重，上限 5）/ 大运不在用神 + 最长的比劫 action / 最长流年 desc。
     // 任一文案加长都会顶破 240，故此处钉死；改文案请一并重跑本用例。
+    // 流年 desc 取 liunianReading 新白话文案里**最长的一条**（食伤·顺，24 字）——
+    // 它比旧版（35 字的「印绶之年」句）短，所以本用例的余量其实变大了。
     const worst = generateBaziPlainConclusion({
       pillars: ['癸巳', '丙辰', '己丑', '戊辰'],
       dayGan: '己',
@@ -119,7 +130,7 @@ describe('plainConclusion', () => {
         year: 2026,
         ganZhi: '丙午',
         wx: '火',
-        desc: '流年「丙(火)」生日主——印绶之年！利学业考证、贵人相助，适合进修深造。',
+        desc: '点子最容易出成果的一年，把想法做成看得见的东西。',
       },
     });
     expect(worst.length).toBeLessThanOrEqual(240);
