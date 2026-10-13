@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { pcaCode } from 'cn-division';
 import { type PersonForm, comparePersons, validatePersonForm } from '../utils/chartCompare';
+import { birthdayBounds, clampBirthday } from '../utils/dateValidation';
 import { SHENSHA_SIMILARITY_BANDS } from '../utils/shenShaSimilarity';
 import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import type { PersonChart } from '../utils/personChart';
@@ -17,13 +18,40 @@ function PersonFormBlock({
   title: string; prefix: string; color: string; initial: Partial<PersonForm>; onValues: (v: PersonForm) => void;
 }) {
   const [form] = Form.useForm();
+  // 生日三道上限随「历法 / 年 / 月」实时变化，所以用 useWatch 取值，
+  // 而不是在 InputNumber 上写死 max——写死必然出现「1998 年也选不了 12 月」这类过度收紧。
+  const wYear = Form.useWatch('year', form);
+  const wMonth = Form.useWatch('month', form);
+  const wCalendar = Form.useWatch('calendar', form);
+  const wIsLeap = Form.useWatch('isLeap', form);
+  const bounds = birthdayBounds({ calendar: wCalendar, isLeap: wIsLeap, year: wYear, month: wMonth });
+
+  /**
+   * 变更时把超限的值**级联夹回**（改年份 → 重算月上限 → 再重算日上限）。
+   * 判据在 dateValidation.clampBirthday，与排盘页共用同一份，不在这里另写。
+   * ⚠️ setFieldsValue 不触发 onValuesChange（antd 约定），所以不会递归。
+   */
+  const commit = () => {
+    const raw = form.getFieldsValue() as PersonForm;
+    const fixed = clampBirthday(raw, {
+      calendar: raw.calendar,
+      isLeapOf: () => !!raw.isLeap,
+    });
+    if (fixed.year !== raw.year || fixed.month !== raw.month || fixed.day !== raw.day) {
+      form.setFieldsValue(fixed as never);
+      onValues(form.getFieldsValue() as PersonForm);
+    } else {
+      onValues(raw);
+    }
+  };
+
   return (
     <Card size="small" title={<Text strong style={{ color }}>{title}</Text>} style={{ marginBottom: 12 }}>
       <Form
         form={form}
         layout="vertical"
         initialValues={{ calendar: 'solar', hour: 12, minute: 0, gender: 'male', ziShiSect: 2, ...initial }}
-        onValuesChange={() => onValues(form.getFieldsValue() as PersonForm)}
+        onValuesChange={commit}
       >
         <Row gutter={[10, 0]}>
           <Col span={12}><Form.Item name="calendar" label="历法" style={{ marginBottom: 10 }}>
@@ -38,11 +66,11 @@ function PersonFormBlock({
             ) : null}
           </Form.Item>
           <Col span={8}><Form.Item name="year" label="年" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
-            <InputNumber min={1900} max={new Date().getFullYear()} placeholder="1998" style={{ width: '100%' }} /></Form.Item></Col>
+            <InputNumber min={1900} max={bounds.maxYear} placeholder="1998" style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={4}><Form.Item name="month" label="月" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
-            <InputNumber min={1} max={12} placeholder="6" style={{ width: '100%' }} /></Form.Item></Col>
+            <InputNumber min={1} max={bounds.maxMonth} placeholder="6" style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={4}><Form.Item name="day" label="日" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
-            <InputNumber min={1} max={31} placeholder="15" style={{ width: '100%' }} /></Form.Item></Col>
+            <InputNumber min={1} max={bounds.maxDay} placeholder="15" style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={4}><Form.Item name="hour" label="时" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
             <InputNumber min={0} max={23} placeholder="12" style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={4}><Form.Item name="minute" label="分" style={{ marginBottom: 10 }}>

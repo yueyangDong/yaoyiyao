@@ -18,7 +18,7 @@ import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
-import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
+import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture, birthdayBounds, clampBirthday } from '../utils/dateValidation';
 import { analyzeMingGeDetailed, analyzeTouGan, type MingGeDetailed } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
@@ -531,6 +531,19 @@ export default function Bazi() {
   const [liuRiDays, setLiuRiDays] = useState<LiuRiItem[] | null>(null);
   const now = new Date();
   const currentYear = now.getFullYear();
+  /**
+   * 生日输入的三道上限（年 ≤ 今年 / 月 ≤ 本月（仅当年是今年）/ 日 ≤ 该年月的实际天数）。
+   * 判据在 utils/dateValidation.birthdayBounds，与命盘对比页共用同一份——不要在这里另写。
+   * 用 useWatch 而不是在 InputNumber 上写死 max：上限随「历法 / 年 / 月 / 闰月」变化。
+   */
+  const wYear = Form.useWatch('year', form);
+  const wMonth = Form.useWatch('month', form);
+  const birthdayLimit = birthdayBounds({
+    calendar: inputMode,
+    isLeap: leapMonth === wMonth,
+    year: wYear,
+    month: wMonth,
+  });
   /**
    * 计算周岁（实岁）：用真实生日判定当前是否已过生日
    * 八字排盘的"起运年龄"是虚岁；为准确判断当前大运，应使用实岁
@@ -1156,6 +1169,19 @@ export default function Bazi() {
             birthHour: profile.birthHour,
             birthMinute: profile.birthMinute,
           }}
+          // 超限值级联夹回（改年份 → 月 → 日），判据共用 dateValidation.clampBirthday。
+          // InputNumber 的 max 只管住"正在编辑的那一格"，先填 1998-12-31 再把年份改今年
+          // 是绕不过去的——日期不会自己回退。setFieldsValue 不触发本回调，不会递归。
+          onValuesChange={() => {
+            const raw = form.getFieldsValue();
+            const fixed = clampBirthday(raw, {
+              calendar: inputMode,
+              isLeapOf: (m) => leapMonth === m,
+            });
+            if (fixed.year !== raw.year || fixed.month !== raw.month || fixed.day !== raw.day) {
+              form.setFieldsValue(fixed);
+            }
+          }}
         >
           <Form.Item label="输入方式">
             <Radio.Group value={inputMode} onChange={(e) => { setInputMode(e.target.value); setLeapMonth(null); }}>
@@ -1188,12 +1214,12 @@ export default function Bazi() {
             </Col>
             <Col xs={12} sm={6}>
               <Form.Item name="year" label="年" rules={[{ required: true }]}>
-                <InputNumber min={1900} max={currentYear} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
+                <InputNumber min={1900} max={birthdayLimit.maxYear} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
               </Form.Item>
             </Col>
             <Col xs={6} sm={3}>
               <Form.Item name="month" label="月" rules={[{ required: true }]}>
-                <InputNumber min={1} max={12} placeholder="1" style={{ width: '100%' }} />
+                <InputNumber min={1} max={birthdayLimit.maxMonth} placeholder="1" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={6} sm={3}>
@@ -1215,7 +1241,7 @@ export default function Bazi() {
                   }),
                 ]}
               >
-                <InputNumber min={1} max={31} placeholder="1" style={{ width: '100%' }} />
+                <InputNumber min={1} max={birthdayLimit.maxDay} placeholder="1" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hourUnknown !== cur.hourUnknown}>
