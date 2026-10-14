@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PayWall from '../components/PayWall';
@@ -253,12 +254,8 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
 export default function Ziwei() {
   const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  // 窄屏判据收口在 utils/viewport（⚠️ `< 768`，与 antd md 互补）
+  const isMobile = useNarrowViewport();
   const [form] = Form.useForm();
   const [ziweiData, setZiweiData] = useState<any>(null);
   const [loading, setLoading] = useState(false);

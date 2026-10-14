@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout, Button, Typography, Space, Form, Tag, message,
@@ -6,6 +6,7 @@ import {
 import { ChevronLeft } from 'lucide-react';
 import { useUser, getCityLng } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import type { StoredUser } from '../context/UserContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import ProfileDrawer from './ProfileDrawer';
@@ -20,13 +21,8 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  // 窄屏判据收口在 utils/viewport（⚠️ 是 `< 768`，必须与 antd md 互补，别改回 `<= 768`）
+  const isMobile = useNarrowViewport();
   const { user: authUser } = useAuth();
   const {
     profile, setProfile, hasProfile, currentUser,

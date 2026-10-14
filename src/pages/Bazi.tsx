@@ -20,6 +20,7 @@ import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture, birthdayBounds, clampBirthday } from '../utils/dateValidation';
 import { MiniNumber, MINI_NUMBER_MIN_WIDTH } from '../components/MiniNumber';
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import { analyzeMingGeDetailed, analyzeTouGan, type MingGeDetailed } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
@@ -471,13 +472,9 @@ function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string
 export default function Bazi() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  // 窄屏判据收口在 utils/viewport（⚠️ `< 768`，与 antd md 互补，别改回 `<= 768`）
+  const isMobile = useNarrowViewport();
 
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
   const { profile, currentUser, addHistory } = useUser();
   const [form] = Form.useForm();
   const [baziData, setBaziData] = useState<{

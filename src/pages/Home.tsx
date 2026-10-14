@@ -4,6 +4,7 @@ import { Typography, Space, Button, Modal } from 'antd';
 import qrDonation from '../assets/qr-donation.png';
 import { motion } from 'framer-motion';
 import { useUser } from '../context/UserContext';
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import { Lunar } from 'lunar-typescript';
 import {
   Binary, Star, Sparkles, Flower2, Waves, Compass,
@@ -42,7 +43,8 @@ export default function Home() {
   const navigate = useNavigate();
   const { history, currentUser } = useUser();
   const [lunarDate, setLunarDate] = useState('');
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  // 窄屏判据收口在 utils/viewport（⚠️ `< 768`，与 antd md 互补）
+  const isMobile = useNarrowViewport();
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [donationOpen, setDonationOpen] = useState(false);
   const [donated, setDonated] = useState(false);
@@ -61,9 +63,6 @@ export default function Home() {
 
   useEffect(() => {
     setLunarDate(getTodayLunar());
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const lastQueryMap: Record<string, string> = {};

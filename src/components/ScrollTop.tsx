@@ -1,22 +1,16 @@
 // 滚动到顶部按钮
 import { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
-
-const isMobile = () => window.innerWidth <= 768;
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 
 export default function ScrollTop() {
   const [visible, setVisible] = useState(false);
-  const [mobile, setMobile] = useState(isMobile());
+  const mobile = useNarrowViewport();
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > window.innerHeight);
-    const resize = () => setMobile(isMobile());
     window.addEventListener('scroll', handler, { passive: true });
-    window.addEventListener('resize', resize);
-    return () => {
-      window.removeEventListener('scroll', handler);
-      window.removeEventListener('resize', resize);
-    };
+    return () => window.removeEventListener('scroll', handler);
   }, []);
 
   const scrollToTop = () => {
