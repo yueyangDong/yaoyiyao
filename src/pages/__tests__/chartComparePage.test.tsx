@@ -80,4 +80,47 @@ describe('命盘对比页', () => {
     // 一定要说清判据把力量算进去了
     expect(txt).toContain('实际发力');
   });
+
+  /**
+   * 回归：「命盘对比无法输入时间」。
+   *
+   * 旧排版把 年/月/日/时/分 五格写死 span={8}/4/4/4/4 挤在一行：390×844 实测
+   * span-4 那四格各约 50px，antd InputNumber 右侧固定留给步进箭头约 28px，
+   * 内层 input 只剩 22px，而它自带 `padding: 4px 11px`（左右共 22px）→ **可视字宽 0**。
+   * 表现就是手机上 月/日/时/分 是四个看不见任何字符的空方块。
+   * 这里钉住修复后的两件事：① 移动端每一格都有 xs 断点（不再回落到五格一行）；
+   * ② 关掉步进箭头（它常驻右侧，正是吃掉 28px 的那个）。
+   * ⚠️ jsdom 没有排版引擎，量不出 px，只能钉住"结构性成因"，真实宽度用真机/浏览器实测过。
+   */
+  it('日期/时间数字框：移动端每格都带 xs 断点（不再五格挤一行）', () => {
+    const { container } = render(<ChartCompare />);
+    // ⚠️ 不能写 closest('.ant-col')：Form.Item 自己的控制层也带 ant-col 类（ant-form-item-control），
+    // 会先命中内层而拿到 null 断点。Col 是 Form.Item 的直接父节点。
+    const cols = Array.from(container.querySelectorAll('input.ant-input-number-input'))
+      .map((inp) => inp.closest('.ant-form-item')?.parentElement?.className || '');
+    expect(cols).toHaveLength(10); // 两张盘 × 5 格
+    const [yA, mA, dA, hA, miA, yB, mB, dB, hB, miB] = cols;
+    for (const c of [yA, yB]) expect(c).toContain('ant-col-xs-8');
+    for (const c of [mA, dA, mB, dB]) expect(c).toContain('ant-col-xs-8');
+    for (const c of [hA, miA, hB, miB]) expect(c).toContain('ant-col-xs-12');
+    // 断点不能只有 xs —— 宽屏仍要维持 年8/月4/日4/时4/分4 的一行排版
+    for (const c of [mA, dA, hA, miA]) expect(c).toContain('ant-col-sm-4');
+    for (const c of [yA, yB]) expect(c).toContain('ant-col-sm-8');
+  });
+
+  it('日期/时间数字框：关掉步进箭头（箭头常驻右侧 ≈28px，窄屏会把可输入区挤成 0）', () => {
+    const { container } = render(<ChartCompare />);
+    expect(container.querySelectorAll('.ant-input-number-handler-wrap')).toHaveLength(0);
+  });
+
+  it('数字框聚焦即全选：预填 12 后直接敲 8 得到 8，而不是被追加成 812 再静默夹到 23', () => {
+    const { container } = render(<ChartCompare />);
+    // 每张盘 5 个数字框：年 / 月 / 日 / 时 / 分
+    const hour = Array.from(container.querySelectorAll<HTMLInputElement>('input.ant-input-number-input'))[3];
+    expect(hour.value).toBe('12'); // 「时」预填 12
+    fireEvent.focus(hour);
+    // 焦点落下即整段选中 → 后续键入是替换而非追加
+    expect(hour.selectionStart).toBe(0);
+    expect(hour.selectionEnd).toBe(hour.value.length);
+  });
 });
