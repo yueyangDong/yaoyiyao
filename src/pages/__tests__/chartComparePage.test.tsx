@@ -85,14 +85,19 @@ describe('命盘对比页', () => {
    * 回归：「命盘对比无法输入时间」。
    *
    * 旧排版把 年/月/日/时/分 五格写死 span={8}/4/4/4/4 挤在一行：390×844 实测
-   * span-4 那四格各约 50px，antd InputNumber 右侧固定留给步进箭头约 28px，
+   * span-4 那四格各约 50px，antd InputNumber 右侧固定留给步进箭头约 30px，
    * 内层 input 只剩 22px，而它自带 `padding: 4px 11px`（左右共 22px）→ **可视字宽 0**。
-   * 表现就是手机上 月/日/时/分 是四个看不见任何字符的空方块。
-   * 这里钉住修复后的两件事：① 移动端每一格都有 xs 断点（不再回落到五格一行）；
-   * ② 关掉步进箭头（它常驻右侧，正是吃掉 28px 的那个）。
-   * ⚠️ jsdom 没有排版引擎，量不出 px，只能钉住"结构性成因"，真实宽度用真机/浏览器实测过。
+   * 表现就是 月/日/时/分 是四个看不见任何字符的空方块。
+   *
+   * ⚠️ 这里钉住的是「用纯分数 span，不用 xs/sm 断点」。原因是踩过一次：
+   * `span` 是行宽的**分数**（跟容器走），`xs/sm` 是**视口断点**——对比页卡内一行恒定
+   * 约 332～440px，与视口无关；一旦按 sm 给 span-4，在「768px 视口（容器被收到 480px）
+   * 或 1280px 视口（两卡并排）」下都会重回 22px / 0 字宽。
+   *
+   * ⚠️ jsdom 没有排版引擎，量不出 px，只能钉住"结构性成因"（分数 span + 无箭头 + 聚焦全选），
+   * 真实宽度用真机浏览器实测过：390 / 768 / 1280 三种视口下可视字宽 43～117px。
    */
-  it('日期/时间数字框：移动端每格都带 xs 断点（不再五格挤一行）', () => {
+  it('日期/时间数字框：用纯分数 span（年/月/日 各 1/3，时/分 各 1/2），不用视口断点', () => {
     const { container } = render(<ChartCompare />);
     // ⚠️ 不能写 closest('.ant-col')：Form.Item 自己的控制层也带 ant-col 类（ant-form-item-control），
     // 会先命中内层而拿到 null 断点。Col 是 Form.Item 的直接父节点。
@@ -100,15 +105,19 @@ describe('命盘对比页', () => {
       .map((inp) => inp.closest('.ant-form-item')?.parentElement?.className || '');
     expect(cols).toHaveLength(10); // 两张盘 × 5 格
     const [yA, mA, dA, hA, miA, yB, mB, dB, hB, miB] = cols;
-    for (const c of [yA, yB]) expect(c).toContain('ant-col-xs-8');
-    for (const c of [mA, dA, mB, dB]) expect(c).toContain('ant-col-xs-8');
-    for (const c of [hA, miA, hB, miB]) expect(c).toContain('ant-col-xs-12');
-    // 断点不能只有 xs —— 宽屏仍要维持 年8/月4/日4/时4/分4 的一行排版
-    for (const c of [mA, dA, hA, miA]) expect(c).toContain('ant-col-sm-4');
-    for (const c of [yA, yB]) expect(c).toContain('ant-col-sm-8');
+    for (const c of [yA, mA, dA, yB, mB, dB]) expect(c).toContain('ant-col-8');
+    for (const c of [hA, miA, hB, miB]) expect(c).toContain('ant-col-12');
+    // 一旦退回视口断点（ant-col-xs-*/sm-*），说明又踩回容器宽度 ≠ 视口的错配
+    for (const c of cols) expect(c).not.toMatch(/ant-col-(xs|sm)-/);
   });
 
-  it('日期/时间数字框：关掉步进箭头（箭头常驻右侧 ≈28px，窄屏会把可输入区挤成 0）', () => {
+  it('两张表单卡断点用 lg（md 会在 768px 视口与「容器收到 480px」错配，把卡压到约 220px）', () => {
+    const { container } = render(<ChartCompare />);
+    expect(container.querySelectorAll('.ant-col-lg-12')).toHaveLength(2);
+    expect(container.querySelectorAll('.ant-col-md-12')).toHaveLength(0);
+  });
+
+  it('日期/时间数字框：关掉步进箭头（箭头常驻右侧 ≈30px，窄屏会把可输入区挤成 0）', () => {
     const { container } = render(<ChartCompare />);
     expect(container.querySelectorAll('.ant-input-number-handler-wrap')).toHaveLength(0);
   });

@@ -44,6 +44,28 @@ describe('八字排盘页', () => {
     expect(txt).toContain('日柱算次日');
   });
 
+  /**
+   * 回归：生日格不能用 span={3} 这类窄值 + 步进箭头（两者叠加会把输入区挤成 0 字宽，
+   * 用户看到的是「看不见数字的空框」，报「无法输入时间」）。
+   * 判据/控件收口在 components/MiniNumber，这里只钉住页面接线：
+   *   ① 生日六格用「最低宽度 + 自动换行」的 flex 值（不再依赖视口断点）；
+   *   ② 这批数字框都没有 handler-wrap（controls 已关）。
+   * ⚠️ jsdom 无排版引擎，量不出 px；真实宽度真机实测过（390/768/1280 三档）。
+   */
+  it('生日格收口到 MiniNumber：flex 最低宽度换行 + 无步进箭头', () => {
+    const { container } = render(<MemoryRouter><Bazi /></MemoryRouter>);
+    const inputs = numberInputs(container);
+    expect(inputs.length).toBeGreaterThanOrEqual(5);
+    // 每张数字框都不再渲染步进箭头
+    expect(container.querySelectorAll('.ant-input-number-handler-wrap')).toHaveLength(0);
+    // Col 带 flex 最低宽度，且不再写死窄 span
+    const cols = inputs.slice(0, 5).map((inp) => inp.closest('.ant-form-item')?.parentElement as HTMLElement);
+    for (const col of cols) {
+      expect(col.style.flex).toContain('104px');
+      expect(col.className).not.toMatch(/ant-col-(xs|sm|md|lg|xl)-?\d/);
+    }
+  });
+
   it('填写 2002-12-31 20:30 男 → 排出壬午 壬子 癸酉 壬戌（页面接线到 buildRawChart 的端到端校验）', async () => {
     const { container } = render(<MemoryRouter><Bazi /></MemoryRouter>);
 

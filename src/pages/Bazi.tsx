@@ -19,6 +19,7 @@ import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
 import { renderWithTerms } from '../utils/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture, birthdayBounds, clampBirthday } from '../utils/dateValidation';
+import { MiniNumber, MINI_NUMBER_MIN_WIDTH } from '../components/MiniNumber';
 import { analyzeMingGeDetailed, analyzeTouGan, type MingGeDetailed } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
@@ -1203,8 +1204,11 @@ export default function Bazi() {
               />
             </Form.Item>
           )}
+          {/* 生日六格：改用「最低宽度 + 自动换行」。原 xs/sm 断点在「视口 sm 但容器窄」时会失效
+              （768px 视口的 iPad：sm 值配 480px 容器；对比页两张卡并排后每张仅约 334px）。
+              判据与控件收口在 components/MiniNumber。 */}
           <Row gutter={16}>
-            <Col xs={12} sm={6}>
+            <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
               <Form.Item name="gender" label="性别（决定大运顺逆）" rules={[{ required: true, message: '性别影响大运排法' }]}>
                 <Radio.Group>
                   <Radio.Button value="male">男</Radio.Button>
@@ -1212,17 +1216,17 @@ export default function Bazi() {
                 </Radio.Group>
               </Form.Item>
             </Col>
-            <Col xs={12} sm={6}>
+            <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
               <Form.Item name="year" label="年" rules={[{ required: true }]}>
-                <InputNumber min={1900} max={birthdayLimit.maxYear} placeholder="1990" style={{ width: '100%' }} onChange={() => setLeapMonth(null)} />
+                <MiniNumber min={1900} max={birthdayLimit.maxYear} placeholder="1990" onChange={() => setLeapMonth(null)} />
               </Form.Item>
             </Col>
-            <Col xs={6} sm={3}>
+            <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
               <Form.Item name="month" label="月" rules={[{ required: true }]}>
-                <InputNumber min={1} max={birthdayLimit.maxMonth} placeholder="1" style={{ width: '100%' }} />
+                <MiniNumber min={1} max={birthdayLimit.maxMonth} placeholder="1" />
               </Form.Item>
             </Col>
-            <Col xs={6} sm={3}>
+            <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
               <Form.Item
                 name="day"
                 label="日"
@@ -1241,7 +1245,7 @@ export default function Bazi() {
                   }),
                 ]}
               >
-                <InputNumber min={1} max={birthdayLimit.maxDay} placeholder="1" style={{ width: '100%' }} />
+                <MiniNumber min={1} max={birthdayLimit.maxDay} placeholder="1" />
               </Form.Item>
             </Col>
             <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hourUnknown !== cur.hourUnknown}>
@@ -1249,14 +1253,14 @@ export default function Bazi() {
                 const hu = !!getFieldValue('hourUnknown');
                 return (
                   <>
-                    <Col xs={6} sm={3}>
+                    <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
                       <Form.Item name="hour" label="时" rules={hu ? [] : [{ required: true }]}>
-                        <InputNumber min={0} max={23} placeholder={hu ? '推定' : '0'} disabled={hu} style={{ width: '100%' }} />
+                        <MiniNumber min={0} max={23} placeholder={hu ? '推定' : '0'} disabled={hu} />
                       </Form.Item>
                     </Col>
-                    <Col xs={6} sm={3}>
+                    <Col flex={`1 1 ${MINI_NUMBER_MIN_WIDTH}`}>
                       <Form.Item name="minute" label="分">
-                        <InputNumber min={0} max={59} placeholder="0" disabled={hu} style={{ width: '100%' }} />
+                        <MiniNumber min={0} max={59} placeholder="0" disabled={hu} />
                       </Form.Item>
                     </Col>
                   </>

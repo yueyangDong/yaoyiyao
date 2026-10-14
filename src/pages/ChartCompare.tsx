@@ -1,7 +1,8 @@
-import { useState, type FocusEvent, type ComponentProps } from 'react';
+import { useState } from 'react';
 import {
   Card, Form, InputNumber, Input, Button, Radio, Row, Col, Typography, Tag, Alert, Space, Cascader, Checkbox, Divider, Empty,
 } from 'antd';
+import { MiniNumber } from '../components/MiniNumber';
 import { pcaCode } from 'cn-division';
 import { type PersonForm, comparePersons, validatePersonForm } from '../utils/chartCompare';
 import { birthdayBounds, clampBirthday } from '../utils/dateValidation';
@@ -10,22 +11,6 @@ import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import type { PersonChart } from '../utils/personChart';
 
 const { Title, Text, Paragraph } = Typography;
-
-/**
- * 数字框聚焦即全选。
- *
- * 为什么需要：生日框（尤其「时」「分」）是预填值（12 / 0）。手机端点进去直接敲键，
- * 光标在末尾 → antd InputNumber 得到的是**追加**结果（12 + "8" = "812"）。
- * rc-input-number 对越界值**不会触发 onChange**（只更新显示），失焦时才夹回上限
- * （"812" → 23、"300" → 59）——用户敲进去的时间被静默吞掉，看着像"输不进去"。
- * 聚焦即全选后，"敲 8"= 8，不再是 812。
- */
-const selectAllOnFocus = (e: FocusEvent<HTMLInputElement>) => e.currentTarget.select();
-
-/** 紧缩排版的数字框：关掉步进箭头。箭头常驻右侧约 28px，窄屏上会把可输入区挤成 0 宽。 */
-function MiniNumber(props: ComponentProps<typeof InputNumber>) {
-  return <InputNumber controls={false} onFocus={selectAllOnFocus} style={{ width: '100%' }} {...props} />;
-}
 
 /** 单人输入表单（A/B 各一个实例，字段名带前缀避免 Form 冲突） */
 function PersonFormBlock({
@@ -82,23 +67,23 @@ function PersonFormBlock({
             ) : null}
           </Form.Item>
           {/*
-            手机端必须换行，不能五格挤一行。
-            原来写死 年8/月4/日4/时4/分4：窄屏一行只有约 336px，span-4 那四格各约 50px，
-            antd InputNumber 右侧固定留给步进箭头约 28px，内层 input 只剩 22px，
-            而它自带 `padding: 0 11px` → **可视文字宽度 0**：
-            月/日/时/分在手机上就是一个看不见任何字符的空方块，输进去的数字也显示不出来。
-            实测（390×844）：span-4 → input 22px（0 字宽）；xs=8 → 79px；xs=12 → 133px。
-            现在 xs 下 年/月/日 各 1/3 行、时/分 各半行（两行），sm 以上仍保持原一行布局。
+            ⚠️ 这里只能用不带断点的 span，不能用 xs/sm。
+            `span` 是**行宽的分数**（跟着容器走），`xs/sm` 是**视口断点**——两者在
+            「容器宽度不随视口走」时会错配：对比页两张表单卡并排后卡内一行只有约 332～440px，
+            卡内一行恒为约 332～440px（实测 1280 视口 334、390 视口 358、768 视口 440），
+            而按 sm 值给的是 span-4 = 46px → 内层 input 22px、自带 padding 22px → **可视字宽 0**。
+            纯分数就没有这个问题：无论容器多宽，年/月/日 恒为 1/3（→ input 71～89px）、
+            时/分 恒为 1/2（→ 127～170px），自动落成「日期一行 / 时间一行」。
           */}
-          <Col xs={8} sm={8}><Form.Item name="year" label="年" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
+          <Col span={8}><Form.Item name="year" label="年" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
             <MiniNumber min={1900} max={bounds.maxYear} placeholder="1998" /></Form.Item></Col>
-          <Col xs={8} sm={4}><Form.Item name="month" label="月" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
+          <Col span={8}><Form.Item name="month" label="月" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
             <MiniNumber min={1} max={bounds.maxMonth} placeholder="6" /></Form.Item></Col>
-          <Col xs={8} sm={4}><Form.Item name="day" label="日" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
+          <Col span={8}><Form.Item name="day" label="日" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
             <MiniNumber min={1} max={bounds.maxDay} placeholder="15" /></Form.Item></Col>
-          <Col xs={12} sm={4}><Form.Item name="hour" label="时" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
+          <Col span={12}><Form.Item name="hour" label="时" style={{ marginBottom: 10 }} rules={[{ required: true }]}>
             <MiniNumber min={0} max={23} placeholder="12" /></Form.Item></Col>
-          <Col xs={12} sm={4}><Form.Item name="minute" label="分" style={{ marginBottom: 10 }}>
+          <Col span={12}><Form.Item name="minute" label="分" style={{ marginBottom: 10 }}>
             <MiniNumber min={0} max={59} placeholder="0" /></Form.Item></Col>
         </Row>
         <Text style={{ fontSize: 11.5, color: 'var(--text-secondary)', display: 'block', marginBottom: 10 }}>
@@ -214,9 +199,13 @@ export default function ChartCompare() {
         而不是简单数"两人都出现了几颗同名神煞"。
       </Paragraph>
 
+      {/* ⚠️ 卡片断点用 lg 而不是 md：Layout 在视口 ≤768 时把内容容器收到 480px，
+          而 md 断点在 768 就已生效——正好卡在「容器 480 + 两卡并排」的错配上，
+          每张卡被压到约 220px（实测 768 视口下生日格 input 只剩 30px / 可视字宽 8px）。
+          推到 lg（≥992，此时容器已是 800px）就不再有这个重叠窗口。 */}
       <Row gutter={12}>
-        <Col xs={24} md={12}><PersonFormBlock title="第一张盘" prefix="a" color="var(--wx-wood)" initial={{}} onValues={setFormA} /></Col>
-        <Col xs={24} md={12}><PersonFormBlock title="第二张盘" prefix="b" color="var(--wx-fire)" initial={{ gender: 'female' }} onValues={setFormB} /></Col>
+        <Col xs={24} lg={12}><PersonFormBlock title="第一张盘" prefix="a" color="var(--wx-wood)" initial={{}} onValues={setFormA} /></Col>
+        <Col xs={24} lg={12}><PersonFormBlock title="第二张盘" prefix="b" color="var(--wx-fire)" initial={{ gender: 'female' }} onValues={setFormB} /></Col>
       </Row>
 
       <Button type="primary" block size="large" onClick={handleCompare} style={{ marginBottom: 16 }}>开始对比</Button>
@@ -239,9 +228,10 @@ export default function ChartCompare() {
             </Text>
           </Card>
 
+          {/* 同上：结果两张卡也用 lg，避免 768px 视口下（容器 480）被压成 220px */}
           <Row gutter={12} style={{ marginBottom: 16 }}>
-            <Col xs={24} md={12}><ChartColumn chart={data.a} label="第一张盘" color="var(--wx-wood)" /></Col>
-            <Col xs={24} md={12}><ChartColumn chart={data.b} label="第二张盘" color="var(--wx-fire)" /></Col>
+            <Col xs={24} lg={12}><ChartColumn chart={data.a} label="第一张盘" color="var(--wx-wood)" /></Col>
+            <Col xs={24} lg={12}><ChartColumn chart={data.b} label="第二张盘" color="var(--wx-fire)" /></Col>
           </Row>
 
           <Card size="small" title="共振明细" style={{ marginBottom: 16 }}>
