@@ -20,7 +20,9 @@ describe('analyzeZiweiGe', () => {
     expect(r.breakReasons).toHaveLength(0);
   });
 
-  it('杀破狼缺四化引动 → 不成格（有原因）', () => {
+  it('杀破狼：命宫擎羊 + 财帛陀罗（煞≥2）→ 破格不入（与"缺四化只降档"区分）', () => {
+    // ⚠️ 旧用例名叫「缺四化引动 → 不成格」，与 2026-09 分层口径相反：
+    //    缺四化只降层次，真正让它不入格的是这里的煞星≥2。名字必须写清是哪条判据在起作用。
     const gongData = [
       gong('命宫', ['七杀'], ['擎羊']),
       gong('财帛宫', ['破军'], ['陀罗']),
@@ -29,7 +31,7 @@ describe('analyzeZiweiGe', () => {
     ];
     const r = analyzeZiweiGe(gongData);
     expect(r.geNames).not.toContain('杀破狼格');
-    expect(r.breakReasons.length).toBeGreaterThan(0);
+    expect(r.breakReasons.join()).toContain('煞星');
   });
 
   it('紫府同宫（命宫）成格', () => {
@@ -252,5 +254,86 @@ describe('analyzeZiweiGe', () => {
     ];
     const r = analyzeZiweiGe(gongData);
     expect(r.breakReasons.join()).toContain('羊陀夹忌');
+  });
+
+  // ---- 2026-10 一致性修正 ----
+  it('君臣庆会：紫微坐命 + 六吉两颗会照 → 成格', () => {
+    // 紫微坐命在不成紫府同宫/朝垣时的兜底：否则紫微坐命一个格都没有
+    const gongData = [
+      gong('命宫', ['紫微'], ['左辅', '文昌'], { 紫微: '权' }),
+      gong('财帛', ['武曲'], []),
+      gong('官禄', ['天相'], []),
+      gong('迁移', ['七杀'], []),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('君臣庆会格');
+  });
+
+  it('君臣庆会：紫微坐命但六吉不足两颗 → 不成格（紫微无左右为孤君）', () => {
+    const gongData = [
+      gong('命宫', ['紫微'], ['左辅'], { 紫微: '权' }),
+      gong('财帛', ['武曲'], []),
+      gong('官禄', ['天相'], []),
+      gong('迁移', ['七杀'], []),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('君臣庆会格');
+  });
+
+  it('两层口径：重破盘上夹宫格仍成立，但破格文案明确只约束"主星格"', () => {
+    // 昌曲夹结构成立的盘实测 124/124 都带破格——若让夹宫格连坐，等于删掉这个功能。
+    // 正确做法是分层讲清：破格三条只管主星格，夹宫格另论，并注明力度打折。
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '天机', sihua: '科' }], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: ['擎羊', '陀罗'] },
+      { name: '兄弟', branch: '巳', majorStars: [], minorStars: ['文昌'] },
+      { name: '父母', branch: '未', majorStars: [], minorStars: ['文曲'] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('昌曲夹命格');
+    // 文案必须点名约束范围，否则与"格成立"读起来矛盾
+    expect(r.breakReasons.join()).toContain('主星格');
+    expect(r.reasons.join()).toContain('力度打折');
+  });
+
+  it('两层口径：重破盘上火贪仍成立，并注明力度打折', () => {
+    const gongData = [
+      gong('命宫', ['贪狼'], ['火星'], { 贪狼: '忌' }),
+      gong('财帛', ['天相']),
+      gong('官禄', ['天府']),
+      gong('迁移', ['紫微']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('火贪格');
+    expect(r.breakReasons.join()).toContain('主星格');
+    expect(r.reasons.join()).toContain('力度打折');
+  });
+
+  it('身宫条件依赖 isShenGong：字段缺失时安全退化（不抛错、不误判成格）', () => {
+    // buildZiweiChart（合盘链路）产出的宫位没有 isShenGong，复用时不能静默误判
+    const gongData = [
+      gong('命宫', ['紫微'], ['文昌'], { 紫微: '权' }),
+      gong('财帛', ['七杀']),
+      gong('官禄', ['破军']),
+      gong('迁移', ['贪狼']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('杀破狼格');
+    expect(Array.isArray(r.breakReasons)).toBe(true);
+  });
+
+  it('geNames 与 reasons 一一对应（页面按索引取文案）', () => {
+    const gongData = [
+      gong('命宫', ['紫微', '天府'], ['左辅', '文昌'], { 紫微: '权' }),
+      gong('财帛', ['武曲'], [], { 武曲: '禄' }),
+      gong('官禄', ['天相'], [], { 天相: '科' }),
+      gong('迁移', ['七杀'], []),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames.length).toBeGreaterThanOrEqual(2);
+    expect(r.reasons.length).toBe(r.geNames.length);
+    expect(r.reasons.every((x) => x.length > 0)).toBe(true);
   });
 });
