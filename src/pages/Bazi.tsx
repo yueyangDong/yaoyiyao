@@ -1063,13 +1063,24 @@ export default function Bazi() {
   }, [baziData, strengthAnalysis, yongShenRec]);
 
   const healthAnalysis = useMemo(() => {
-    if (!baziData || !strengthAnalysis || !wxStats) return null;
-    return analyzeHealth(baziData.pillars, wxStats as Record<string, { count: number; level: string }>, baziData.dayGan, strengthAnalysis.level, relationAnalysis);
-  }, [baziData, strengthAnalysis, wxStats, relationAnalysis]);
+    if (!baziData || !strengthAnalysis || !wxStats || !yongShenRec) return null;
+    // ⚠️ 必须传 yongShen + gender：健康模块原先两样都没有，于是"该补哪个五行"
+    //    退化成"哪个五行个数最少"，且女命盘会照抄男命语境的养生建议。
+    return analyzeHealth(
+      baziData.pillars,
+      wxStats as Record<string, { count: number; level: string }>,
+      baziData.dayGan,
+      strengthAnalysis.level,
+      relationAnalysis,
+      { yongShen: yongShenRec.yongShen, gender: baziData.birthGender }
+    );
+  }, [baziData, strengthAnalysis, wxStats, relationAnalysis, yongShenRec]);
 
   const familyAnalysis = useMemo(() => {
     if (!baziData) return null;
-    return analyzeFamily(baziData.pillars, relationAnalysis, baziData.dayGan);
+    // ⚠️ 必须传 gender：父母星男命偏财/正印、女命正财/偏印，不传会按男命口径算，
+    //    与 baziDomainDeep 的家庭段自相矛盾。
+    return analyzeFamily(baziData.pillars, relationAnalysis, baziData.dayGan, baziData.birthGender);
   }, [baziData, relationAnalysis]);
 
   const socialAnalysis = useMemo(() => {

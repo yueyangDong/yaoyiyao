@@ -1,4 +1,7 @@
 import type { PillarData } from '../pages/Bazi';
+// 五行→脏腑/养护建议的唯一真源（与 baziAnalysis.analyzeHealth 共用）
+import { WX_BODY_BASE, WX_ORGAN_CHECK, wxHealthAdvice } from './wuxingHealth';
+import { normGender } from './kinStars';
 
 // ========== 八字六大领域深度解读（干支 + 十神 + 神煞分层白话） ==========
 // 结构对标紫微四化深度解读：干支密码 → 神煞点睛 → 暗线与矛盾 → 开运建议
@@ -153,10 +156,10 @@ const SOCIAL_SHA: Record<string, string> = {
 };
 
 // ---------- 日支十神（夫妻宫）爱情语境 ----------
+// ⚠️ 正财/正官两句自带性别语义（妻星/夫星），按性别只出一边 —— 一句里塞两种性别
+//    会让女命读到「妻星入妻宫（男命）……女命则……」这种说明书腔。见 DAY_ZHI_LOVE_GENDERED。
 const DAY_ZHI_LOVE: Record<string, string> = {
-  '正财': '妻星入妻宫（男命），你把伴侣放在"自己人"的位置，成家后财运反而更顺；女命则婚后善持家、务实过日',
   '偏财': '夫妻宫坐偏财，感情自带"活水"——容易遇到条件不错或性格洒脱的伴侣，但也要守住正缘、少招偏缘',
-  '正官': '夫星入妻宫（女命），配偶正直有担当，婚姻是你会认真经营的正事；男命则自律顾家，是靠谱型伴侣',
   '七杀': '夫妻宫坐七杀，感情浓烈带"张力"——容易被强势有魅力的人吸引，爱得深也累得快，择偶要避开控制欲过强的人',
   '正印': '夫妻宫坐正印，渴望被照顾、找"治愈系"伴侣——对方多半温柔包容，但注意别把对方当妈/当爸用',
   '偏印': '夫妻宫坐偏印，感情上精神需求高，需要一个懂你"怪"的人；亲密关系中容易想太多，安全感要自己先立住',
@@ -165,6 +168,27 @@ const DAY_ZHI_LOVE: Record<string, string> = {
   '食神': '夫妻宫坐食神，婚姻生活有滋有味——吃喝玩乐都是你们的相处语言，找一个热爱生活的人你会很幸福',
   '伤官': '夫妻宫坐伤官，对伴侣要求高、嘴上不饶人——你欣赏才华横溢的人，但记得夸奖比挑剔更能留住一个人',
 };
+
+/** 夫妻宫坐正财/正官：按性别取用，未知性别走 neutral */
+const DAY_ZHI_LOVE_GENDERED: Record<string, { male: string; female: string; neutral: string }> = {
+  '正财': {
+    male: '妻星入妻宫（男命），你把伴侣放在"自己人"的位置，成家后财运反而更顺',
+    female: '财星入夫妻宫（女命）——你把他放在"自己人"的位置，婚后更务实、也更懂得为自己打算',
+    neutral: '财星入夫妻宫——你把伴侣放在"自己人"的位置，成家后在现实层面更稳、更会过日子',
+  },
+  '正官': {
+    male: '官星入夫妻宫（男命）——配偶自律顾家，婚姻是你认真经营的正事，也是靠谱型伴侣',
+    female: '夫星入妻宫（女命），配偶正直有担当，婚姻是你会认真经营的正事',
+    neutral: '官星入夫妻宫——配偶自律有担当，婚姻是你认真经营的正事',
+  },
+};
+
+function dayZhiLoveOf(shiShen: string, gender?: string): string {
+  const g = normGender(gender);
+  const byGender = DAY_ZHI_LOVE_GENDERED[shiShen];
+  if (byGender) return g ? byGender[g] : byGender.neutral;
+  return DAY_ZHI_LOVE[shiShen] || '夫妻宫藏着你对亲密关系最真实的态度';
+}
 
 // ---------- 月令十神（格局发动机）事业语境 ----------
 const MONTH_SHI_SHEN_CAREER: Record<string, string> = {
@@ -181,22 +205,11 @@ const MONTH_SHI_SHEN_CAREER: Record<string, string> = {
 };
 
 // ---------- 五行健康 ----------
-const WX_HEALTH: Record<string, { organ: string; advice: string }> = {
-  '木': { organ: '肝胆与神经系统', advice: '情绪是肝的镜子——少熬夜、多伸展、疏解怒气' },
-  '火': { organ: '心血管与眼睛', advice: '心静自然凉——控制咖啡因、注意心率与睡眠质量' },
-  '土': { organ: '脾胃与消化', advice: '三餐规律是第一药——少生冷、细嚼慢咽、饭后散步' },
-  '金': { organ: '肺与呼吸道、皮肤', advice: '肺喜润恶燥——秋季注意呼吸道，戒烟限酒、多做深呼吸' },
-  '水': { organ: '肾与泌尿、内分泌', advice: '肾主藏精——节欲保精、不憋尿、冬季注意保暖' },
-};
+// ⚠️ organ / advice 已收口到 utils/wuxingHealth（与六大领域·健康共用），此处不再各写一份。
+//    原表把「水」写成「肾主藏精——节欲保精」，女命盘会照原样输出，属性别语境硬错。
 
 // ---------- 日主五行体质底色 ----------
-const WX_BODY_BASE: Record<string, string> = {
-  '木': '肝胆气机为主——精力恢复快、生长代谢旺盛，但情绪直接，怒伤肝是你的第一忌',
-  '火': '心血管与心神为主——体温偏高、精力充沛，但易上火失眠，静养心神是关键',
-  '土': '脾胃运化为主——体质厚实耐造，但消化系统是你最敏感的反馈器，饮食规律第一',
-  '金': '肺气与皮毛为主——呼吸道、皮肤容易打头阵出问题，肺喜润恶燥要常记',
-  '水': '肾水与内分泌为主——先天肾气充盈与否直接体现在精力与腰膝，节律作息是养肾根本',
-};
+// 同样收口到 wuxingHealth.WX_BODY_BASE（与六大领域·健康共用同一套措辞）。
 
 // ---------- 性格：十神主导组 ----------
 const GROUP_OF: Record<string, string> = {
@@ -393,7 +406,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   const loveSections: DomainDeepSection[] = [];
   loveSections.push({
     heading: '夫妻宫的底牌（干支密码）',
-    text: `你的日柱是${dp.ganZhi}，日支（夫妻宫）坐${dayZhiShiShenName}——${DAY_ZHI_LOVE[dayZhiShiShenName] || '夫妻宫藏着你对亲密关系最真实的态度'}。`,
+    text: `你的日柱是${dp.ganZhi}，日支（夫妻宫）坐${dayZhiShiShenName}——${dayZhiLoveOf(dayZhiShiShenName, input.gender)}。`,
   });
   const loveShas = findShaExact(input, Object.keys(LOVE_SHA));
   if (loveShas.length > 0) {
@@ -520,14 +533,21 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   }
   const minCount = Math.min(...allWx.map(wxCountOf));
   const weakest = allWx.filter((w) => wxCountOf(w) === minCount);
-  const weakInfo = weakest.map((w) => `${w}（${WX_HEALTH[w]?.organ || ''}偏弱——${WX_HEALTH[w]?.advice || ''}）`).join('；');
+  // 养护建议按性别分档（「肾主藏精·节欲保精」只适用男命），见 wuxingHealth。
+  const weakInfo = weakest.map((w) => `${w}（${WX_ORGAN_CHECK[w] || ''}偏弱——${wxHealthAdvice(w, input.gender)}）`).join('；');
   healthSections.push({
     heading: '五行短板（藏干点出的系统）',
     text: `四柱五行分布中${weakest.join('、')}最弱——${weakInfo}。${input.strengthLevel ? `日主偏${input.strengthLevel.includes('弱') ? '弱' : '强'}，${input.strengthLevel.includes('弱') ? '以养为主、运动宜温和' : '代谢旺精力足，注意别过劳透支'}。` : ''}`,
   });
+  // ⚠️ 「数量最少」是分布事实，不是进补指令——这里必须按喜忌分档，否则同一段话里
+  //    "缺什么"和"喜什么"打架，读者会照着最弱的那个去补。
+  const weakestIsYong = weakest.some((w) => yongShen.includes(w));
+  const checkNote = weakestIsYong
+    ? `这几路里有你的喜用神——既是短板又是需要，可以放心地去养。`
+    : `${weakest.join('、')}并不在你的喜用之列：数量少对你其实是省力处，列成复查项是为了"别漏看"，不是为了"要进补"。`;
   healthSections.push({
     heading: '养生方案（喜用神开方）',
-    text: `喜用神为${yongShort}——${yongText.slice(0, 2).join('；')}。体检别买"套餐"——把${weakest.map((w) => WX_HEALTH[w]?.organ || w).join('、')}列成每年的固定复查项，比吃补品实在得多。${dominant[0] ? `情绪出口在${GROUP_EMOTION_OUTLET[dominant[0]]}，堵着不排，身体会替你记账。` : ''}`,
+    text: `喜用神为${yongShort}——${yongText.slice(0, 2).join('；')}。体检别买"套餐"——把${weakest.map((w) => WX_ORGAN_CHECK[w] || w).join('、')}列成每年的固定复查项，比吃补品实在得多。${checkNote}${dominant[0] ? `情绪出口在${GROUP_EMOTION_OUTLET[dominant[0]]}，堵着不排，身体会替你记账。` : ''}`,
   });
   if (a.health) {
     const findH = (h: string) => healthSections.find((s) => s.heading.includes(h));

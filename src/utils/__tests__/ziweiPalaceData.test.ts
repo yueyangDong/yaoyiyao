@@ -44,6 +44,23 @@ describe('长生十二神', () => {
     expect(getChangsheng12('木三局')['亥']).toBe('长生');
     expect(getChangsheng12('火六局')['寅']).toBe('长生');
   });
+
+  it('方向按性别：阴男逆行、阴女顺行（与博士十二神同规则）', () => {
+    // 金四局巳起长生；乙为阴干 → 阴男逆：辰=沐浴、卯=冠带
+    const yinMale = getChangsheng12('金四局', { yearGan: '乙', gender: 'male' });
+    expect(yinMale['巳']).toBe('长生');
+    expect(yinMale['辰']).toBe('沐浴');
+    expect(yinMale['卯']).toBe('冠带');
+    // 阴女顺：午=沐浴
+    expect(getChangsheng12('金四局', { yearGan: '乙', gender: 'female' })['午']).toBe('沐浴');
+    // 阳男顺、阳女逆
+    expect(getChangsheng12('金四局', { yearGan: '壬', gender: 'male' })['午']).toBe('沐浴');
+    expect(getChangsheng12('金四局', { yearGan: '壬', gender: 'female' })['辰']).toBe('沐浴');
+  });
+
+  it('不传性别时保持顺行（独立调用兼容）', () => {
+    expect(getChangsheng12('金四局')['午']).toBe('沐浴');
+  });
 });
 
 describe('博士十二神（禄存起，阳男阴女顺、阴男阳女逆）', () => {
@@ -120,10 +137,15 @@ describe('流年与小限虚岁（文墨照片案例：壬午年男命宫在寅�
     expect(getXiaoXianAges('午', '辰', '壬', 'male')[0]).toBe(1);
   });
 
-  it('小限：阴男逆行（乙卯年亥卯未起寅）', () => {
-    // 乙卯年阴男起寅逆行：寅=1岁、丑=2岁
+  it('小限：阴男同样顺行（男顺女逆，不分阴阳）', () => {
+    // 《紫微斗数全书》口诀「小限一年一度逢，男顺女逆不相同」——只看性别，不看年干阴阳。
+    // ⚠️ 旧用例钉的是「乙卯阴男逆行」（寅=1、丑=2），那是把大限/博士十二神的
+    //    「阳男阴女顺」误套到小限上，属于通行误记；此处按全书原文改为顺行。
     expect(getXiaoXianAges('卯', '寅', '乙', 'male')[0]).toBe(1);
-    expect(getXiaoXianAges('卯', '丑', '乙', 'male')[0]).toBe(2);
+    expect(getXiaoXianAges('卯', '卯', '乙', 'male')[0]).toBe(2);
+    // 同年女命逆行：寅=1、丑=2
+    expect(getXiaoXianAges('卯', '寅', '乙', 'female')[0]).toBe(1);
+    expect(getXiaoXianAges('卯', '丑', '乙', 'female')[0]).toBe(2);
   });
 });
 

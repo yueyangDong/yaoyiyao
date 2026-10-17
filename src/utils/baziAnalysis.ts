@@ -1,4 +1,6 @@
 import type { PillarData } from '../pages/Bazi';
+import { WX_ORGAN_FULL, WX_SYMPTOM, WX_FOOD, WX_SPORT, wxMainOrgan } from './wuxingHealth';
+import { kinStarsOf, normGender } from './kinStars';
 
 // ========== 六大领域分析接口 ==========
 
@@ -897,15 +899,18 @@ export function analyzeLove(
   relations: { type: string; desc: string; pillars?: number[] }[]
 ): LoveAnalysis {
   const dayWx = TG_WX[dayGan];
-  const spouseStarName = gender === 'male' ? '正财' : '正官';
-  const spouseStarPlain = gender === 'male' ? '正财（代表妻子和稳定收入）' : '正官（代表丈夫和事业规则）';
+  // ⚠️ 不能只写 `gender === 'male'`：合盘层允许传 '男'/'女'，那样「男」会被判成女命。
+  const male = normGender(gender) === 'male';
+  const female = normGender(gender) === 'female';
+  const spouseStarName = male ? '正财' : '正官';
+  const spouseStarPlain = male ? '正财（代表妻子和稳定收入）' : '正官（代表丈夫和事业规则）';
   const dayGanProfile = DAY_GAN_PROFILE[dayGan];
   const spousePalace = SPOUSE_PALACE_PROFILE[dayZhi] || '';
 
   // ===== 配偶特征 =====
   const spousePillars = findShiShenPillars(pillars, spouseStarName);
   // 如果没有正配星，男命查偏财、女命查七杀
-  const secondarySpouseName = gender === 'male' ? '偏财' : '七杀';
+  const secondarySpouseName = male ? '偏财' : '七杀';
   const secondarySpousePillars = findShiShenPillars(pillars, secondarySpouseName);
 
   let spouseFeature = '';
@@ -961,7 +966,7 @@ export function analyzeLove(
     // 用偏财/七杀代替
     const ssp = secondarySpousePillars[0];
     const ssWx = TG_WX[ssp.tianGan];
-    const ssPlain = gender === 'male' ? '偏财（偏缘/桃花）' : '七杀（偏官/压力型缘分）';
+    const ssPlain = male ? '偏财（偏缘/桃花）' : '七杀（偏官/压力型缘分）';
 
     spouseFeature = `你命局中${spouseStarPlain}不显，但${ssPlain}出现在${ssp.pillar}（${ssp.ganZhi}，${ssWx}）。这意味着你的正缘可能不那么明显，婚姻更依赖偏缘或非传统方式认识。`;
     if (spousePalace) {
@@ -1038,7 +1043,7 @@ export function analyzeLove(
     if (riDzWx === dayWx) {
       marriageQuality += `夫妻宫${riDzWx}与日主${dayWx}同五行，说明你找的伴侣大概率和你"同类"——三观相近、性格相合，婚姻平淡但稳定。`;
     } else if (WX_SHENG[dayWx] === riDzWx) {
-      marriageQuality += `夫妻宫${riDzWx}生助日主${dayWx}，说明你的另一半会比较照顾你、支持你，是那种"旺夫/旺妻"的类型。`;
+      marriageQuality += `夫妻宫${riDzWx}生助日主${dayWx}，说明你的另一半会比较照顾你、支持你，是那种"${male ? '旺妻' : '旺夫'}"的类型。`;
     } else {
       marriageQuality += '你们的相处不是"天生黏"那一类——感情靠共同经历一点点垒：一起做成的事越多、共同回忆越厚，关系反而越牢。';
     }
@@ -1100,11 +1105,11 @@ export function analyzeLove(
   if (hasXing) {
     adviceItems.push('夫妻宫有刑，平时多表达感受、多做深度沟通。可以约定"每月至少一次约会日"来维持感情新鲜度');
   }
-  if (gender === 'male' && pillars.some(p => p.shiShen === '偏财')) {
+  if (male && pillars.some(p => p.shiShen === '偏财')) {
     const pp = findShiShenPillars(pillars, '偏财')[0];
     adviceItems.push(`你命带偏财（${pp.ganZhi}在${pp.pillar}），偏财除了代表外快，也代表偏缘——注意不要因为钱财或桃花问题影响夫妻感情，心里要有一把尺`);
   }
-  if (gender === 'female' && pillars.some(p => p.shiShen === '七杀')) {
+  if (female && pillars.some(p => p.shiShen === '七杀')) {
     const qs = findShiShenPillars(pillars, '七杀')[0];
     adviceItems.push(`你命带七杀（${qs.ganZhi}在${qs.pillar}），七杀是"有魅力的压力"——小心别被外表光鲜但人品不过关的人吸引。选对象时看人品比看感觉更重要`);
   }
@@ -1113,7 +1118,7 @@ export function analyzeLove(
     const spWx = TG_WX[spousePillars[0].tianGan];
     const shengRiWx = WX_SHENG[dayWx];
     if (spWx === shengRiWx) {
-      adviceItems.push(`你的配偶星五行（${spWx}）刚好生助你的日主（${dayWx}），说明你的另一半会比较旺你——婚后运势可能比婚前好，是典型的"嫁/娶对人"类型`);
+      adviceItems.push(`你的配偶星五行（${spWx}）刚好生助你的日主（${dayWx}），说明你的另一半会比较旺你——婚后运势可能比婚前好，是典型的"${male ? '娶对人' : '嫁对人'}"类型`);
     }
   }
   if (!adviceItems.length) {
@@ -1368,52 +1373,34 @@ export function analyzeCareer(
 }
 
 // ========== 3. 身体健康分析 ==========
+/** 健康分析的可选外部口径。缺省时退回扶抑兜底，不下"补最弱五行"的结论。 */
+export interface HealthOpts {
+  /** 喜用神（recommendYongShen().yongShen）——决定"该补哪个五行"的唯一优先依据 */
+  yongShen?: string[];
+  /** 性别：'male' | 'female' | '男' | '女'。只影响措辞语境，不影响判据 */
+  gender?: string;
+}
+
 export function analyzeHealth(
   pillars: PillarData[],
   wxStats: Record<string, { count: number; level: string }>,
   dayGan: string,
   strengthLevel: string,
-  relations: { type: string; desc: string; pillars?: number[] }[]
+  relations: { type: string; desc: string; pillars?: number[] }[],
+  opts: HealthOpts = {}
 ): HealthAnalysis {
   const dayWx = TG_WX[dayGan];
 
-  const wxBody: Record<string, string> = {
-    '木': '肝胆、筋骨、神经系统、甲状腺',
-    '火': '心脏、小肠、眼睛、血液、心血管系统',
-    '土': '脾胃、皮肤、肌肉、消化系统、胰腺',
-    '金': '肺、大肠、呼吸道、骨骼、牙齿',
-    '水': '肾、膀胱、耳朵、生殖泌尿系统、骨髓',
-  };
-
-  const wxSymptom: Record<string, { excess: string; deficient: string }> = {
-    '木': { excess: '肝火旺、易怒、偏头痛、眼睛干涩疲劳、肩颈僵硬', deficient: '肝功能偏弱、容易疲劳、筋骨酸痛、指甲易断、视力下降' },
-    '火': { excess: '心火旺、失眠多梦、口腔溃疡、血压偏高、容易焦虑', deficient: '心悸心慌、手脚冰凉、血液循环不好、面色苍白、低血压' },
-    '土': { excess: '胃火大、消化不良、口臭、皮肤长痘、便秘', deficient: '脾胃虚弱、食欲不振、容易腹胀腹泻、四肢无力、面色萎黄' },
-    '金': { excess: '肺热、干咳、皮肤干燥瘙痒、便秘、容易感冒发烧', deficient: '容易感冒、呼吸道敏感、哮喘、皮肤松弛、牙齿不好' },
-    '水': { excess: '水肿、肾负担重、腰膝酸软、听力下降、夜尿多', deficient: '肾气不足、怕冷畏寒、精力不济、耳鸣、脱发、记忆力下降' },
-  };
-
-  const wxFood: Record<string, string> = {
-    '木': '绿色蔬菜（菠菜、西兰花、芹菜）、绿茶、枸杞、柠檬、乌梅',
-    '火': '红色食物（番茄、红枣、红豆、枸杞）、苦瓜、莲子心、菊花茶',
-    '土': '黄色食物（南瓜、小米、玉米、山药）、土豆、红薯、蜂蜜',
-    '金': '白色食物（百合、银耳、雪梨、白萝卜）、杏仁、豆浆、牛奶',
-    '水': '黑色食物（黑豆、黑芝麻、黑木耳、黑米）、海带、核桃、桑葚',
-  };
-
-  const wxSport: Record<string, string> = {
-    '木': '拉伸运动、瑜伽、散步、太极、八段锦',
-    '火': '有氧运动、跑步、跳舞、球类运动、游泳',
-    '土': '登山、徒步、力量训练、八段锦、站桩',
-    '金': '呼吸训练、游泳、骑行、羽毛球、普拉提',
-    '水': '游泳、冥想、太极拳、慢跑、深蹲',
-  };
+  // ⚠️ 五行→脏腑/症状/食养/运动四张表统一在 utils/wuxingHealth（唯一真源），
+  //    本函数与 baziDomainDeep 共用，不要在这里就地重写一份。
 
   const sorted = Object.entries(wxStats).sort((a, b) => b[1].count - a[1].count);
   const strongest = sorted[0];
   const weakest = sorted[sorted.length - 1];
   const keDayWx = WX_BEI_KE[dayWx]; // 克日主的五行
   const woShengWx = WX_SHENG_CHU[dayWx]; // 日主生的五行
+  // 喜用神：决定"该不该补"的唯一优先依据；缺省时下面的扶抑兜底才有意义
+  const yongList = opts.yongShen ?? [];
 
   // ===== 体质概况 =====
   let bodyOverview = `日主${dayGan}（${dayWx}）代表你自身的能量核心。你的八字五行分布中「${strongest[0]}」最旺、「${weakest[0]}」最弱。`;
@@ -1444,7 +1431,7 @@ export function analyzeHealth(
   if (strengthLevel.includes('强')) {
     bodyOverview += `你属于${strengthLevel}体质——就像一台发动机功率较大，精力比较充沛。但"过犹不及"，过旺的五行对应的身体部位容易出现功能亢进型问题。`;
     if (strongest[1].level === '旺' && strongest[0] !== dayWx) {
-      bodyOverview += `具体来说，「${strongest[0]}」过旺会压制其他五行，${wxBody[strongest[0]]}容易成为你的"短板"。`;
+      bodyOverview += `具体来说，「${strongest[0]}」过旺会压制其他五行，${WX_ORGAN_FULL[strongest[0]]}容易成为你的"短板"。`;
     }
     if (strongest[0] === woShengWx) {
       bodyOverview += `食伤（${woShengWx}）过旺泄身，代表你平时容易用脑过度或思虑过多——精神层面的消耗需要特别注意。`;
@@ -1465,23 +1452,35 @@ export function analyzeHealth(
   // 1. 过旺的五行
   if (strongest[1].level === '旺' || strongest[1].level === '太旺') {
     concerns.push(
-      `【${strongest[0]}过旺】五行${strongest[0]}在你的八字中力量最强，对应${wxBody[strongest[0]] || ''}。容易出现的症状：${wxSymptom[strongest[0]]?.excess || '功能亢进相关的问题'}。` +
-      `比如你的${wxBody[strongest[0]]?.split('、')[0] || ''}可能负担较重，建议每年体检时重点关注这部分指标。`
+      `【${strongest[0]}过旺】五行${strongest[0]}在你的八字中力量最强，对应${WX_ORGAN_FULL[strongest[0]] || ''}。容易出现的症状：${WX_SYMPTOM[strongest[0]]?.excess || '功能亢进相关的问题'}。` +
+      `比如你的${WX_ORGAN_FULL[strongest[0]]?.split('、')[0] || ''}可能负担较重，建议每年体检时重点关注这部分指标。`
     );
   }
 
   // 2. 过弱的五行
+  // ⚠️ 「数量最少」是分布事实，不是进补指令。这里必须按喜忌分档：
+  //    最弱恰是喜用 → 才叫"该养的方向"；最弱是耗身/克身的一类 → 数量少反而是省力处。
   if (weakest[1].level === '弱' || weakest[1].level === '缺') {
+    const weakWx = weakest[0];
+    const mainOrgan = wxMainOrgan(weakWx);
+    let weakTail: string;
+    if (yongList.length === 0) {
+      weakTail = `你的${mainOrgan}在五行层面得到的生扶偏少，日常注意保护是对的——但"数量最少"不等于"要进补"，具体方向见下方调养建议。`;
+    } else if (yongList.includes(weakWx)) {
+      weakTail = `而它恰好是你的喜用五行——${mainOrgan}这一路既缺又需要，是本盘最该主动去养的方向。`;
+    } else {
+      weakTail = `注意它并不是你的喜用五行：这一路气在局中偏少，对你其实是省力处，不要因为"缺"就盲目往这个方向进补。`;
+    }
     concerns.push(
-      `【${weakest[0]}偏弱】五行${weakest[0]}在你的八字中力量最弱，对应${wxBody[weakest[0]] || ''}。容易出现的症状：${wxSymptom[weakest[0]]?.deficient || '功能不足相关的问题'}。` +
-      `你的${wxBody[weakest[0]]?.split('、')[0] || ''}可能是天生的薄弱环节，生活中要多注意保护。`
+      `【${weakWx}偏弱】五行${weakWx}在你的八字中力量最弱，对应${WX_ORGAN_FULL[weakWx] || ''}。容易出现的症状：${WX_SYMPTOM[weakWx]?.deficient || '功能不足相关的问题'}。` +
+      weakTail
     );
   }
 
   // 3. 克日主的五行过旺
   if (keDayWx && wxStats[keDayWx]?.level === '旺') {
     concerns.push(
-      `【官杀克身】克你日主的五行是${keDayWx}（官杀），在八字中力量较强。日主${dayWx}被${keDayWx}所克，意味着${wxBody[dayWx]}被压制——${wxBody[dayWx]?.split('、')[0] || ''}的健康需要你格外重视。` +
+      `【官杀克身】克你日主的五行是${keDayWx}（官杀），在八字中力量较强。日主${dayWx}被${keDayWx}所克，意味着${WX_ORGAN_FULL[dayWx]}被压制——${WX_ORGAN_FULL[dayWx]?.split('、')[0] || ''}的健康需要你格外重视。` +
       `长期的压力感可能影响你的${dayWx === '火' ? '心血管和睡眠' : dayWx === '木' ? '肝功能和情绪' : dayWx === '土' ? '消化系统' : dayWx === '金' ? '呼吸系统' : '肾脏和精力'}。学会减压是你健康管理的核心。`
     );
   }
@@ -1527,23 +1526,50 @@ export function analyzeHealth(
   }
 
   // ===== 养生建议 =====
-  // 缺什么补什么，但同时考虑日主的需求
+  // 口径：喜用神优先 → 扶抑兜底 → 最后才看数量。
+  // ⚠️ 旧实现是「哪个五行个数最少就补哪个」，只特判了"最弱恰是克日主的官杀"一种情形，
+  //    于是身弱遇「最弱=财」（我克，耗身）、「最弱=食伤」（我生，泄身）时会推出反向建议——
+  //    越补越虚。「数量最少」是分布事实，「该不该补」是喜忌判断，两件事不能混。
   const defWx = weakest[0];
+  const yinWx = WX_SHENG[dayWx];           // 印（生我）
+  const biWx = dayWx;                      // 比（同我）
+  const caiWx = WX_KE[dayWx];              // 财（我克，耗身）
+  const shiShangWx = WX_SHENG_CHU[dayWx];  // 食伤（我生，泄身）
+  const guanWx = WX_BEI_KE[dayWx];         // 官杀（克我）
+  const isWeakBody = strengthLevel.includes('弱');
+  const isStrongBody = strengthLevel.includes('强');
 
-  // 实际建议的五行为最弱的那个（补短板）
-  let targetWx = defWx;
-  // 但如果最弱的是克日主的五行，那就更应该补日主自己
-  if (keDayWx && defWx === keDayWx) {
-    targetWx = dayWx;
+  let targetWx: string;
+  let basisNote: string;
+
+  if (yongList.length > 0) {
+    // 用神优先：在喜用里挑「局中最少」的那个——缺的与该补的恰好重合，才配叫补短板
+    const cand = [...new Set(yongList.filter((w) => wxStats[w]))];
+    const pool = cand.length > 0 ? cand : [...new Set(yongList)];
+    targetWx = [...pool].sort((a, b) => (wxStats[a]?.count ?? 0) - (wxStats[b]?.count ?? 0))[0];
+    basisNote = targetWx === defWx
+      ? `「${targetWx}」既是你的喜用神，又恰好是局中数量最少的一环——补它一举两得。`
+      : `局中数量最少的是「${defWx}」，但它不在你的喜用之列；你真正该养的方向是喜用神「${targetWx}」。这两个不是一回事——别把"数字最少"当成"该补"。`;
+  } else if (isWeakBody || isStrongBody) {
+    // 无喜用神时的扶抑兜底：身弱只取印比（生扶），身强只取泄耗，绝不取财官食伤去"补身弱者"
+    const pool = isWeakBody ? [yinWx, biWx] : [shiShangWx, caiWx, guanWx];
+    const uniq = [...new Set(pool.filter(Boolean))];
+    targetWx = [...uniq].sort((a, b) => (wxStats[a]?.count ?? 0) - (wxStats[b]?.count ?? 0))[0] || defWx;
+    basisNote = isWeakBody
+      ? `你日主偏弱，该扶的是生你的「${yinWx}」和同你的「${biWx}」——身弱最怕再被财、官杀、食伤耗泄，所以不能"哪个数字最少补哪个"。此处取其中较弱的「${targetWx}」。`
+      : `你日主偏强，宜泄不宜再扶——食伤、财、官杀是顺势泄耗的方向。此处取其中较弱的「${targetWx}」。`;
+  } else {
+    targetWx = defWx;
+    basisNote = `五行分布相对均匀，取其中较弱的「${targetWx}」作为日常调养方向即可。`;
   }
 
   const wellnessAdvice =
-    `从五行平衡的角度，你最需要补充的是「${targetWx}」的能量。` +
-    `饮食方面：多吃${wxFood[targetWx] || '均衡营养的食物'}（补${targetWx}）。` +
-    `运动方面：适合${wxSport[targetWx] || '适度的有氧运动'}。` +
+    `五行调养方向：「${targetWx}」——${basisNote}` +
+    `饮食方面：多吃${WX_FOOD[targetWx] || '均衡营养的食物'}（补${targetWx}）。` +
+    `运动方面：适合${WX_SPORT[targetWx] || '适度的有氧运动'}。` +
     `颜色方面：多接触${WX_COLOR[targetWx] || '柔和色调'}（衣饰、家居、手机壁纸都可以）。` +
     `方位方面：有条件可以多往${WX_DIRECTION[targetWx] || '适合自己的方向'}走走。` +
-    `${strengthLevel.includes('弱') ? '另外你日主偏弱，建议配合规律作息（最晚23点前睡）和轻度运动来增强体质，比吃保健品更有效。' : ''}`;
+    `${isWeakBody ? '另外你日主偏弱，建议配合规律作息（最晚23点前睡）和轻度运动来增强体质，比吃保健品更有效。' : ''}`;
 
   return { bodyOverview, concerns, wellnessAdvice };
 }
@@ -1552,9 +1578,14 @@ export function analyzeHealth(
 export function analyzeFamily(
   pillars: PillarData[],
   relations: { type: string; desc: string; pillars?: number[] }[],
-  dayGan: string
+  dayGan: string,
+  /** 'male' | 'female' | '男' | '女'。缺省时父母星无法判定，只出不分星的通用解。 */
+  gender?: string
 ): FamilyAnalysis {
   const dayWx = TG_WX[dayGan];
+  // ⚠️ 父母星必须按性别取（男命偏财/正印，女命正财/偏印），唯一真源在 kinStars。
+  //    曾按男命口径写死，导致女命盘与 baziDomainDeep 的家庭段自相矛盾。
+  const kin = kinStarsOf(gender);
   const yearPillar = pillars[0];
   const monthPillar = pillars[1];
 
@@ -1611,10 +1642,13 @@ export function analyzeFamily(
     parentRelation = `你的年柱${yearPillar.ganZhi}（${yearShiShen || ''}）整体平稳，没有明显的冲合刑，与父母的缘分属于正常范围。`;
 
     // 根据年柱十神解读
-    if (yearShiShen === '正印') {
-      parentRelation += `年柱正印代表母亲对你的影响最深——你小时候母亲照顾你很多，她的价值观和处事方式对你性格的塑造起了关键作用。`;
-    } else if (yearShiShen === '偏财') {
-      parentRelation += `年柱偏财代表父亲对你的影响较大——父亲的赚钱能力或为人处世方式对你成年后的选择有潜在影响。`;
+    // 父母星按性别取用：男命 偏财=父 / 正印=母；女命 正财=父 / 偏印=母
+    const isMotherStar = !!kin && yearShiShen === kin.mother;
+    const isFatherStar = !!kin && yearShiShen === kin.father;
+    if (isMotherStar) {
+      parentRelation += `年柱${kin.mother}代表母亲对你的影响最深——你小时候母亲照顾你很多，她的价值观和处事方式对你性格的塑造起了关键作用。`;
+    } else if (isFatherStar) {
+      parentRelation += `年柱${kin.father}代表父亲对你的影响较大——父亲的赚钱能力或为人处世方式对你成年后的选择有潜在影响。`;
     } else if (yearShiShen === '正官') {
       parentRelation += `年柱正官代表家庭对你要求比较严格——小时候家教较严，规矩多，但也养成了你良好的自律习惯。长大后你可能会感谢这种"严管"。`;
     } else if (yearShiShen === '食神') {

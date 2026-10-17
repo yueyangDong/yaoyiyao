@@ -173,7 +173,7 @@ export function analyzeHePanFlow(input: {
     opportunities.push('两人的配偶宫今年**同时被合**——这是合盘里最像"关系往前走一步"的组合：成家、同居、见家长、复合，都容易在这一年落定。');
   } else if (ms === '六合' || ps === '六合') {
     score += 1;
-    opportunities.push('其中一方的配偶宫被合（姻缘被牵动），另一方顺着这股力回应，进展会比预想快。');
+    opportunities.push('其中一方的配偶宫被合（关系被牵动），另一方顺着这股力回应，进展会比预想快。');
   } else if (mDist || pDist) {
     score -= 1;
     risks.push('一方的配偶宫被引动（冲/刑/害），情绪起伏与外界变动会多一些——另一方宜多给一点确定性（明确的时间、明确的答复），比安慰更有用。');
@@ -188,7 +188,9 @@ export function analyzeHePanFlow(input: {
   const pStar = loveStarActive(p.liunian, pMale);
   if (mStar && pStar) {
     score += 2;
-    opportunities.push('双方今年的**感情星同时被引动**（男命看财星、女命看官杀）——这是合盘里最接近"婚恋窗口"的年份组合，别只是顺其自然。');
+    // ⚠️ 合盘页声明「不限关系——朋友、合伙人、亲子都可以看」，这里不能只讲婚恋：
+    //    恋人读作"定下来"，朋友/合伙人读作"信任加深"，同一句两种落点。
+    opportunities.push('双方今年的**感情星同时被引动**（男命看财星、女命看官杀）——这一年"关系议题"会同时被推到台面上：恋人是关系容易定下来的年份，朋友或合伙人则是默契与信任加深得最快的年份。别只是顺其自然。');
     resonance.push('感情星双动：两人都在被"关系议题"推着走。');
   } else if (mStar || pStar) {
     score += 1;

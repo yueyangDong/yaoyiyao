@@ -52,19 +52,34 @@ export function getStarBrightness(starName: string, branch: string): string {
 }
 
 // ---------- 长生十二神 ----------
-// 五行局长生起宫：水二局→申、木三局→亥、金四局→巳、土五局→申（水土同宫）、火六局→寅；一律顺行
+// 起点由五行局定：水二局→申、木三局→亥、金四局→巳、土五局→申（水土同宫）、火六局→寅。
+// ⚠️ 顺逆必须看性别：原文本是「男命顺数、女命逆数」（只按性别）；后世通行做法更细一层，
+//    与博士十二神共享「阳男阴女顺、阴男阳女逆」。本项目采通行派（与同盘博士十二神同向、
+//    也便于跟主流软件对盘）。此前实现**一律顺行** → 女命盘整圈长生十二神全错。
 const CHANGSHENG_STEPS = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养'];
 const ELEMENT_CHANGSHENG_START: Record<string, string> = {
   '水': '申', '木': '亥', '金': '巳', '土': '申', '火': '寅',
 };
 
-/** 长生十二神：返回 Record<地支, 神煞名> */
-export function getChangsheng12(fiveElementName: string): Record<string, string> {
+const YANG_GAN = '甲丙戊庚壬';
+
+/**
+ * 长生十二神：返回 Record<地支, 神煞名>
+ * @param opts 正式排盘必须传 { yearGan, gender }；不传时保持顺行（兼容独立调用与旧用法）
+ */
+export function getChangsheng12(
+  fiveElementName: string,
+  opts?: { yearGan?: string; gender?: 'male' | 'female' }
+): Record<string, string> {
   const element = (fiveElementName || '').charAt(0);
   const startIdx = ZHI_ORDER.indexOf(ELEMENT_CHANGSHENG_START[element] || '申');
+  const g = opts?.gender;
+  const yGan = opts?.yearGan || '';
+  const forward = g && yGan ? (g === 'male') === YANG_GAN.includes(yGan) : true;
   const map: Record<string, string> = {};
   for (let i = 0; i < 12; i++) {
-    map[ZHI_ORDER[(startIdx + i) % 12]] = CHANGSHENG_STEPS[i];
+    const idx = forward ? (startIdx + i) % 12 : (startIdx - i + 12) % 12;
+    map[ZHI_ORDER[idx]] = CHANGSHENG_STEPS[i];
   }
   return map;
 }
@@ -237,13 +252,18 @@ export function getLiuNianAges(birthZhi: string, palaceBranch: string): number[]
   return [v, v + 12, v + 24, v + 36, v + 48];
 }
 
-/** 小限虚岁：寅午戌起辰、申子辰起戌、巳酉丑起未、亥卯未起寅；阳男阴女顺行、阴男阳女逆行 */
-export function getXiaoXianAges(birthZhi: string, palaceBranch: string, yearGan: string, gender: 'male' | 'female'): number[] {
+/**
+ * 小限虚岁：寅午戌起辰、申子辰起戌、巳酉丑起未、亥卯未起寅。
+ * ⚠️ 顺逆是「男顺女逆」，**只看性别**（《全书》口诀：小限一年一度逢，男顺女逆不相同）。
+ *    绝不要套用大限/博士十二神的「阳男阴女顺」——阴男阳女两套规则结论相反，
+ *    此前误用该规则，导致阴年生男、阳年生女的小限整圈方向反了。
+ *    yearGan 已不参与判据，仅为兼容既有调用保留。
+ */
+export function getXiaoXianAges(birthZhi: string, palaceBranch: string, _yearGan: string, gender: 'male' | 'female'): number[] {
   const startMap: Record<string, string> = { '寅': '辰', '午': '辰', '戌': '辰', '申': '戌', '子': '戌', '辰': '戌', '巳': '未', '酉': '未', '丑': '未', '亥': '寅', '卯': '寅', '未': '寅' };
   const startIdx = ZHI_ORDER.indexOf(startMap[birthZhi] || '辰');
   const p = ZHI_ORDER.indexOf(palaceBranch);
-  const yangGan = '甲丙戊庚壬'.includes(yearGan);
-  const forward = (gender === 'male') === yangGan; // 阳男阴女顺
+  const forward = gender === 'male'; // 男顺女逆，不分阴阳
   const diff = ((p - startIdx) % 12 + 12) % 12;
   const offset = forward ? diff : ((12 - diff) % 12);
   let v = (offset % 12) + 1;
@@ -268,7 +288,7 @@ export interface EnrichOptions {
  * 直接在原数组对象上补充字段（含主星/辅星 brightness）。
  */
 export function enrichGongData(gongData: any[], opts: EnrichOptions): { mingZhu: string; shenZhu: string } {
-  const changsheng = getChangsheng12(opts.fiveElementName);
+  const changsheng = getChangsheng12(opts.fiveElementName, { yearGan: opts.yearGan, gender: opts.gender });
   const boshi = getBoshi12(opts.yearGan, opts.gender);
   const suiqian = getSuiqian12(opts.yearZhi);
   const jiangqian = getJiangqian12(opts.yearZhi);

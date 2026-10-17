@@ -813,7 +813,7 @@ export function analyzeHePan(input: HePanInput): HePanResult {
         const ideal = ZW_IDEAL_PAIRS[zwPairKey(a, b)];
         if (ideal) {
           pair = ideal * 2; // 8/9/10 → 16/18/20
-          pairText = `${a}与${b}是经典互补组合，一个主外一个主内，配合度高`;
+          pairText = `${a}与${b}是经典互补组合，一个向外拓、一个向内守，配合度高`;
         } else {
           const gA = zwGroupOf(a), gB = zwGroupOf(b);
           if (gA !== gB) {
