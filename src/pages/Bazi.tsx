@@ -697,7 +697,7 @@ export default function Bazi() {
       // 命格详细判定（真实强弱 + 五行统计 + 用神忌神透干）
       const strengthLevelGe = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;
       const wxStatsCalc = calcWuxingStats(pillars);
-      const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc, dayGan, pillars[1].diZhi);
+      const yongRec = recommendYongShen(dayWx, strengthLevelGe, wxStatsCalc, dayGan, pillars[1].diZhi, pillars);
       // 用神一并传入：格局的"成败关键"与要素对应表都要用到（旧版不传，格局与用神互不知情）
       const mingGe = analyzeMingGeDetailed(pillars, dayGan, strengthLevelGe, wxStatsCalc, yongRec.yongShen);
       mingGe.details = [...mingGe.details, ...analyzeTouGan(pillars, yongRec.yongShen, yongRec.xiShen)];
@@ -856,7 +856,7 @@ export default function Bazi() {
 
   const yongShenRec = useMemo(() => {
     if (!baziData || !strengthAnalysis) return null;
-    return recommendYongShen(baziData.dayWx, strengthAnalysis.level, wxStats || {}, baziData.dayGan, baziData.pillars[1].diZhi);
+    return recommendYongShen(baziData.dayWx, strengthAnalysis.level, wxStats || {}, baziData.dayGan, baziData.pillars[1].diZhi, baziData.pillars);
   }, [baziData, strengthAnalysis, wxStats]);
 
   const relationAnalysis = useMemo(() => {

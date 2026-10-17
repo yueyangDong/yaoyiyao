@@ -50,7 +50,7 @@ export function buildChart(year: number, month: number, day: number, hour: numbe
   const dayGan = ec.getDayGan();
   const dayWx = TG_WX[dayGan] || '';
   const strengthLevel = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars).level;
-  const yongShen = recommendYongShen(dayWx, strengthLevel, undefined, dayGan, pillars[1].diZhi).yongShen;
+  const yongShen = recommendYongShen(dayWx, strengthLevel, undefined, dayGan, pillars[1].diZhi, pillars).yongShen;
 
   return {
     pillars,

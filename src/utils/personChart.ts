@@ -204,7 +204,7 @@ export function buildPerson(
   //    （Bazi.tsx 用同一个 calcWuxingStats）→ 同一张盘在两个页面口径不一致。
   const wxStats = calcWuxingStats(pillars);
   const strength = analyzeDayMasterStrength(dayGan, pillars[1].diZhi, pillars);
-  const yongRec = recommendYongShen(dayWx, strength.level, wxStats, dayGan, pillars[1].diZhi);
+  const yongRec = recommendYongShen(dayWx, strength.level, wxStats, dayGan, pillars[1].diZhi, pillars);
   return {
     name: name || (gender === 'male' ? '男方' : '女方'),
     gender,

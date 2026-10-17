@@ -1,6 +1,7 @@
 // ========== 八字命格详细判定 ==========
 // 判定顺序：特殊外格 → 禄刃格 → 普通八格 → 衍生格 → 层次
 import type { PillarData } from '../pages/Bazi';
+import { analyzeCongGe, congGeName } from './congGe';
 
 export interface MingGeDetailed {
   geName: string;
@@ -215,34 +216,26 @@ function specialGe(pillars: PillarData[], dayGan: string, strengthLevel: string)
       }
     }
   }
-  // 从格：日主极弱，顺从月令旺神（财/官杀/食伤）
-  // 注意：从格看月令（月支本气）十神，非月干十神
-  if (strengthLevel === '身极弱') {
-    const monthShiShenZhiArr = (pillars[1].shiShenZhi || '').split('/').filter(Boolean);
-    const monthBenQiSS = monthShiShenZhiArr[0] || pillars[1].shiShen || '';
-    const fromNames: Record<string, string> = {
-      '正财': '从财格', '偏财': '从财格',
-      '正官': '从官杀格', '七杀': '从官杀格',
-      '食神': '从儿格', '伤官': '从儿格',
-    };
-    if (fromNames[monthBenQiSS]) {
-      // 假从：日主有余气根（日支同气）或比劫帮身 → 从得不纯
-      const dayZhi = pillars[2].diZhi;
-      const dayWx2 = TG_WX[dayGan] || '';
-      const hasRoot = DZ_WX[dayZhi] === dayWx2;
-      const biJieTou = pillars.some(p => ['比肩', '劫财'].includes(p.shiShen));
-      const jia = hasRoot || biJieTou;
+  // 从格：日主极弱 → 顺从旺神（财/官杀/食伤）
+  // ⚠️ 判据唯一出口 `analyzeCongGe`（与 `recommendYongShen` 共用同一份判定）：
+  //    旧实现只看「日支本气是否与日主同五行」，根在时支/藏干一律漏掉，于是
+  //    「旺衰说有根但浅、格局说四柱无根、判真从」同盘自相矛盾（实例 丁酉 庚戌 甲申 丁卯）。
+  {
+    const cong = analyzeCongGe(pillars, TG_WX[dayGan] || '', strengthLevel);
+    if (cong.kind && cong.purity !== '不成从') {
+      const purityNote = cong.purity === '真从'
+        ? '从得纯粹，为真从——大运喜顺从旺神，忌印比来犯'
+        : `从得不纯，为假从——大运见印比易反复，行运助旺神则变假成真`;
+      const kindDesc: Record<string, string> = {
+        '从财': `日主${dayGan}极弱，旺神为财（${cong.wangWx}）成势，弃身从财——喜财星与生财之食伤顺从旺势，忌印比帮身逆势。岁运走财食之地则发，逢印比易反复。${purityNote}。`,
+        '从官杀': `日主${dayGan}极弱，旺神为官杀（${cong.wangWx}）成势，弃身从杀——喜官杀与生官之财顺从旺势，忌印比帮身逆势。从杀多经磨砺而成器，岁运财官之地最顺。${purityNote}。`,
+        '从儿': `日主${dayGan}极弱，旺神为食伤（${cong.wangWx}）成势，弃身从儿——喜食伤与食伤所生之财，忌印绶夺食、官杀犯旺。从儿格局不论身强弱，喜逢财地忌官乡。${purityNote}。`,
+      };
       return {
-        name: jia ? `假${fromNames[monthBenQiSS]}` : fromNames[monthBenQiSS],
+        name: congGeName(cong.kind, cong.purity),
         type: '外格',
-        desc: `日主${dayGan}极弱，月令${monthZhi}本气${monthBenQiSS}成势，全局顺从旺神。${jia ? `日主有余气根（日支${dayZhi}同气）或比劫帮身，从得不纯，为假从——大运见印比易反复，宜顺势不可强扶` : '从得纯粹，为真从——大运喜顺从旺神，忌印比来犯'}。`,
-        basis: [
-          `日主${dayGan}强弱为「身极弱」——从格的前提`,
-          `月令${monthZhi}本气十神为${monthBenQiSS}（从格看月支本气，不看月干）`,
-          jia
-            ? `但日主在日支${dayZhi}留有根气${biJieTou ? '、天干又见比劫帮身' : ''} → 从得不纯，判假从`
-            : '四柱无根、无比劫帮身 → 从得纯粹，判真从',
-        ],
+        desc: kindDesc[cong.kind],
+        basis: cong.basis,
       };
     }
   }
@@ -320,6 +313,17 @@ function yanShengGe(pillars: PillarData[], geName: string): { name: string; scor
   }
   if (has('伤官') && hasTou('正印')) {
     return { name: '伤官配印', score: '上等', detail: '伤官配印，才华有约束而能成器，是上等格局' };
+  }
+  // 伤官制杀（伤官驾杀）：伤官与七杀同透，且日主有**本气比劫根**（有根方能任杀）。
+  // ⚠️ 门槛用「本气根」而非旺衰档：旺衰五档会把「有羊刃但失令」的盘压成身极弱，
+  //    而这类盘恰恰能驾杀（实盘 丁酉 庚戌 甲申 丁卯：时支卯为羊刃本气根、丁火伤官双透制庚）。
+  // ⚠️ 正官同透时不取——伤官见官为下，不属「驾杀」。
+  const hasBenQiRoot = pillars.some(p => {
+    const benQi = (p.shiShenZhi || '').split('/')[0];
+    return benQi === '比肩' || benQi === '劫财';
+  });
+  if (has('伤官') && has('七杀') && !has('正官') && hasBenQiRoot) {
+    return { name: '伤官制杀', score: '中上', detail: '伤官驾杀——以才气驾驭压力，锋芒与克制并存，是中上格局；忌伤官被印制、杀星被合去' };
   }
   if (has('正官') && hasTou('正印')) {
     return { name: '正官佩印', score: '上等', detail: '正官佩印，官印相生，稳重有靠，是上等格局' };

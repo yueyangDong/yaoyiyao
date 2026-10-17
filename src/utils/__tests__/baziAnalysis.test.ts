@@ -205,8 +205,19 @@ describe('喜用神调候（穷通宝鉴逐月）', () => {
     expect(r.xiShen).not.toContain('木');
   });
 
+  // 从格判据已收口到 `congGe.analyzeCongGe`，且 `recommendYongShen` **必须收到 pillars**
+  // 才能盘点根苗（缺 pillars 时一律不进从格分支，退回调候/扶抑——宁可保守也不猜）。
+  // 下列三例只验「喜忌反转」这一层，根苗纯度由 congGe.test.ts 单独覆盖：
+  // 四柱天干全透正财、地支不现本气/余气比劫与印，故判真从。
+  const congPillars = (monthZhi: string): PillarData[] => [
+    mk('年柱', '己', '巳', '正财'),
+    mk('月柱', '己', monthZhi, '正财'),
+    mk('日柱', '甲', '辰', '偏财'),
+    mk('时柱', '己', '未', '正财'),
+  ];
+
   it('从财格：身极弱 + 月支本气为财（甲木生丑月）→ 喜财食伤、忌印比（喜忌反转）', () => {
-    const r = recommendYongShen('木', '身极弱', undefined, '甲', '丑');
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '丑', congPillars('丑'));
     // 丑本气己土为甲之财 → 从财：喜土（财）火（食伤），忌水（印）木（比劫）
     expect(r.yongShen.sort()).toEqual(['土', '火'].sort());
     expect(r.xiShen.sort()).toEqual(['水', '木'].sort());
@@ -214,7 +225,7 @@ describe('喜用神调候（穷通宝鉴逐月）', () => {
   });
 
   it('从儿格：身极弱 + 月支本气为食伤（甲木生午月）→ 喜食伤财、忌印官（喜忌反转）', () => {
-    const r = recommendYongShen('木', '身极弱', undefined, '甲', '午');
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '午', congPillars('午'));
     // 午本气丁火为甲之伤官 → 从儿：喜火（食伤）土（财），忌水（印）金（官杀）
     expect(r.yongShen.sort()).toEqual(['火', '土'].sort());
     expect(r.xiShen.sort()).toEqual(['水', '金'].sort());
@@ -222,11 +233,17 @@ describe('喜用神调候（穷通宝鉴逐月）', () => {
   });
 
   it('从杀格：身极弱 + 月支本气为官杀（甲木生酉月）→ 喜官财、忌印比（喜忌反转）', () => {
-    const r = recommendYongShen('木', '身极弱', undefined, '甲', '酉');
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '酉', congPillars('酉'));
     // 酉本气辛金为甲之正官 → 从杀：喜金（官）土（财），忌水（印）木（比劫）
     expect(r.yongShen.sort()).toEqual(['金', '土'].sort());
     expect(r.xiShen.sort()).toEqual(['水', '木'].sort());
     expect(r.desc).toContain('从杀');
+  });
+
+  it('从格：缺 pillars 时不进从格分支（无从盘点根苗 → 退回调候/扶抑）', () => {
+    // 同样的身极弱 + 丑月，但不传 pillars：不得凭空判「真从」
+    const r = recommendYongShen('木', '身极弱', undefined, '甲', '丑');
+    expect(r.desc).not.toContain('从财');
   });
 
   it('从旺：身极强 + 克泄耗俱弱（甲木满盘水木）→ 喜印比、忌克泄耗（喜忌反转）', () => {

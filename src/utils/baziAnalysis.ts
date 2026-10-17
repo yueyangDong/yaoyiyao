@@ -1,6 +1,7 @@
 import type { PillarData } from '../pages/Bazi';
 import { WX_ORGAN_FULL, WX_SYMPTOM, WX_FOOD, WX_SPORT, wxMainOrgan } from './wuxingHealth';
 import { kinStarsOf, normGender } from './kinStars';
+import { analyzeCongGe } from './congGe';
 
 // ========== 六大领域分析接口 ==========
 
@@ -719,7 +720,8 @@ export function recommendYongShen(
   strengthLevel: string,
   _wxStats?: Record<string, { count: number; level: string }>,
   dayGan?: string,
-  monthZhi?: string
+  monthZhi?: string,
+  pillars?: PillarData[],
 ): { yongShen: string[]; xiShen: string[]; desc: string } {
   let yongShen: string[] = [];
   let xiShen: string[] = [];
@@ -747,28 +749,40 @@ export function recommendYongShen(
     }
   }
 
-  // ===== 特殊格局二：从格（身极弱 + 月支本气为财/官杀/食伤 → 弃身从势，喜忌反转） =====
-  // 口径与 mingGe 从格分支一致：看月支本气十神，不看月干
-  if (strengthLevel === '身极弱' && dayGan && monthZhi) {
-    const DZ_BEN_QI: Record<string, string> = { '子': '癸', '丑': '己', '寅': '甲', '卯': '乙', '辰': '戊', '巳': '丙', '午': '丁', '未': '己', '申': '庚', '酉': '辛', '戌': '戊', '亥': '壬' };
-    const benQiWx = (DZ_BEN_QI[monthZhi] && TG_WX[DZ_BEN_QI[monthZhi]]) || '';
-    if (benQiWx === cai) {
-      yongShen = [cai, shiShang].filter(Boolean);
-      xiShen = [yin, bi].filter(Boolean);
-      desc = `【从财】日主极弱而月令${monthZhi}财星成势，弃身从财——喜${yongShen.join('、')}（财星与生财之食伤）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。岁运走财食之地则发，逢印比易反复。`;
-      return { yongShen, xiShen, desc };
-    }
-    if (benQiWx === guan) {
-      yongShen = [guan, cai].filter(Boolean);
-      xiShen = [yin, bi].filter(Boolean);
-      desc = `【从杀】日主极弱而月令${monthZhi}官杀成势，弃身从杀——喜${yongShen.join('、')}（官星与生官之财）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。从杀多经磨砺而成器，岁运财官之地最顺。`;
-      return { yongShen, xiShen, desc };
-    }
-    if (benQiWx === shiShang) {
-      yongShen = [shiShang, cai].filter(Boolean);
-      xiShen = [yin, guan].filter(Boolean);
-      desc = `【从儿】日主极弱而月令${monthZhi}食伤成势，弃身从儿——喜${yongShen.join('、')}（从儿又见儿生之财），忌${xiShen.join('、')}（印绶夺食、官杀克身犯旺）。从儿格不论身强弱，喜逢财地忌官乡。`;
-      return { yongShen, xiShen, desc };
+  // ===== 特殊格局二：从格（身极弱 + 旺神为财/官杀/食伤 → 弃身从势，喜忌反转） =====
+  // ⚠️ 判据唯一出口 `congGe.analyzeCongGe`（与 `mingGe` 共用同一份判定）：
+  //    旧实现只看「月支本气」，既不扫全四柱查根、也不认三会局——曾把「时支羊刃 + 日支藏印」
+  //    的盘判成真从（实例 丁酉 庚戌 甲申 丁卯）。详见 congGe.ts 文件头。
+  // ⚠️ `pillars` 缺失时**不进从格分支**：无从盘点根苗，就判不了真/假从——宁可退回扶抑也不猜。
+  //    调用方（personChart / Bazi 页 / 评测夹具）一律须传。
+  if (strengthLevel === '身极弱' && pillars && pillars.length >= 4) {
+    const cong = analyzeCongGe(pillars, dayWx, strengthLevel);
+    if (cong.kind && cong.purity !== '不成从') {
+      const mz = pillars[1].diZhi;
+      const purityTail = cong.purity === '真从'
+        ? ''
+        : '从得不纯，属假从——岁运助旺神则变假成真，逢印比反复更甚。';
+      const wangDesc = cong.wangSource === '会局'
+        ? `地支会成${cong.wangWx}局`
+        : `月令${mz}本气成势`;
+      if (cong.kind === '从财') {
+        yongShen = [cai, shiShang].filter(Boolean);
+        xiShen = [yin, bi].filter(Boolean);
+        desc = `【从财】日主极弱而${wangDesc}，弃身从财——喜${yongShen.join('、')}（财星与生财之食伤）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。岁运走财食之地则发，逢印比易反复。${purityTail}`;
+        return { yongShen, xiShen, desc };
+      }
+      if (cong.kind === '从官杀') {
+        yongShen = [guan, cai].filter(Boolean);
+        xiShen = [yin, bi].filter(Boolean);
+        desc = `【从杀】日主极弱而${wangDesc}，弃身从杀——喜${yongShen.join('、')}（官星与生官之财）顺从旺势，忌${xiShen.join('、')}（印比帮身逆势）。从杀多经磨砺而成器，岁运财官之地最顺。${purityTail}`;
+        return { yongShen, xiShen, desc };
+      }
+      if (cong.kind === '从儿') {
+        yongShen = [shiShang, cai].filter(Boolean);
+        xiShen = [yin, guan].filter(Boolean);
+        desc = `【从儿】日主极弱而${wangDesc}，弃身从儿——喜${yongShen.join('、')}（从儿又见儿生之财），忌${xiShen.join('、')}（印绶夺食、官杀克身犯旺）。从儿格不论身强弱，喜逢财地忌官乡。${purityTail}`;
+        return { yongShen, xiShen, desc };
+      }
     }
   }
 
