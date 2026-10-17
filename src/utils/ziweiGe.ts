@@ -6,7 +6,8 @@
 //    "财帛宫/官禄宫/迁移宫"，导致三方四正只剩命宫参与判定，成格逻辑实际失效
 // 2. 杀破狼格必须命宫（或身宫）坐杀破狼之一——旧版三方见2颗即成格，几乎人人成立
 // 3. 夹宫按地支相邻判定（左右夹命），无地支时回退数组相邻
-// 4. 火贪/铃贪逢地空地劫同宫则破格（横发之气被空劫所破）
+// 4. 火贪/铃贪：落宫 命/财/官/迁移/田宅/身宫，同宫为上格、三方相会为次格；
+//    破格看**擎羊陀罗同度**（"只怕羊陀"），空劫只减色（"不怕空劫，空劫会贪狼反能习正"）
 // 5. 辅星四化（文昌化忌等）参与化忌破格判定
 // 6. 加冕分层（2026-09 校准）：旧版把"吉星会照+四化引动"当硬门槛，三方四正仅占
 //    全盘1/3，三颗化吉星全落概率约4%，实际几乎无人成格；现结构成立即入格，
@@ -28,6 +29,20 @@
 //    d. 入格统一走 addGe：页面按 geNames[i] ↔ reasons[i] 取文案，只 push 一个就会全体错位。
 // 11. 新增君臣庆会格（紫微坐命 + 六吉≥2 会照）——紫微坐命在不成紫府同宫/朝垣时的兜底，
 //    否则紫微坐命一个格都没有（实测结构命中率 5.5%）。
+// 12.（2026-10 依出处修正，见 docs/ziwei-ge-audit.md §六）
+//    a. **火贪/铃贪判据纠错**：旧版"空劫同宫即破格"与原文相反（"不怕空劫，反能习正"），
+//       真正破格的是擎羊/陀罗同度（"只怕羊陀，遇之色灾成祸"）。实测 3024 盘：
+//       同宫带空劫 0 盘、带羊陀 29 盘——旧判据等于从未生效，该排的没排、不该排的白挂。
+//       同时补"三方四正相会"弱档与田宅/身宫落宫。
+//    b. **加冕计入禄存**：出处"与禄存、科权禄、左右、魁钺加会，则为极美之格"把禄存与四化并列。
+//    c. **君臣庆会加辅弼必需**："没有左辅、右弼会入的紫微星，只能算是孤君"。
+// 13.（2026-10 破格分级）旧实现 `hasJi || 煞≥2 || 空劫≥2 || 羊陀夹忌` → 十个主星格全灭，
+//    实测把 67.8% 的盘清成"无格局"、其中 41.7pp 结构上完全够格。依《全书》卷三
+//    「三方四正皆吉星为上格，吉凶相半守照为中格，凶星恶杀为下格」改为四档：
+//      上格（无破格项）／中格（化忌在财官、煞 1、空劫 1）／下格（化忌坐命、煞 2、空劫 2）＝仍入格
+//      破格（化忌冲命、煞≥3、空劫与主星同宫、羊陀夹忌）＝不入格
+//    ⚠️ 变量叫 brokenMain，判据是 `tier === 'broken'`；**不要**再用"有没有破格项"当门槛。
+//    ⚠️ 中/下格说明写进该格 reasons，不进 breakReasons（那是"为什么没格"，语义不能混）。
 
 export interface ZiweiGeResult {
   geNames: string[];
@@ -92,18 +107,6 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
   const shen = gongData.find((g: any) => g?.isShenGong);
   const shenStarNames = (shen?.majorStars || []).map((s: any) => s.name);
 
-  // ---- 破格检查（三方四正） ----
-  // ⚠️ 破格只约束**主星格**。夹宫格（昌曲/魁钺/左右夹命）与火贪/铃贪属另两层判据，
-  //    不因这三条被排除——但必须在文案里把这层关系说清，否则用户会看到
-  //    「格局受破」与「某格成立」同屏而以为自相矛盾（实测：昌曲夹结构成立的盘 124/124
-  //    都带破格，一旦连坐就等于删掉这个功能）。
-  const hasJi = sifangStars.some((s) => s.sihua === '忌');
-  const shaCount = minorNames.filter((n) => SHA_STARS.includes(n)).length;
-  const kongCount = minorNames.filter((n) => KONG_STARS.includes(n)).length;
-  if (hasJi) breakReasons.push('命宫三方四正见生年化忌 → 主星格不入格（夹宫格与火贪/铃贪按各自判据另论）');
-  if (shaCount >= 2) breakReasons.push(`煞星（擎羊陀罗火星铃星）达 ${shaCount} 颗 → 主星格受破`);
-  if (kongCount >= 2) breakReasons.push(`空亡星（地空地劫）达 ${kongCount} 颗 → 主星格受破`);
-
   // ---- 羊陀夹忌（中州派重破格）：命宫坐生年化忌，擎羊陀罗分居命宫两侧 ----
   let yangTuoJia = false;
   if (ming?.branch) {
@@ -121,13 +124,62 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
       const tuoLeftYangRight = leftNames.includes('陀罗') && rightNames.includes('擎羊');
       if ((yangLeftTuoRight || tuoLeftYangRight) && leftGong !== rightGong) {
         yangTuoJia = true;
-        breakReasons.push('羊陀夹忌——命宫化忌又被擎羊陀罗两宫相夹，为重破之局，诸格遇此均打折论');
       }
     }
   }
 
-  // 全局破格：成立时主星格一律不入格（火贪空劫破格为特定机制，不影响主星格）
-  const brokenGlobal = hasJi || shaCount >= 2 || kongCount >= 2 || yangTuoJia;
+  // ---- 破格与降档（三方四正） ----
+  // 出处：《紫微斗数全书》卷三〈论格星数高下〉——「三方四正皆吉星为上格，吉凶相半守照为中格，
+  // 凶星恶杀为下格」。古法是 **上／中／下三档**，不是"成／不成"两档。
+  // ⚠️ 旧实现是一刀切否决：任意一颗生年化忌落三方四正，十个主星格全灭
+  //    （实测 67.8% 的盘被清成"无格局"，其中 41.7pp 结构上完全够格）——等于把古法的"下格"整档丢弃，
+  //    而且惩罚不对称：缺吉星只降层次，一颗化忌却直接不成格。
+  // 现分四档，**只有 broken 真的删格**：
+  //   excellent 上格（无破格项）／good 中格（成色减等）／low 下格（仍入格）／broken 破格（不入）
+  // ⚠️ 中格/下格的说明写进**该格自己的 reasons**，不进 breakReasons——
+  //    breakReasons 的语义是"为什么没有格"；格已成立却挂一条破格警告，正是 2026-10 修过的那次文案割裂。
+  const shaCount = minorNames.filter((n) => SHA_STARS.includes(n)).length;
+  const kongCount = minorNames.filter((n) => KONG_STARS.includes(n)).length;
+  const jiKeys = sifangGongs
+    .filter((g) => starsOfGong(g).some((s) => s.sihua === '忌'))
+    .map((g) => gongKey(g));
+  // 空劫入命：命宫坐主星又被地空/地劫同宫。⚠️ 只判命宫，**不是**"三方四正任一宫有主星又见空劫"——
+  // 后者几乎每盘都成立（实测 36.2%），等于变相退回一刀切。三方四正见空劫按颗数降档（kongCount）。
+  const kongInMing = (ming?.majorStars || []).length > 0
+    && starsOfGong(ming).some((s) => KONG_STARS.includes(s.name));
+  type GeTier = 'excellent' | 'good' | 'low' | 'broken';
+  // 用"按严重度分桶收集"而不是 let tier 累加：闭包里改 let，TS 的控制流收窄会把它锁成 'excellent'。
+  const brokenNotes: string[] = [];
+  const lowNotes: string[] = [];
+  const goodNotes: string[] = [];
+  // 化忌分落宫：冲命最重，坐命次之，财官只减色（旧版三者同等对待）
+  if (jiKeys.includes('迁移')) brokenNotes.push('生年化忌落迁移宫，冲照命宫');
+  else if (jiKeys.includes('命宫')) lowNotes.push('生年化忌坐命宫');
+  else if (jiKeys.some((k) => k === '财帛' || k === '官禄')) {
+    goodNotes.push(`生年化忌落${jiKeys.includes('财帛') ? '财帛' : '官禄'}宫`);
+  }
+  // 煞星：≥3 才破；2 颗下格；1 颗中格
+  if (shaCount >= 3) brokenNotes.push(`煞星（擎羊陀罗火铃）达 ${shaCount} 颗`);
+  else if (shaCount === 2) lowNotes.push('煞星 2 颗会照');
+  else if (shaCount === 1) goodNotes.push('煞星 1 颗会照');
+  // 空劫：入命才破；三方四正分居 2 颗下格；1 颗中格
+  if (kongInMing) brokenNotes.push('地空地劫与命宫主星同宫（空劫入命）');
+  else if (kongCount >= 2) lowNotes.push(`空亡星（地空地劫）${kongCount} 颗分居三方`);
+  else if (kongCount === 1) goodNotes.push('空亡星 1 颗会照');
+  if (yangTuoJia) brokenNotes.push('羊陀夹忌：命宫化忌又被擎羊陀罗两宫相夹，为重破之局');
+
+  const tier: GeTier = brokenNotes.length
+    ? 'broken'
+    : lowNotes.length ? 'low' : goodNotes.length ? 'good' : 'excellent';
+  const shadeNotes = [...lowNotes, ...goodNotes];
+
+  /** 主星格是否真的不入格。⚠️ 只认它，不要用"有没有破格项"当门槛 */
+  const brokenMain = tier === 'broken';
+  if (brokenMain) {
+    breakReasons.push(
+      `破格：${brokenNotes.join('；')} → 主星格不入格（夹宫格与火贪/铃贪按各自判据另论）`,
+    );
+  }
 
   /**
    * ⚠️ 页面按 `geNames[i]` ↔ `reasons[i]` 一一对应取文案（Ziwei.tsx 格局分析卡片）。
@@ -140,23 +192,37 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
 
   // ---- 吉星会照 + 四化引动（加冕条件，非硬门槛） ----
   const jiHui = minorNames.filter((n) => JI_STARS.includes(n));
-  const hasLuQuanKe = sifangStars.some((s) => s.sihua === '禄' || s.sihua === '权' || s.sihua === '科');
-  const crowned = jiHui.length > 0 && hasLuQuanKe;
+  const hasSiHuaYin = sifangStars.some((s) => s.sihua === '禄' || s.sihua === '权' || s.sihua === '科');
+  // 禄存计入「吉星会照」：出处「与禄存、科权禄、左右、魁钺加会，则为极美之格」——
+  // 禄存与四化是并列的加冕项，旧版只认四化，三方有禄存而无四化时白丢了这一层。
+  const hasLuCun = minorNames.includes('禄存');
+  const crowned = jiHui.length > 0 && (hasSiHuaYin || hasLuCun);
 
   // ---- 主星格判定 ----
-  // 中州派校准（分层口径）：
-  //   硬门槛 = 主星结构成立 + 无破格（化忌/煞重/空劫/羊陀夹忌）
-  //   加冕   = 吉星会照 + 禄权科引动 → 格局纯正；缺则成格但层次打折，注明原因
+  // 分层口径：
+  //   硬门槛 = 主星结构成立 + 不是 broken 档
+  //   成色   = 加冕（吉星会照 + 禄权科/禄存）→ 格局纯正；缺则层次打折
+  //            + 破格分档（中格/下格）→ 写明"古法列为中格/下格"
   //   （旧版把加冕当硬门槛，三方四正仅占全盘 1/3，三颗化吉星全落概率约 4%，实际几乎无人成格）
-  const tryGe = (name: string, condition: boolean) => {
-    if (!condition || brokenGlobal) return;
+  const tierLabel = (): string => {
+    if (tier === 'low') return `古法列为下格，成色减等（${shadeNotes.join('；')}）`;
+    if (tier === 'good') return `古法列为中格，成色减等（${shadeNotes.join('；')}）`;
+    return '';
+  };
+  const tryGe = (name: string, condition: boolean, extra?: string) => {
+    if (!condition || brokenMain) return;
+    const note = extra ? `；${extra}` : '';
+    const shade = tier === 'excellent' ? '' : `；${tierLabel()}`;
     if (crowned) {
-      addGe(name, `${name}：主星组合成立，吉星${jiHui.join('、')}会照，四化引动，无破格，格局纯正`);
+      const crownBasis = hasSiHuaYin ? '四化引动' : '禄存朝拱';
+      const pure = tier === 'excellent' ? '，无破格，格局纯正' : '';
+      addGe(name, `${name}：主星组合成立，吉星${jiHui.join('、')}会照，${crownBasis}${pure}${shade}${note}`);
     } else {
       const lack: string[] = [];
       if (!jiHui.length) lack.push('缺吉星会照');
-      if (!hasLuQuanKe) lack.push('缺禄权科引动');
-      addGe(name, `${name}：主星组合成立且无破格，但${lack.join('、')}，格局层次打折，宜后天补足`);
+      if (!hasSiHuaYin && !hasLuCun) lack.push('缺禄权科引动与禄存');
+      const pure = tier === 'excellent' ? '且无破格，' : '，';
+      addGe(name, `${name}：主星组合成立${pure}但${lack.join('、')}，格局层次打折，宜后天补足${shade}${note}`);
     }
   };
 
@@ -172,12 +238,17 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
   if (ming) {
     tryGe('紫府同宫格', mingStarNames.includes('紫微') && mingStarNames.includes('天府'));
     tryGe('廉贞贪狼格', mingStarNames.includes('廉贞') && mingStarNames.includes('贪狼'));
-    // 君臣庆会：紫微坐命 + 六吉（左右昌曲魁钺）至少两颗会照三方四正。
-    // 紫微为帝星，得辅弼昌曲魁钺为"臣"，君臣相得则格正；紫微无左右即"孤君"。
-    // ⚠️ 这条是紫微坐命的兜底：紫微坐命若不成紫府同宫/紫府朝垣，旧版一个格都没有，
-    //    而"紫微无左右为孤君"恰恰是紫微坐命最该讲的一句话。（实测结构命中率 5.5%）
-    // `jiHui` 就是三方四正里的六吉，正好复用，不另算一份。
-    tryGe('君臣庆会格', mingStarNames.includes('紫微') && jiHui.length >= 2);
+    // 君臣庆会：紫微坐命 + 左辅/右弼须有其一 + 六吉（左右昌曲魁钺）≥2 会照。
+    // 紫微为帝星，得辅弼昌曲魁钺为"臣"，君臣相得则格正；紫微无辅弼即"孤君"。
+    // ⚠️ 出处（多家一致，也是本格之所以叫"君臣"的由来）：
+    //    「没有左辅、右弼会入的紫微星，只能算是孤君」——辅弼是**必需项**。
+    //    旧版只判「六吉≥2」，昌曲魁钺凑两颗即算，把"孤君"这个正题漏掉了
+    //    （实测：紫微坐命 252 盘，旧口径结构成立 167，加辅弼必需后 109）。
+    //    另有更严一说「三组六吉（辅弼／昌曲／魁钺）各至少一颗」——
+    //    实测仅 20/252 结构成立、经破格后不足 10 盘，会把本格做成几乎没有的格，故未取。
+    // 这条同时是紫微坐命的兜底：不成紫府同宫/紫府朝垣时，否则紫微坐命一个格都没有。
+    const hasZuoYou = jiHui.includes('左辅') || jiHui.includes('右弼');
+    tryGe('君臣庆会格', mingStarNames.includes('紫微') && hasZuoYou && jiHui.length >= 2);
   }
 
   // 日月并明：太阳太阴分居三方四正且各处庙旺之地（中州派收紧口径）。
@@ -190,7 +261,16 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     const YUE_WANG = ['酉', '戌', '亥', '子'];
     const riWang = !!riGong?.branch && RI_WANG.includes(riGong.branch);
     const yueWang = !!yueGong?.branch && YUE_WANG.includes(yueGong.branch);
-    tryGe('日月并明格', !!riGong && !!yueGong && gongKey(riGong) !== gongKey(yueGong) && riWang && yueWang);
+    // ⚠️ 口径标注（2026-10 定稿）：这是**广义版**——"两星皆庙旺且互在三方四正"。
+    //    经典日月并明多指固定落点（太阳巳/辰 + 太阴酉/戌，所谓丹墀桂墀；或天梁坐丑、日月夹命），
+    //    但那类说法只见于格局汇编类命理书、非《全书》原句，依据强度不足；
+    //    收紧到固定宫位会砍掉现有盘里的大半，而本格的观感价值恰在"日月同辉"意象。
+    //    故保留广义判据，但**理由文案必须标明口径**，不让人误以为是经典落点版。
+    tryGe(
+      '日月并明格',
+      !!riGong && !!yueGong && gongKey(riGong) !== gongKey(yueGong) && riWang && yueWang,
+      '广义口径：两星皆庙旺且互在三方四正，非经典固定宫位说',
+    );
   }
 
   // 府相朝垣：天府与天相分居命宫三方四正之内，且不同宫
@@ -226,25 +306,77 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
       !ziFuSame && !!ziGong && !!fuGong2 && gongKey(ziGong) !== gongKey(fuGong2));
   }
 
-  // ---- 突发吉格：火贪 / 铃贪（三方四正同宫贪狼与火星或铃星同度；逢空劫则破格） ----
-  // 分层口径：火贪/铃贪不属主星格，故全局破格不排除它；但重破盘要注明打折，避免文案割裂。
-  for (const g of sifangGongs) {
-    const names = starsOfGong(g).map((s) => s.name);
-    const hasKong = names.some((n) => KONG_STARS.includes(n));
-    const discount = brokenGlobal ? '（主星格已受破，此格属突发层，力度打折）' : '';
-    if (names.includes('贪狼') && names.includes('火星')) {
-      if (hasKong) {
-        breakReasons.push(`火贪格：${fmtGongLabel(gongKey(g))}贪狼火星同度但逢地空/地劫，横发之气被空劫所破`);
-      } else {
-        addGe('火贪格', `火贪格：${fmtGongLabel(gongKey(g))}贪狼与火星同度，火炼贪狼主突发横发，机遇来得快${discount}`);
+  // ---- 突发吉格：火贪 / 铃贪 ----
+  // 出处（《紫微斗数全书》赋文与断语，多家转载一致）：
+  //   · 落宫：贪狼守 命宫／财帛／官禄／迁移／田宅／身宫；
+  //   · 星位：同宫为上格，「贪狼守命宫，火星仅在三方相会，不见煞，亦合格，但格局稍次」；
+  //   · 破格：「擎羊火星同度、陀罗火星同度，均不合格」「只怕羊陀，遇之色灾成祸」；
+  //   · 减色：「不怕空劫，空劫会贪狼，反能习正」——空劫只减成色，**不断格**；
+  //           贪狼化忌则「横发横破」（比较不喜欢忌星）。
+  // ⚠️ 旧版把两条判据搞反了：① 空劫同宫即破格（原文恰恰说"不怕空劫"）；
+  //    ② 只认同宫、且只取命宫三方四正（漏田宅/身宫与"三方相会"弱档）。
+  //    实测（3024 盘）：同宫带空劫 0 盘、带擎羊或陀罗 29 盘——旧判据等于从没生效。
+  // 分层口径：火贪/铃贪不属主星格，全局破格不排除它；但重破盘注明打折，避免文案割裂。
+  const TAN_PALACE_KEYS = ['命宫', '财帛', '官禄', '迁移', '田宅'];
+  /** 某宫的三方四正（本宫 + 三合两宫 + 对宫），按地支算；无地支返回空 */
+  const sifangZhiOf = (branch?: string): string[] => {
+    const bi = branch ? ZHI_ORDER.indexOf(branch) : -1;
+    if (bi < 0) return [];
+    return [bi, (bi + 4) % 12, (bi + 8) % 12, (bi + 6) % 12].map((i) => ZHI_ORDER[i]);
+  };
+  const tanPalaces = gongData.filter((g) => {
+    const inRange = TAN_PALACE_KEYS.includes(gongKey(g)) || !!g?.isShenGong;
+    return inRange && (g?.majorStars || []).some((s: any) => s.name === '贪狼');
+  });
+  const geDone = new Set<string>();
+  for (const tan of tanPalaces) {
+    const tanNames = starsOfGong(tan).map((s) => s.name);
+    const tanZhi = sifangZhiOf(tan?.branch);
+    // 贪狼的三方四正（含本宫）；无地支时退化为只看本宫
+    const scope = tanZhi.length ? gongData.filter((g) => tanZhi.includes(g?.branch)) : [tan];
+    for (const pair of [{ star: '火星', ge: '火贪格' }, { star: '铃星', ge: '铃贪格' }]) {
+      if (geDone.has(pair.ge)) continue;
+      const huo = scope.find((g) => starsOfGong(g).some((s) => s.name === pair.star));
+      if (!huo) continue;
+      const samePalace = huo === tan;
+      // ⚠️ "三方相会"这一弱档**只在贪狼坐命宫时成立**：原文是「贪狼守命宫，火星仅在三方相会，
+      //    不见煞，亦合格，但格局稍次」——弱档句子的主语是"守命宫"，不是"守六宫之一"。
+      //    实测若把弱档套到全部六个落宫，火贪会从 83 盘涨到 306 盘（10.1%），
+      //    让一个"突发横发"的格变成全站最高频格，显然与原文语气不符。
+      if (!samePalace && gongKey(tan) !== '命宫') continue;
+      const huoNames = starsOfGong(huo).map((s) => s.name);
+      const tanSihua = (tan?.majorStars || []).find((s: any) => s.name === '贪狼')?.sihua;
+      const where = samePalace
+        ? `${fmtGongLabel(gongKey(tan))}贪狼与${pair.star}同度`
+        : `${fmtGongLabel(gongKey(tan))}贪狼与${fmtGongLabel(gongKey(huo))}${pair.star}`;
+      const discount = brokenMain ? '（主星格已受破，此格属突发层，力度打折）' : '';
+      // 破格：擎羊／陀罗**与火铃同宫**——原文明确「擎羊火星同度、陀罗火星同度，均不合格」
+      //      （「只怕羊陀，遇之色灾成祸」）。注意羊陀若只与贪狼同宫、不在火铃宫，
+      //      那是「贪狼不喜与擎羊、陀罗同宫，易因色招灾」——属减色，不构成破格。
+      const yangTuoWithHuo = ['擎羊', '陀罗'].filter((n) => huoNames.includes(n));
+      if (yangTuoWithHuo.length) {
+        const breakWhere = samePalace ? '同宫' : fmtGongLabel(gongKey(huo));
+        breakReasons.push(
+          `${pair.ge}：${where}，但${breakWhere}见${yangTuoWithHuo.join('、')}` +
+          `——「只怕羊陀，遇之色灾成祸」，此格不立`
+        );
+        geDone.add(pair.ge);
+        continue;
       }
-    }
-    if (names.includes('贪狼') && names.includes('铃星')) {
-      if (hasKong) {
-        breakReasons.push(`铃贪格：${fmtGongLabel(gongKey(g))}贪狼铃星同度但逢地空/地劫，横发之气被空劫所破`);
-      } else {
-        addGe('铃贪格', `铃贪格：${fmtGongLabel(gongKey(g))}贪狼与铃星同度，主意外之财与突变机遇${discount}`);
+      // 减色（不断格）
+      const shade: string[] = [];
+      const tanYangTuo = samePalace ? [] : ['擎羊', '陀罗'].filter((n) => tanNames.includes(n));
+      if (tanYangTuo.length) shade.push(`贪狼与${tanYangTuo.join('、')}同宫，易因色招灾，须防是非`);
+      if ([...huoNames, ...(samePalace ? [] : tanNames)].some((n) => KONG_STARS.includes(n))) {
+        shade.push('逢地空地劫，横发之力被吸蚀，成色打折');
       }
+      if (tanSihua === '忌') shade.push('贪狼化忌，主横发横破，宜见好就收');
+      const shadeStr = shade.length ? `（${shade.join('；')}）` : '';
+      const gradeDesc = samePalace
+        ? (pair.star === '火星' ? '同宫为正格，火炼贪狼主突发横发，机遇来得快' : '同宫为正格，铃星催动贪狼，主意外之财与突变机遇')
+        : '三方四正相会而未同宫，属次格，横发之力稍缓';
+      addGe(pair.ge, `${pair.ge}：${where}，${gradeDesc}${shadeStr}${discount}`);
+      geDone.add(pair.ge);
     }
   }
 
@@ -276,9 +408,11 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
         if (!(ab || ba)) return;
         // 口径说明：夹宫格不像主星格走"分层"（结构成立即入格、缺吉化只降层次）——
         // 夹宫之力本弱，须禄权科引动方足成格，无引动只记 breakReason 不入格（刻意从严）
-        if (!hasLuQuanKe) { breakReasons.push(`${name}：缺少四化引动`); return; }
+        // ⚠️ 这里只认四化（不含禄存）：夹宫格的门槛是"引动"，禄存是静态星不是引动项；
+        //    加冕那层才把禄存与四化并列（见上方 hasLuCun 注释）。
+        if (!hasSiHuaYin) { breakReasons.push(`${name}：缺少四化引动`); return; }
         // 分层口径：夹宫格不属主星格，全局破格不排除它；重破盘注明打折，避免文案割裂
-        const discount = brokenGlobal ? '（主星格已受破，此格属夹宫层，力度打折）' : '';
+        const discount = brokenMain ? '（主星格已受破，此格属夹宫层，力度打折）' : '';
         addGe(name, `${name}：${a}${b}分居命宫两侧，且四化引动${discount}`);
       };
       tryJiaGe('昌曲夹命格', '文昌', '文曲');

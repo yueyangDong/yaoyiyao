@@ -20,9 +20,9 @@ describe('analyzeZiweiGe', () => {
     expect(r.breakReasons).toHaveLength(0);
   });
 
-  it('杀破狼：命宫擎羊 + 财帛陀罗（煞≥2）→ 破格不入（与"缺四化只降档"区分）', () => {
-    // ⚠️ 旧用例名叫「缺四化引动 → 不成格」，与 2026-09 分层口径相反：
-    //    缺四化只降层次，真正让它不入格的是这里的煞星≥2。名字必须写清是哪条判据在起作用。
+  it('杀破狼：命宫擎羊 + 财帛陀罗（煞 2 颗）→ 古法列为下格，仍入格', () => {
+    // ⚠️ 2026-10 破格分级后口径变了：煞 2 颗从"一刀切不入格"降为"下格"（《全书》「吉凶相半守照为中格，
+    //    凶星恶杀为下格」——下格仍是格）。真正不入格的门槛是煞≥3。
     const gongData = [
       gong('命宫', ['七杀'], ['擎羊']),
       gong('财帛宫', ['破军'], ['陀罗']),
@@ -30,8 +30,22 @@ describe('analyzeZiweiGe', () => {
       gong('迁移宫', ['廉贞'], []),
     ];
     const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('杀破狼格');
+    expect(r.reasons.join()).toContain('下格');
+    expect(r.breakReasons).toHaveLength(0);
+  });
+
+  it('杀破狼：煞星 3 颗 → 破格不入', () => {
+    const gongData = [
+      gong('命宫', ['七杀'], ['擎羊']),
+      gong('财帛', ['破军'], ['陀罗']),
+      gong('官禄', ['贪狼'], []),
+      gong('迁移', ['天相'], ['火星']),
+    ];
+    const r = analyzeZiweiGe(gongData);
     expect(r.geNames).not.toContain('杀破狼格');
     expect(r.breakReasons.join()).toContain('煞星');
+    expect(r.breakReasons.join()).toContain('主星格');
   });
 
   it('紫府同宫（命宫）成格', () => {
@@ -91,7 +105,11 @@ describe('analyzeZiweiGe', () => {
     expect(r.geNames).toContain('杀破狼格');
   });
 
-  it('火贪格逢地空地劫同宫 → 破格', () => {
+  // ---- 2026-10 依出处修正火贪判据（docs/ziwei-ge-audit.md §6.2） ----
+  it('火贪：贪狼火星同宫又逢空劫 → 仍成格，理由注明减色（原文「不怕空劫，反能习正」）', () => {
+    // ⚠️ 旧口径是"逢地空地劫同宫即破格"，与《全书》原文相反。
+    //    原文：「不怕空劫，空劫会贪狼，反能习正；只怕羊陀，遇之色灾成祸」——
+    //    空劫只减弱横发之力（"火铃力量被空劫吸蚀"），不断格。
     const gongData = [
       gong('命宫', ['贪狼', '火星', '地空'], ['文昌'], { 贪狼: '禄' }),
       gong('财帛', ['天相'], []),
@@ -99,8 +117,92 @@ describe('analyzeZiweiGe', () => {
       gong('迁移', ['紫微'], []),
     ];
     const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('火贪格');
+    expect(r.reasons.join()).toContain('地空地劫');
+    expect(r.reasons.join()).toContain('成色打折');
+  });
+
+  it('火贪：同宫见擎羊 → 破格（「擎羊火星同度…均不合格」）', () => {
+    const gongData = [
+      gong('命宫', ['贪狼', '火星', '擎羊'], [], { 贪狼: '禄' }),
+      gong('财帛', ['天相'], []),
+      gong('官禄', ['天府'], []),
+      gong('迁移', ['紫微'], []),
+    ];
+    const r = analyzeZiweiGe(gongData);
     expect(r.geNames).not.toContain('火贪格');
-    expect(r.breakReasons.join()).toContain('空劫');
+    expect(r.breakReasons.join()).toContain('羊陀');
+  });
+
+  it('火贪：贪狼坐命、火星在财帛三方相会 → 成格（次格）', () => {
+    // 出处：「贪狼守命宫，火星仅在三方相会，不见煞，亦合格，但格局稍次」
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '贪狼', sihua: null }], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: ['火星'] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('火贪格');
+    expect(r.reasons.join()).toContain('次格');
+  });
+
+  it('火贪：贪狼在田宅、火星同宫 → 成格（旧版只取命宫三方四正，漏此落宫）', () => {
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '天机', sihua: null }], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [{ name: '天相', sihua: null }], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [{ name: '天同', sihua: null }], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [{ name: '太阴', sihua: null }], minorStars: [] },
+      { name: '田宅', branch: '未', majorStars: [{ name: '贪狼', sihua: null }], minorStars: ['火星'] },
+      { name: '兄弟', branch: '巳', majorStars: [], minorStars: [] },
+      { name: '父母', branch: '申', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('火贪格');
+    expect(r.reasons.join()).toContain('田宅宫');
+  });
+
+  it('火贪：贪狼在田宅、火星三方相会 → 不成格（弱档主语是"守命宫"）', () => {
+    // 若把"三方相会"弱档套到全部六个落宫，火贪会从 83 盘涨到 306 盘（10.1%），
+    // 变成全站最高频格，与"突发横发"的稀有语气不符。
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '天机', sihua: null }], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [{ name: '天相', sihua: null }], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [{ name: '天同', sihua: null }], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [{ name: '太阴', sihua: null }], minorStars: [] },
+      { name: '田宅', branch: '未', majorStars: [{ name: '贪狼', sihua: null }], minorStars: [] },
+      { name: '子女', branch: '卯', majorStars: [], minorStars: ['火星'] },
+      { name: '兄弟', branch: '巳', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('火贪格');
+  });
+
+  // ---- 2026-10 加冕计入禄存（「与禄存、科权禄、左右、魁钺加会，则为极美之格」） ----
+  it('加冕：三方有禄存而无四化 → 计入吉星会照，判格局纯正', () => {
+    const gongData = [
+      gong('命宫', ['七杀'], ['左辅']),
+      gong('财帛', ['贪狼']),
+      gong('官禄', ['破军']),
+      gong('迁移', ['天相'], ['禄存']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('杀破狼格');
+    expect(r.reasons.join()).toContain('禄存朝拱');
+    expect(r.reasons.join()).toContain('格局纯正');
+  });
+
+  it('加冕：既无禄存也无四化 → 仍成格但注明层次打折', () => {
+    const gongData = [
+      gong('命宫', ['七杀'], ['左辅']),
+      gong('财帛', ['贪狼']),
+      gong('官禄', ['破军']),
+      gong('迁移', ['天相']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('杀破狼格');
+    expect(r.reasons.join()).toContain('层次打折');
+    expect(r.reasons.join()).toContain('禄存');
   });
 
   it('夹宫按地支相邻判定（branch 优先于数组顺序）', () => {
@@ -257,7 +359,7 @@ describe('analyzeZiweiGe', () => {
   });
 
   // ---- 2026-10 一致性修正 ----
-  it('君臣庆会：紫微坐命 + 六吉两颗会照 → 成格', () => {
+  it('君臣庆会：紫微坐命 + 左辅文昌（含辅弼、六吉两颗）→ 成格', () => {
     // 紫微坐命在不成紫府同宫/朝垣时的兜底：否则紫微坐命一个格都没有
     const gongData = [
       gong('命宫', ['紫微'], ['左辅', '文昌'], { 紫微: '权' }),
@@ -269,7 +371,20 @@ describe('analyzeZiweiGe', () => {
     expect(r.geNames).toContain('君臣庆会格');
   });
 
-  it('君臣庆会：紫微坐命但六吉不足两颗 → 不成格（紫微无左右为孤君）', () => {
+  it('君臣庆会：紫微坐命 + 昌曲两颗但无辅弼 → 不成格（紫微无辅弼为孤君）', () => {
+    // 出处一致口径：「没有左辅、右弼会入的紫微星，只能算是孤君」——辅弼是必需项。
+    // 旧口径只判"六吉≥2"，会让昌曲魁钺凑两颗即算，把"孤君"这个正题漏掉。
+    const gongData = [
+      gong('命宫', ['紫微'], ['文昌', '文曲'], { 紫微: '权' }),
+      gong('财帛', ['武曲'], []),
+      gong('官禄', ['天相'], []),
+      gong('迁移', ['七杀'], []),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('君臣庆会格');
+  });
+
+  it('君臣庆会：紫微坐命但只有一颗吉星 → 不成格', () => {
     const gongData = [
       gong('命宫', ['紫微'], ['左辅'], { 紫微: '权' }),
       gong('财帛', ['武曲'], []),
@@ -282,10 +397,11 @@ describe('analyzeZiweiGe', () => {
 
   it('两层口径：重破盘上夹宫格仍成立，但破格文案明确只约束"主星格"', () => {
     // 昌曲夹结构成立的盘实测 124/124 都带破格——若让夹宫格连坐，等于删掉这个功能。
-    // 正确做法是分层讲清：破格三条只管主星格，夹宫格另论，并注明力度打折。
+    // 正确做法是分层讲清：破格只管主星格，夹宫格另论，并注明力度打折。
     const gongData = [
       { name: '命宫', branch: '午', majorStars: [{ name: '天机', sihua: '科' }], minorStars: [] },
-      { name: '迁移', branch: '子', majorStars: [], minorStars: ['擎羊', '陀罗'] },
+      // 煞 3 颗才构成破格（2026-10 分级后煞 2 只是下格）
+      { name: '迁移', branch: '子', majorStars: [], minorStars: ['擎羊', '陀罗', '火星'] },
       { name: '兄弟', branch: '巳', majorStars: [], minorStars: ['文昌'] },
       { name: '父母', branch: '未', majorStars: [], minorStars: ['文曲'] },
       { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
@@ -303,12 +419,75 @@ describe('analyzeZiweiGe', () => {
       gong('命宫', ['贪狼'], ['火星'], { 贪狼: '忌' }),
       gong('财帛', ['天相']),
       gong('官禄', ['天府']),
-      gong('迁移', ['紫微']),
+      // 擎羊陀罗须放在别的宫：与火铃同宫会直接破火贪格
+      gong('迁移', ['紫微'], ['擎羊', '陀罗']),
     ];
     const r = analyzeZiweiGe(gongData);
     expect(r.geNames).toContain('火贪格');
     expect(r.breakReasons.join()).toContain('主星格');
     expect(r.reasons.join()).toContain('力度打折');
+  });
+
+  // ---- 2026-10 破格分级（《全书》上/中/下格 → 四档） ----
+  it('分级：生年化忌落财帛 → 中格，仍入格', () => {
+    const gongData = [
+      gong('命宫', ['七杀']),
+      gong('财帛', ['贪狼'], [], { 贪狼: '忌' }),
+      gong('官禄', ['破军']),
+      gong('迁移', ['天相']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('杀破狼格');
+    expect(r.reasons.join()).toContain('中格');
+    expect(r.breakReasons).toHaveLength(0);
+  });
+
+  it('分级：生年化忌落迁移（冲命）→ 破格不入', () => {
+    // 落宫分量不同：化忌在财帛只减色，冲命才真破——旧版不区分，任意一宫全灭
+    const gongData = [
+      gong('命宫', ['七杀']),
+      gong('财帛', ['贪狼']),
+      gong('官禄', ['破军']),
+      gong('迁移', ['天相'], [], { 天相: '忌' }),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('杀破狼格');
+    expect(r.breakReasons.join()).toContain('迁移宫');
+  });
+
+  it('分级：空劫与主星同宫 → 破格不入（分居则只降档）', () => {
+    const sameGong = [
+      gong('命宫', ['七杀'], ['地空']),
+      gong('财帛', ['贪狼']),
+      gong('官禄', ['破军']),
+      gong('迁移', ['天相']),
+    ];
+    const r1 = analyzeZiweiGe(sameGong);
+    expect(r1.geNames).not.toContain('杀破狼格');
+    expect(r1.breakReasons.join()).toContain('同宫');
+
+    // 空劫两颗但都在没有主星的宫位 → 只算下格
+    const splitGong = [
+      gong('命宫', ['七杀']),
+      gong('财帛', ['贪狼']),
+      gong('官禄', ['破军']),
+      gong('迁移', [], ['地空', '地劫']),
+    ];
+    const r2 = analyzeZiweiGe(splitGong);
+    expect(r2.geNames).toContain('杀破狼格');
+    expect(r2.reasons.join()).toContain('下格');
+  });
+
+  it('日月并明：理由文案标明「广义口径」（经典落点说依据不足，不收紧但要说清）', () => {
+    const gongData = [
+      { name: '命宫', branch: '午', majorStars: [{ name: '太阳', sihua: null }], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [{ name: '太阴', sihua: null }], minorStars: ['文曲'] },
+      { name: '财帛', branch: '寅', majorStars: [{ name: '天相', sihua: null }], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [{ name: '天同', sihua: null }], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('日月并明格');
+    expect(r.reasons.join()).toContain('广义口径');
   });
 
   it('身宫条件依赖 isShenGong：字段缺失时安全退化（不抛错、不误判成格）', () => {
