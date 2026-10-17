@@ -43,6 +43,13 @@
 //      破格（化忌冲命、煞≥3、空劫与主星同宫、羊陀夹忌）＝不入格
 //    ⚠️ 变量叫 brokenMain，判据是 `tier === 'broken'`；**不要**再用"有没有破格项"当门槛。
 //    ⚠️ 中/下格说明写进该格 reasons，不进 breakReasons（那是"为什么没格"，语义不能混）。
+// 14.（2026-10 P1 补格，十格）禄马交驰／双禄朝垣／科权禄夹命／巨日同宫／武贪同行／石中隐玉／
+//    月朗天门／日照雷门／明珠出海／马头带箭。判据全部**绑盘面事实**（tryGe 的 opts.basis），
+//    不接受"主星组合成立"一句套所有格。边界口径：
+//    · 石中隐玉要**巨门单星**坐命子/午（与别的主星同宫即不成格）；
+//    · 科权禄夹命要两侧**两种不同化**（同一种化不算夹，夹的是两股力）；
+//    · 明珠出海要命宫未宫**无主星**且三方会日月（空宫按借对宫论，不是缺数据）；
+//    · 马头带箭（擎羊坐命午）文案须两头讲：威权外放，亦主刚烈易折。
 
 export interface ZiweiGeResult {
   geNames: string[];
@@ -164,8 +171,8 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
   else if (shaCount === 1) goodNotes.push('煞星 1 颗会照');
   // 空劫：入命才破；三方四正分居 2 颗下格；1 颗中格
   if (kongInMing) brokenNotes.push('地空地劫与命宫主星同宫（空劫入命）');
-  else if (kongCount >= 2) lowNotes.push(`空亡星（地空地劫）${kongCount} 颗分居三方`);
-  else if (kongCount === 1) goodNotes.push('空亡星 1 颗会照');
+  else if (kongCount >= 2) lowNotes.push(`地空地劫 ${kongCount} 颗分居三方`);
+  else if (kongCount === 1) goodNotes.push('地空地劫 1 颗会照');
   if (yangTuoJia) brokenNotes.push('羊陀夹忌：命宫化忌又被擎羊陀罗两宫相夹，为重破之局');
 
   const tier: GeTier = brokenNotes.length
@@ -209,20 +216,50 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     if (tier === 'good') return `古法列为中格，成色减等（${shadeNotes.join('；')}）`;
     return '';
   };
-  const tryGe = (name: string, condition: boolean, extra?: string) => {
+  /**
+   * 命宫两侧相邻宫（按地支相邻；无地支时回退数组相邻）。
+   * 夹宫格与「科权禄夹命」共用，避免两处各写一套相邻判定而口径分叉。
+   */
+  const mingNeighbors = (): { left?: any; right?: any } => {
+    let left: any;
+    let right: any;
+    if (ming?.branch) {
+      const bi = ZHI_ORDER.indexOf(ming.branch);
+      if (bi >= 0) {
+        left = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 11) % 12]);
+        right = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 1) % 12]);
+      }
+    }
+    if (!left || !right) {
+      const mingIdx = gongData.findIndex((g) => gongKey(g) === '命宫');
+      if (mingIdx >= 0 && gongData.length > 2) {
+        left = left || gongData[(mingIdx - 1 + gongData.length) % gongData.length];
+        right = right || gongData[(mingIdx + 1) % gongData.length];
+      }
+    }
+    return { left, right };
+  };
+
+  /**
+   * @param opts.basis 结构成立的事实描述（默认"主星组合成立"）。
+   *        禄马交驰/双禄朝垣这类不是主星组合，传给它们自己的事实句，否则文案会说谎。
+   * @param opts.note  附加口径说明（如日月并明的"广义口径"）。
+   */
+  const tryGe = (name: string, condition: boolean, opts?: { basis?: string; note?: string }) => {
     if (!condition || brokenMain) return;
-    const note = extra ? `；${extra}` : '';
+    const basis = opts?.basis || '主星组合成立';
+    const note = opts?.note ? `；${opts.note}` : '';
     const shade = tier === 'excellent' ? '' : `；${tierLabel()}`;
     if (crowned) {
       const crownBasis = hasSiHuaYin ? '四化引动' : '禄存朝拱';
       const pure = tier === 'excellent' ? '，无破格，格局纯正' : '';
-      addGe(name, `${name}：主星组合成立，吉星${jiHui.join('、')}会照，${crownBasis}${pure}${shade}${note}`);
+      addGe(name, `${name}：${basis}，吉星${jiHui.join('、')}会照，${crownBasis}${pure}${shade}${note}`);
     } else {
       const lack: string[] = [];
       if (!jiHui.length) lack.push('缺吉星会照');
       if (!hasSiHuaYin && !hasLuCun) lack.push('缺禄权科引动与禄存');
       const pure = tier === 'excellent' ? '且无破格，' : '，';
-      addGe(name, `${name}：主星组合成立${pure}但${lack.join('、')}，格局层次打折，宜后天补足${shade}${note}`);
+      addGe(name, `${name}：${basis}${pure}但${lack.join('、')}，格局层次打折，宜后天补足${shade}${note}`);
     }
   };
 
@@ -269,7 +306,7 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     tryGe(
       '日月并明格',
       !!riGong && !!yueGong && gongKey(riGong) !== gongKey(yueGong) && riWang && yueWang,
-      '广义口径：两星皆庙旺且互在三方四正，非经典固定宫位说',
+      { note: '广义口径：两星皆庙旺且互在三方四正，非经典固定宫位说' },
     );
   }
 
@@ -305,6 +342,94 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     tryGe('紫府朝垣格',
       !ziFuSame && !!ziGong && !!fuGong2 && gongKey(ziGong) !== gongKey(fuGong2));
   }
+
+  // ================= P1 补格（2026-10） =================
+  // 这些格"只增不减"，与破格分档解耦：结构成立且不是 broken 档即入格，成色由 tryGe 统一处理。
+  // ⚠️ 每格理由必须绑盘面事实（见 tryGe 的 basis 参数），不能套"主星组合成立"一句话。
+  // 命中率（结构层、3024 盘实测）见 docs/ziwei-ge-audit.md §五 与 §6.8。
+
+  // 禄马交驰：三方四正同时见禄存与天马——禄马同会，动中得财、驿马生财
+  {
+    const hasTianMa = minorNames.includes('天马');
+    tryGe('禄马交驰格', hasLuCun && hasTianMa, {
+      basis: '三方四正禄存与天马同会（禄马交驰）',
+    });
+  }
+
+  // 双禄朝垣：三方四正同时见禄存与化禄——双禄朝命，财禄丰足
+  {
+    const hasHuaLu = sifangStars.some((s) => s.sihua === '禄');
+    tryGe('双禄朝垣格', hasLuCun && hasHuaLu, {
+      basis: '三方四正禄存与化禄双禄朝命',
+    });
+  }
+
+  // 科权禄夹命：化禄/化权/化科 分居命宫两侧（一左一右、且两种不同化）——贵人提携、名利得助
+  // ⚠️ 必须"两种不同化"：同一颗星的两侧都化科不算夹（夹的是两股力，不是同一股）
+  if (ming) {
+    const { left, right } = mingNeighbors();
+    const sihuaSetOf = (g: any): string[] =>
+      starsOfGong(g).map((s) => s.sihua).filter((x): x is string => x === '禄' || x === '权' || x === '科');
+    const lSet = sihuaSetOf(left);
+    const rSet = sihuaSetOf(right);
+    const jiaKeQuanLu = lSet.some((a) => rSet.some((b) => b !== a));
+    tryGe('科权禄夹命格', jiaKeQuanLu, {
+      basis: `命宫两侧分见化${[...new Set(lSet)].join('、')}与化${[...new Set(rSet)].join('、')}`,
+    });
+  }
+
+  // 巨日同宫：太阳与巨门同坐命宫——口才辩给、名声在外，多主异乡/涉外发展
+  tryGe('巨日同宫格', mingStarNames.includes('太阳') && mingStarNames.includes('巨门'), {
+    basis: '太阳与巨门同坐命宫',
+  });
+
+  // 武贪同行：武曲与贪狼同坐命宫——先难后易、晚发，主实业与财
+  tryGe('武贪同行格', mingStarNames.includes('武曲') && mingStarNames.includes('贪狼'), {
+    basis: '武曲与贪狼同坐命宫',
+  });
+
+  // 石中隐玉：巨门单星坐命于子或午——藏才不露、大器晚成
+  // ⚠️ 要求"单星"：巨门与别的十四主星同宫就不是石中隐玉了
+  if (ming) {
+    const singleJuMen = mingStarNames.length === 1 && mingStarNames[0] === '巨门'
+      && (ming.branch === '子' || ming.branch === '午');
+    tryGe('石中隐玉格', singleJuMen, { basis: `巨门单星坐命于${ming.branch}宫` });
+  }
+
+  // 月朗天门：太阴坐命于亥宫——主清贵、财禄丰厚
+  if (ming) {
+    tryGe('月朗天门格', mingStarNames.includes('太阴') && ming.branch === '亥', {
+      basis: '太阴坐命于亥宫（月朗天门）',
+    });
+  }
+
+  // 日照雷门：太阳坐命于卯宫——主少年得志、名声早发
+  if (ming) {
+    tryGe('日照雷门格', mingStarNames.includes('太阳') && ming.branch === '卯', {
+      basis: '太阳坐命于卯宫（日照雷门）',
+    });
+  }
+
+  // 明珠出海：命宫在未宫且无主星（空宫），三方四正会太阳太阴——主离乡发迹、白手成家
+  if (ming) {
+    const mingEmptyWei = ming.branch === '未' && mingStarNames.length === 0;
+    const huiRiYue = sifangMajorNames.includes('太阳') && sifangMajorNames.includes('太阴');
+    tryGe('明珠出海格', mingEmptyWei && huiRiYue, {
+      basis: '命宫在未宫无主星，三方四正会太阳太阴（明珠出海）',
+      note: '命宫空宫按借对宫主星论，不视为缺数据',
+    });
+  }
+
+  // 马头带箭：擎羊坐命于午宫——主威权、外放出彩，亦主刚烈易折
+  // ⚠️ 写"亦主刚烈易折"而不是只说威权：古法对这一格的评价本来就两头
+  if (ming) {
+    const yangInMing = starsOfGong(ming).some((s) => s.name === '擎羊');
+    tryGe('马头带箭格', yangInMing && ming.branch === '午', {
+      basis: '擎羊坐命于午宫（马头带箭）',
+      note: '此格主威权外放，亦主刚烈易折，宜以柔济之',
+    });
+  }
+
 
   // ---- 突发吉格：火贪 / 铃贪 ----
   // 出处（《紫微斗数全书》赋文与断语，多家转载一致）：
@@ -380,24 +505,9 @@ export function analyzeZiweiGe(gongData: any[]): ZiweiGeResult {
     }
   }
 
-  // ---- 杂耀格（命宫左右夹宫：按地支相邻判定，无地支时回退数组相邻） ----
+  // ---- 杂耀格（命宫左右夹宫：相邻判定统一走 mingNeighbors，与「科权禄夹命」同一套） ----
   if (ming) {
-    let left: any;
-    let right: any;
-    if (ming.branch) {
-      const bi = ZHI_ORDER.indexOf(ming.branch);
-      if (bi >= 0) {
-        left = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 11) % 12]);
-        right = gongData.find((g) => g?.branch === ZHI_ORDER[(bi + 1) % 12]);
-      }
-    }
-    if (!left || !right) {
-      const mingIdx = gongData.findIndex((g) => gongKey(g) === '命宫');
-      if (mingIdx >= 0 && gongData.length > 2) {
-        left = left || gongData[(mingIdx - 1 + gongData.length) % gongData.length];
-        right = right || gongData[(mingIdx + 1) % gongData.length];
-      }
-    }
+    const { left, right } = mingNeighbors();
     if (left && right) {
       const leftMinor = starsOfGong(left).map((s) => s.name);
       const rightMinor = starsOfGong(right).map((s) => s.name);

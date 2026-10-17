@@ -503,6 +503,188 @@ describe('analyzeZiweiGe', () => {
     expect(Array.isArray(r.breakReasons)).toBe(true);
   });
 
+  // ---- 2026-10 P1 补格（十格）----
+  // 每格都要绑盘面事实（理由里说清是哪个宫、哪颗星），不接受"主星组合成立"一句套所有格。
+  const mingWithBranch = (branch: string, major: string[], minor: string[] = [], sihua: Record<string, string> = {}) => ({
+    name: '命宫',
+    branch,
+    majorStars: major.map((m) => ({ name: m, sihua: sihua[m] || null })),
+    minorStars: minor,
+  });
+
+  it('禄马交驰：三方四正同见禄存与天马 → 成格', () => {
+    const gongData = [
+      gong('命宫', ['天机'], ['禄存', '天马']),
+      gong('财帛', ['天同']),
+      gong('官禄', ['天梁']),
+      gong('迁移', ['太阴']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('禄马交驰格');
+    expect(r.reasons.join()).toContain('禄存与天马');
+  });
+
+  it('禄马交驰：只有禄存没有天马 → 不成格', () => {
+    const gongData = [
+      gong('命宫', ['天机'], ['禄存']),
+      gong('财帛', ['天同']),
+      gong('官禄', ['天梁']),
+      gong('迁移', ['太阴']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('禄马交驰格');
+  });
+
+  it('双禄朝垣：禄存 + 化禄同会三方四正 → 成格', () => {
+    const gongData = [
+      gong('命宫', ['天机'], ['禄存']),
+      gong('财帛', ['天同'], [], { 天同: '禄' }),
+      gong('官禄', ['天梁']),
+      gong('迁移', ['太阴']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('双禄朝垣格');
+    expect(r.reasons.join()).toContain('双禄朝命');
+  });
+
+  it('科权禄夹命：命宫两侧分见化科与化禄 → 成格', () => {
+    const gongData = [
+      mingWithBranch('午', ['天机']),
+      { name: '兄弟', branch: '巳', majorStars: [{ name: '太阴', sihua: '科' }], minorStars: [] },
+      { name: '父母', branch: '未', majorStars: [{ name: '天梁', sihua: '禄' }], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('科权禄夹命格');
+  });
+
+  it('科权禄夹命：两侧同为化科（同一种化）→ 不成格', () => {
+    // 夹的是两股力，不是同一股；同一种化星两侧夹命不构成"科权禄夹"
+    const gongData = [
+      mingWithBranch('午', ['天机']),
+      { name: '兄弟', branch: '巳', majorStars: [{ name: '太阴', sihua: '科' }], minorStars: [] },
+      { name: '父母', branch: '未', majorStars: [{ name: '天梁', sihua: '科' }], minorStars: [] },
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).not.toContain('科权禄夹命格');
+  });
+
+  it('巨日同宫：太阳巨门同坐命宫 → 成格', () => {
+    const gongData = [
+      gong('命宫', ['太阳', '巨门']),
+      gong('财帛', ['天机']),
+      gong('官禄', ['天同']),
+      gong('迁移', ['天梁']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('巨日同宫格');
+    expect(r.reasons.join()).toContain('太阳与巨门同坐命宫');
+  });
+
+  it('武贪同行：武曲贪狼同坐命宫 → 成格', () => {
+    const gongData = [
+      gong('命宫', ['武曲', '贪狼']),
+      gong('财帛', ['天府']),
+      gong('官禄', ['天相']),
+      gong('迁移', ['紫微']),
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('武贪同行格');
+  });
+
+  it('石中隐玉：巨门单星坐命于午 → 成格；与别的主星同宫则不成格', () => {
+    const single = [
+      mingWithBranch('午', ['巨门']),
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(single).geNames).toContain('石中隐玉格');
+
+    // 巨门+天机同坐午宫 → 不是单星，不成石中隐玉
+    const withOther = [
+      mingWithBranch('午', ['巨门', '天机']),
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(withOther).geNames).not.toContain('石中隐玉格');
+  });
+
+  it('月朗天门：太阴坐命于亥 → 成格；坐其他宫不成格', () => {
+    const ok = [
+      mingWithBranch('亥', ['太阴']),
+      { name: '财帛', branch: '卯', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '未', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '巳', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(ok).geNames).toContain('月朗天门格');
+
+    const wrongBranch = [
+      mingWithBranch('子', ['太阴']),
+      { name: '财帛', branch: '辰', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '申', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '午', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(wrongBranch).geNames).not.toContain('月朗天门格');
+  });
+
+  it('日照雷门：太阳坐命于卯 → 成格', () => {
+    const gongData = [
+      mingWithBranch('卯', ['太阳']),
+      { name: '财帛', branch: '未', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '亥', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '酉', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(gongData);
+    expect(r.geNames).toContain('日照雷门格');
+    expect(r.reasons.join()).toContain('卯宫');
+  });
+
+  it('明珠出海：命宫未宫空宫 + 三方会太阳太阴 → 成格；命宫有主星则不成格', () => {
+    const emptyMing = [
+      mingWithBranch('未', []),
+      { name: '财帛', branch: '卯', majorStars: [{ name: '太阴', sihua: null }], minorStars: [] },
+      { name: '官禄', branch: '亥', majorStars: [{ name: '太阳', sihua: null }], minorStars: [] },
+      { name: '迁移', branch: '丑', majorStars: [], minorStars: [] },
+    ];
+    const r = analyzeZiweiGe(emptyMing);
+    expect(r.geNames).toContain('明珠出海格');
+    // 命宫空宫不是缺数据，理由里要写清借对宫
+    expect(r.reasons.join()).toContain('借对宫');
+
+    const withMajor = [
+      mingWithBranch('未', ['巨门']),
+      { name: '财帛', branch: '卯', majorStars: [{ name: '太阴', sihua: null }], minorStars: [] },
+      { name: '官禄', branch: '亥', majorStars: [{ name: '太阳', sihua: null }], minorStars: [] },
+      { name: '迁移', branch: '丑', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(withMajor).geNames).not.toContain('明珠出海格');
+  });
+
+  it('马头带箭：擎羊坐命于午 → 成格；擎羊不在命宫不成格', () => {
+    const ok = [
+      mingWithBranch('午', ['天机'], ['擎羊']),
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: [] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(ok).geNames).toContain('马头带箭格');
+
+    const yangElsewhere = [
+      mingWithBranch('午', ['天机']),
+      { name: '财帛', branch: '寅', majorStars: [], minorStars: ['擎羊'] },
+      { name: '官禄', branch: '戌', majorStars: [], minorStars: [] },
+      { name: '迁移', branch: '子', majorStars: [], minorStars: [] },
+    ];
+    expect(analyzeZiweiGe(yangElsewhere).geNames).not.toContain('马头带箭格');
+  });
+
   it('geNames 与 reasons 一一对应（页面按索引取文案）', () => {
     const gongData = [
       gong('命宫', ['紫微', '天府'], ['左辅', '文昌'], { 紫微: '权' }),
