@@ -2,6 +2,7 @@
 // 判定顺序：特殊外格 → 禄刃格 → 普通八格 → 衍生格 → 层次
 import type { PillarData } from '../pages/Bazi';
 import { analyzeCongGe, congGeName } from './congGe';
+import { analyzeGuanShaHunZa } from './guanShaHunZa';
 
 export interface MingGeDetailed {
   geName: string;
@@ -304,7 +305,7 @@ function baGe(pillars: PillarData[], dayGan: string): { name: string; type: stri
 }
 
 /** 衍生格 + 层次（互斥，优先级从高到低） */
-function yanShengGe(pillars: PillarData[], geName: string): { name: string; score: string; detail: string } | null {
+function yanShengGe(pillars: PillarData[], geName: string, strengthLevel: string): { name: string; score: string; detail: string; basis?: string[] } | null {
   const shiShens = pillars.map(p => p.shiShen);
   const has = (s: string) => shiShens.some(x => x === s);
   const hasTou = (s: string) => shiShens.some(x => x === s);
@@ -328,6 +329,15 @@ function yanShengGe(pillars: PillarData[], geName: string): { name: string; scor
   if (has('正官') && hasTou('正印')) {
     return { name: '正官佩印', score: '上等', detail: '正官佩印，官印相生，稳重有靠，是上等格局' };
   }
+  // 官杀混杂与去留：判据唯一出口 `guanShaHunZa.analyzeGuanShaHunZa`。
+  // ⚠️ 必须排在「食神生财/财官相生」之前——否则「正官+七杀+财」齐透的盘会被财官相生拦走、
+  //    真混杂漏判（实测盘 辛庚甲己）。去留/制化/集结分档全在 analyzeGuanShaHunZa 里。
+  {
+    const hz = analyzeGuanShaHunZa(pillars, pillars[2]?.tianGan || '', strengthLevel);
+    if (hz.tier) {
+      return { name: hz.tier, score: hz.score, detail: hz.detail, basis: hz.basis };
+    }
+  }
   if (has('食神') && (hasTou('正财') || hasTou('偏财'))) {
     return { name: '食神生财', score: '中等', detail: '食神生财，才华可化为财富，是中上格局' };
   }
@@ -341,15 +351,18 @@ function yanShengGe(pillars: PillarData[], geName: string): { name: string; scor
   if (biJieCount >= 2 && has('正财') && !hasShiShangTongGuan) {
     return { name: '比劫夺财', score: '下等', detail: `比劫${biJieCount}透成势而财星无助（无食伤通关），比劫夺财，易破财竞争，是下等格局，需注意合伙与理财` };
   }
-  if (has('正官') && has('七杀')) {
-    return { name: '官杀混杂', score: '下等', detail: '正官七杀同现，官杀混杂，压力与机遇并存，需印星化解' };
-  }
   return null;
 }
 
 /** 格局成败关键（喜忌）：这个格靠什么成、怕什么破 */
 function successKeyOf(geName: string, geType: string): string {
   const g = geName;
+  // ⚠️ 官杀系列必须排在所有 includes('正官')/includes('七杀') 之前——合成名（如「正官格·去杀留官」）会被基础格拦截
+  if (g.includes('去杀留官') || g.includes('合杀留官')) return '去杀留官靠"制/合的手段始终有力"成立——喜岁运扶起制杀之字（食伤、劫刃），官星方能一直独清；最忌制神被印夺、合神被冲：清格一旦复混，是非立至。';
+  if (g.includes('去官留杀') || g.includes('合官留杀')) return '去官留杀靠"杀星独清而有制化"成立——喜印化食制并行，杀化为权；最忌岁运再透正官令格局复混，以及杀星失制：威权反噬比官弱更烈。';
+  if (g.includes('官杀集结')) return '官杀集结靠"身强能任"成立——喜身根持续得力、印绶调停，把两股管束化为名分与魄力；最忌岁运攻身（财生官杀、比劫被夺）：身一弱，集结立刻变混杂。';
+  if (g.includes('混而有制')) return '混而有制的转机在"扶起那个无力的制化之字"——岁运帮它扎根、解绊，即是清局之时；平日忌再添官杀，把仅有的解法也压垮。';
+  if (g.includes('混而无制')) return '混而无制的出路在"去一留一"——岁运来印化、来食伤制、来劫刃合杀皆是解药；选择上忌两头都想占，主动取舍比等待转运更要紧。';
   if (g.includes('化')) return '化气格靠"化神旺而纯粹"立命——行运喜走化神与生扶化神之地，忌克化神之字；岁运一逢克破即有"化神还原"之应，成败大起大落，宜顺势不宜强立。';
   if (g.includes('专旺')) return '专旺格靠"旺气一路到底"成立——喜顺势而为（食伤泄秀、印比助势），最忌官杀来犯、行运逆旺，逆势则格局立破。';
   if (g.includes('从')) return '从格靠"顺从旺神"成立——喜顺从所从之神（从财喜财与食伤，从官喜官与财），最忌印比来犯：运逢印比多有反复，是这类命最大的坎。';
@@ -493,12 +506,12 @@ export function analyzeMingGeDetailed(
   }
 
   // 4) 衍生格（覆盖评分与格名）
-  const ys = yanShengGe(pillars, geName);
+  const ys = yanShengGe(pillars, geName, strengthLevel);
   if (ys) {
     const base = geName.replace(/（本气未透）/, '');
     geName = `${base}·${ys.name}`;
     score = ys.score;
-    basis = [...basis, `组合层检视：${ys.detail}`, `故在${base}之上叠加「${ys.name}」，层次定为${ys.score}`];
+    basis = [...basis, `组合层检视：${ys.detail}`, ...(ys.basis || []), `故在${base}之上叠加「${ys.name}」，层次定为${ys.score}`];
     details.push(ys.detail);
   }
 

@@ -306,6 +306,38 @@ describe('analyzeMingGeDetailed', () => {
     expect(r.geName).toContain('比劫夺财');
     expect(r.score).toBe('下等');
   });
+
+  it('官杀混杂·混而无制：官杀财齐透不被「财官相生」拦截', () => {
+    // 甲日主，辛官 + 庚杀 + 己财齐透，无食伤无印无合、身弱。
+    // ⚠️ 优先级钉：此盘旧版会被「财官相生」（正财+正官）拦走而漏判混杂——
+    //    官杀混杂判定必须排在食神生财/财官相生之前。
+    // ⚠️ 甲己相邻五合会触发化气格判定，故月令取申（金当令、土不当令 → 化气不成立），
+    //    日支寅给甲留根（连假化也不沾），才能走到官杀混杂分支。
+    const ps = pillars(['辛', '庚', '甲', '己'], ['酉', '申', '寅', '巳'],
+      [['辛'], ['庚', '壬', '戊'], ['甲', '丙', '戊'], ['丙', '戊', '庚']],
+      ['正官', '七杀', '日主', '正财']);
+    ps[1].shiShenZhi = '七杀/偏印/偏财'; // 申藏庚壬戊，本气庚（七杀）透月干 → 七杀格
+    const r = analyzeMingGeDetailed(ps, '甲', '身弱', {});
+    expect(r.geName).toContain('混而无制');
+    expect(r.geName).not.toContain('财官相生');
+    expect(r.score).toBe('下等');
+    expect(r.basis.join(' ')).toContain('齐透');
+    // 成败关键须走官杀系列分支，不能被基础格（财格/伤官格）文案拦截
+    expect(r.successKey).toContain('去一留一');
+  });
+
+  it('官杀混杂·去杀留官：阳日食神有力制杀 → 上等，依据链留痕', () => {
+    // 甲日主，辛官 + 庚杀齐透，丙食神坐下午火为根、无印夺食 → 去杀留官
+    const ps = pillars(['辛', '庚', '甲', '丙'], ['丑', '午', '寅', '子'],
+      [['己', '癸', '辛'], ['丁', '己'], ['甲', '丙', '戊'], ['癸']],
+      ['正官', '七杀', '日主', '食神']);
+    ps[1].shiShenZhi = '伤官/正财'; // 午藏丁己均不透 → 伤官格（本气未透）
+    const r = analyzeMingGeDetailed(ps, '甲', '中和', {});
+    expect(r.geName).toContain('去杀留官');
+    expect(r.score).toBe('上等');
+    expect(r.basis.join(' ')).toContain('有力制去七杀');
+    expect(r.successKey).toContain('制杀');
+  });
 });
 
 describe('analyzeTouGan', () => {
