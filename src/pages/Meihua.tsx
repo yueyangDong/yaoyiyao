@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Button, InputNumber, Typography, Space, Divider,
   Tag, Row, Col, Radio, message, Descriptions, Alert,
@@ -6,7 +6,11 @@ import {
 import { ExperimentOutlined } from '@ant-design/icons';
 import { Flower2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, MeiHuaResult } from '../utils/meihuaUtils';
+import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, monthZhiOf, MeiHuaResult } from '../utils/meihuaUtils';
+import { buildAllMeihuaReadings, buildMeihuaExtras } from '../utils/meihuaReading';
+import type { Theme } from '../utils/divinationCore';
+import ThemeReadingCard from '../components/ThemeReadingCard';
+import { meihuaTexts } from '../data/meihuaFullTexts';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 
 const { Title, Text, Paragraph } = Typography;
@@ -149,6 +153,24 @@ export default function Meihua() {
   const [num2, setNum2] = useState<number | null>(null);
   const [num3, setNum3] = useState<number | null>(null);
   const [result, setResult] = useState<MeiHuaResult | null>(null);
+  const [theme, setTheme] = useState<Theme>('事业');
+  // 起卦当时的月支：时令旺衰必须锁在起卦那一刻，不能随页面停留而漂
+  const [monthZhi, setMonthZhi] = useState<string>(() => monthZhiOf());
+
+  const readings = useMemo(
+    () => (result ? buildAllMeihuaReadings(result, monthZhi) : []),
+    [result, monthZhi],
+  );
+  const rich = useMemo(
+    () => (result ? meihuaTexts.find((m) => m.guaName === result.benGuaName) : undefined),
+    [result],
+  );
+  // 方位 / 应期 / 观物取象：这一层不改吉凶，只回答「往哪走、什么时候、看什么」
+  // ⚠️ 应期取数按主题不同（测财看主卦数、测病看主互变总数、寻人加动爻），所以要传 theme
+  const extras = useMemo(
+    () => (result ? buildMeihuaExtras(result, theme) : null),
+    [result, theme],
+  );
 
   useEffect(() => {
     if (currentUser && num1 === null && num2 === null && num3 === null) {
@@ -169,6 +191,7 @@ export default function Meihua() {
         res = calcMeiHua(num1!, num2!, num3!);
       }
       setResult(res);
+      setMonthZhi(monthZhiOf());
       message.success('起卦完成');
       addHistory({
         userId: currentUser?.id || '',
@@ -269,9 +292,34 @@ export default function Meihua() {
 
             <Divider>三卦串联解读</Divider>
             <Paragraph style={{ fontSize: 14, color: 'var(--text-body)', whiteSpace: 'pre-line', lineHeight: 2 }}>
-              {getThreeGuaStory(result.benGuaName, result.huGuaName, result.bianGuaName, result.dongYao)}
+              {rich?.chainStory || getThreeGuaStory(result.benGuaName, result.huGuaName, result.bianGuaName, result.dongYao)}
             </Paragraph>
+            {rich && (
+              <Row gutter={[12, 8]} style={{ marginTop: 4 }}>
+                <Col xs={24} sm={12}>
+                  <Text strong style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>互卦提示（过程）</Text>
+                  <Paragraph style={{ fontSize: 12.5, lineHeight: 1.8, color: 'var(--text-body)', margin: '4px 0 0' }}>
+                    {rich.huGuaReading}
+                  </Paragraph>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Text strong style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>变卦提示（结局）</Text>
+                  <Paragraph style={{ fontSize: 12.5, lineHeight: 1.8, color: 'var(--text-body)', margin: '4px 0 0' }}>
+                    {rich.bianGuaReading}
+                  </Paragraph>
+                </Col>
+              </Row>
+            )}
           </Card>
+
+          {/* 分主题解读：先给结论（按主题选），再往下看体用机制 */}
+          <ThemeReadingCard
+            readings={readings}
+            theme={theme}
+            onChange={setTheme}
+            board="meihua"
+            title="问什么看什么：分主题解读"
+          />
 
           {/* 体用分析 */}
           <Card
@@ -338,6 +386,103 @@ export default function Meihua() {
               </Col>
             </Row>
           </Card>
+
+          {/* 方位 / 应期 / 观物取象：只补「往哪走、什么时候、看什么」，不动吉凶 */}
+          {extras && (
+            <Card
+              title={<span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>方位 · 应期 · 观物取象（外应层）</span>}
+              style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+            >
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="这一层不参与定吉凶，只回答三个具体问题：往哪个方向使劲、大概什么时候见分晓、起卦当下该看什么。吉凶以上面的分主题解读为准。"
+              />
+
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12}>
+                  <Text strong style={{ color: 'var(--text-primary)' }}>有利方位</Text>
+                  <div style={{ marginTop: 8 }}>
+                    {extras.luckyDirections.length ? (
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        {extras.luckyDirections.map((d, i) => (
+                          <div key={i}>
+                            <Tag color="green" style={{ fontSize: 13 }}>{d.dir}</Tag>
+                            <Text style={{ fontSize: 12.5, color: 'var(--text-body)' }}>{d.why}</Text>
+                          </div>
+                        ))}
+                      </Space>
+                    ) : (
+                      <Text style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                        本卦没有出现「生你」或「与你同气」的方位，这一卦不给方向偏好——照常办事即可，不必特意绕路。
+                      </Text>
+                    )}
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Text strong style={{ color: 'var(--text-primary)' }}>宜回避的方位</Text>
+                  <div style={{ marginTop: 8 }}>
+                    {extras.avoidDirections.length ? (
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        {extras.avoidDirections.map((d, i) => (
+                          <div key={i}>
+                            <Tag color="red" style={{ fontSize: 13 }}>{d.dir}</Tag>
+                            <Text style={{ fontSize: 12.5, color: 'var(--text-body)' }}>{d.why}</Text>
+                          </div>
+                        ))}
+                      </Space>
+                    ) : (
+                      <Text style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                        没有克你的方位，谈事、签约不必刻意避开某个方向。
+                      </Text>
+                    )}
+                  </div>
+                </Col>
+              </Row>
+
+              <Divider style={{ margin: '14px 0' }} />
+              <Text strong style={{ color: 'var(--text-primary)' }}>应期（大概什么时候见分晓）</Text>
+              <Paragraph style={{ fontSize: 13, lineHeight: 1.9, color: 'var(--text-body)', margin: '6px 0 0' }}>
+                {extras.timing.qi}
+              </Paragraph>
+              <Paragraph style={{ fontSize: 12.5, lineHeight: 1.9, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                {extras.timing.text}
+              </Paragraph>
+
+              <Divider style={{ margin: '14px 0' }} />
+              <Text strong style={{ color: 'var(--text-primary)' }}>观物取象对照表</Text>
+              <Paragraph style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: '4px 0 8px' }}>
+                梅花讲究「观物取象」：起卦当下眼前出现的东西，本身就是卦的注脚。下表是该卦对应的物象，请自己对照当时所见。
+              </Paragraph>
+              <Row gutter={[12, 8]}>
+                {extras.xiang.map((x, i) => (
+                  <Col xs={24} sm={12} key={i}>
+                    <div style={{
+                      border: '1px solid var(--border-light)', borderRadius: 8,
+                      padding: '8px 10px', height: '100%',
+                    }}>
+                      <Text strong style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>
+                        {x.role} · {x.gua}
+                      </Text>
+                      <div style={{ marginTop: 4 }}>
+                        {x.items.map((it, j) => (
+                          <Tag key={j} style={{ marginBottom: 4, fontSize: 12 }}>{it}</Tag>
+                        ))}
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginTop: 14 }}
+                message={extras.note}
+              />
+            </Card>
+          )}
         </>
       )}
       {quotaModal}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Card, Button, Typography, Space, Tag, message, Tabs,
   Row, Col, Divider, Input, Progress,
@@ -13,6 +13,9 @@ import { ZHUGES_LOTS, getZhugeLotByStrokes } from '../data/zhugeshensuan';
 import { useUser } from '../context/UserContext';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import CollapsibleCard from '../components/CollapsibleCard';
+import ThemeReadingCard from '../components/ThemeReadingCard';
+import { buildAllLotReadings } from '../utils/lotReading';
+import type { Theme, ThemeReading } from '../utils/divinationCore';
 // @ts-ignore - canvas-confetti types not available
 import confetti from 'canvas-confetti';
 
@@ -32,6 +35,8 @@ interface NormalizedLot {
   poem: string;
   explanation: string;
   interpretation: string;
+  /** 观音灵签自带的结构化分项（事业/感情/财运/健康）——分主题判读要直接用，不能丢 */
+  interpretations?: Record<string, string>;
   guide: Record<string, string>;
   story: string;
 }
@@ -49,6 +54,7 @@ function normalizeLot(lot: any, lotType: string): NormalizedLot {
       interpretation: g.interpretations
         ? Object.entries(g.interpretations).map(([k, v]) => `${k}：${v}`).join('\n')
         : '',
+      interpretations: g.interpretations as unknown as Record<string, string>,
       guide: (g.xianji || {}) as Record<string, string>,
       story: g.diangu || '',
     };
@@ -77,7 +83,14 @@ export default function Lingqian() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
   const [zhugeWords, setZhugeWords] = useState({ w1: '', w2: '', w3: '' });
+  const [theme, setTheme] = useState<Theme>('事业');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 六个主题一次算满：签等定基调，分项只在一档内微调（见 utils/lotReading 的 clampByLevel）
+  const readings: ThemeReading[] = useMemo(
+    () => (result ? buildAllLotReadings({ ...result, lotType: lotType as 'guanyin' | 'guandi' | 'zhuge' }) : []),
+    [result, lotType],
+  );
 
   const currentLots = lotType === 'guanyin' ? guanyinLots : lotType === 'guandi' ? guandiLots : ZHUGES_LOTS;
 
@@ -483,58 +496,14 @@ export default function Lingqian() {
             </Card>
             </CollapsibleCard>
 
-            {/* 分维度解读 */}
-            {result.level && (
-              <CollapsibleCard title="分维度解读" summary="事业、感情、财运、健康四维度" accordionGroup="lingqian-analysis">
-              <Card
-                size="small"
-                style={{
-                  marginBottom: 12,
-                  background: 'var(--bg-card-solid)',
-                  borderColor: 'var(--border-light)',
-                  border: 'none', boxShadow: 'none',
-                }}
-              >
-                <Row gutter={[8, 12]}>
-                  {[
-                    { label: '事业', icon: '💼' },
-                    { label: '感情', icon: '💕' },
-                    { label: '财运', icon: '💰' },
-                    { label: '健康', icon: '💚' },
-                  ].map(({ label, icon }) => {
-                    const isGood = result.level === '上上' || result.level === '上';
-                    const isBad = result.level === '下下' || result.level === '下';
-                    const adviceMap: Record<string, string> = {
-                      '事业': isGood ? '事业运旺，适合跳槽、创业、争取晋升。主动出击会有好结果。'
-                        : isBad ? '事业上暂遇阻碍，不宜做重大决定。守住现有岗位，等待时机。'
-                        : '事业运势平稳，按部就班即可，不宜冒进也不需担忧。',
-                      '感情': isGood ? '桃花运好，单身者可大胆追求，有伴侣者感情升温。'
-                        : isBad ? '感情上需多些耐心和理解，避免因小事争吵。单身者暂不适合表白。'
-                        : '感情中规中矩，顺其自然就好，强扭的瓜不甜。',
-                      '财运': isGood ? '财运不错，投资需审慎但可以适度尝试。有意外的进账机会。'
-                        : isBad ? '财运走低，注意控制开支，避免高风险投资。守财为主。'
-                        : '财运一般，维持现状即可。不贪心就不会有损失。',
-                      '健康': isGood ? '身体状态良好，精神充沛。适合开始新的运动计划。'
-                        : isBad ? '注意休息和调养，可能有小病痛。避免过度劳累。'
-                        : '健康运平稳，保持良好作息即可，不必过度担心。',
-                    };
-                    return (
-                      <Col xs={12} key={label}>
-                        <Card size="small" styles={{ body: { padding: '10px 12px', background: 'rgba(0,0,0,0.02)' } }}>
-                          <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-                            {icon} {label}
-                          </Text>
-                          <Paragraph style={{ fontSize: 12, color: 'var(--text-body)', marginTop: 4, marginBottom: 0, lineHeight: 1.7 }}>
-                            {adviceMap[label]}
-                          </Paragraph>
-                        </Card>
-                      </Col>
-                    );
-                  })}
-                </Row>
-              </Card>
-            </CollapsibleCard>
-            )}
+            {/* 分主题解读：结论来自「签等 + 本签分项」，不再按签等套模板 */}
+            <ThemeReadingCard
+              readings={readings}
+              theme={theme}
+              onChange={setTheme}
+              board="lot"
+              title="问什么看什么：分主题解读"
+            />
 
             {/* 凶签化解建议 */}
             {(result.level === '下' || result.level === '下下') && (

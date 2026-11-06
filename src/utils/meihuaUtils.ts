@@ -62,6 +62,12 @@ export interface MeiHuaResult {
   yongWuxing: string;
   relation: string;
   judgement: string;
+  /** 互卦上下卦索引（0-7），供分主题判读取「互体/互用」——不再从卦名反推 */
+  huShang: number;
+  huXia: number;
+  /** 变卦上下卦索引（0-7），供方位与应期取「用卦变出之卦」 */
+  bianShang: number;
+  bianXia: number;
   bianYongWuxing: string;   // 变卦中用卦（变出之卦）的五行
   bianRelation: string;     // 变卦用卦对体卦的生克（定结局吉凶）
   bianJudgement: string;
@@ -186,6 +192,10 @@ function buildResult(shangNum: number, xiaNum: number, dongYaoNum: number): MeiH
     yongWuxing: yongWx,
     relation: wxRel.relation,
     judgement: wxRel.judgement,
+    huShang: hu.shang,
+    huXia: hu.xia,
+    bianShang: bian.shang,
+    bianXia: bian.xia,
     bianYongWuxing: bianYongWx,
     bianRelation: bianRel.relation,
     bianJudgement: bianRel.judgement,
@@ -226,3 +236,13 @@ export function calcMeiHuaFromDate(date: Date = new Date()): MeiHuaResult {
 }
 
 export { GUA_NAMES, GUA_SYMBOLS, GUA_WUXING };
+
+/**
+ * 起卦当月的月支（如「戌」）。
+ * ⚠️ 梅花原法不排月建，但断卦必须给体卦一个「时令旺衰」，否则同一个体用关系
+ * 在春冬两季会得到完全一样的结论——这就是梅花与六爻判据打架的根源。
+ * 这里直接取节气月的干支，与六爻的 `monthJian` 同源，保证两板块口径一致。
+ */
+export function monthZhiOf(date: Date = new Date()): string {
+  return Lunar.fromDate(date).getMonthInGanZhi().slice(-1);
+}
