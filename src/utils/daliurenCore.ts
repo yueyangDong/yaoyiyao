@@ -121,6 +121,15 @@ export const JI_GONG: Record<string, string> = {
   己: '未', 庚: '申', 辛: '戌', 壬: '亥', 癸: '丑',
 };
 
+/**
+ * 十干禄（临官位）：甲寅 乙卯 丙戊巳 丁己午 庚申 辛酉 壬亥 癸子。
+ * 与八字「禄神」同一张表、同一口径，只是用法不同（六壬看禄临日辰还是入三传）。
+ */
+export const GAN_LU: Record<string, string> = {
+  甲: '寅', 乙: '卯', 丙: '巳', 丁: '午', 戊: '巳',
+  己: '午', 庚: '申', 辛: '酉', 壬: '亥', 癸: '子',
+};
+
 /** 十二天将（顺序固定：贵蛇雀合勾龙空虎常玄阴后） */
 export const TIAN_JIANG = [
   '贵人', '螣蛇', '朱雀', '六合', '勾陈', '青龙',
@@ -203,6 +212,9 @@ const idx = (z: string) => DZ_ORDER.indexOf(z);
 const shiftZhi = (z: string, n: number) => DZ_ORDER[((idx(z) + n) % 12 + 12) % 12];
 
 export const isYangGan = (g: string) => YANG_GAN.includes(g);
+
+/** 阳支：子寅辰午申戌（DI_ZHI_ORDER 偶数位）。九宗门「比用」与「六纯」共用这一条，别再各写一套 */
+export const isYangZhi = (z: string) => DZ_ORDER.indexOf(z) % 2 === 0;
 
 /** 六亲：以日干为我 */
 export function liuQinOf(dayGan: string, zhi: string): string {
@@ -396,11 +408,7 @@ export function buildKe(date: Date, opts: KeOptions = {}): KeResult {
     if (pool.length === 0) return null;
     if (pool.length === 1) return { zhi: pool[0].upper, name: baseName };
     // 比用：取与日干同阴阳者
-    const sameYinYang = pool.filter((k) => {
-      const i = idx(k.upper);
-      const isYangZhi = i % 2 === 0;
-      return isYangZhi === isYangGan(dayGan);
-    });
+    const sameYinYang = pool.filter((k) => isYangZhi(k.upper) === isYangGan(dayGan));
     if (sameYinYang.length === 1) return { zhi: sameYinYang[0].upper, name: '比用（知一）' };
     // 涉害：归本位途中克我重数多者
     const depthOf = (k: SiKeItem): number => {

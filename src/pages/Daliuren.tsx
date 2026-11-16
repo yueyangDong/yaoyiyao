@@ -3,14 +3,14 @@ import {
   Card, Button, Typography, Space, Tag, Divider,
   Row, Col, Radio, message, Alert, Select, Descriptions, Tooltip,
 } from 'antd';
-import { Sparkles, RefreshCw, HelpCircle, Compass, Clock } from 'lucide-react';
+import { Sparkles, RefreshCw, HelpCircle, Compass, Clock, Layers } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 import ThemeReadingCard from '../components/ThemeReadingCard';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import type { Theme } from '../utils/divinationCore';
 import { buildKe, buildRandomKe, DI_ZHI_ORDER, JIANG_PLAIN, LIU_QIN_PLAIN, type KeResult } from '../utils/daliurenCore';
-import { buildAllDaliurenReadings, buildDaliurenActions, buildDaliurenTiming, positionHints } from '../utils/daliurenReading';
+import { buildAllDaliurenReadings, buildDaliurenActions, buildDaliurenTiming, buildKeGe, positionHints } from '../utils/daliurenReading';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -21,6 +21,7 @@ const BEGINNER_GUIDE = [
   { term: '四课', plain: '四课是「事从哪里起」：第一课看你自己（日干），第三课看事情或对方（日支），第二、四课是各自延伸出来的一层。上下相克叫「克」，克在哪里，事情就从哪里起波澜。' },
   { term: '三传', plain: '三传是事情的三步：初传＝起因/当下，中传＝过程，末传＝结果。三传就是这条事的「剧情线」，比吉凶结论更值得看。' },
   { term: '课体', plain: '课体是这张盘的「类型名」：元首（顺理成章）、重审（由内而起）、涉害（几条路都带伤）、昴星（悬着没抓手）、伏吟（原地打转）、返吟（翻来覆去）。它定的是事情的走法，不是好坏。' },
+  { term: '课格', plain: '课体说的是「三传怎么取出来的」，课格说的是「整张盘长什么样」：三传合成一个局（曲直格主往上长、从革格主重铸）、三支一路连着走（连茹，进为往前挪、退为往回退）、日干的禄落在第几步、贵人顺布还是逆布。它不改吉凶，只让你一眼看出这张盘的气是顺的、耗的，还是卡着的。' },
   { term: '十二天将', plain: '贵人、螣蛇、朱雀、六合、勾陈、青龙、天空、白虎、太常、玄武、太阴、天后。它们给事情加「气质」：贵人主有人帮、白虎主硬碰硬、玄武主有没说清的部分。天将只修饰，不定吉凶。' },
   { term: '类神', plain: '你问什么，就要在盘上找对应的那一类：问钱看妻财、问工作看官鬼、问文书看父母、问病看官鬼（但方向相反，旺是病重）。类神落在初传还是末传，决定这件事是「眼前」还是「以后」。' },
   { term: '应期', plain: '「什么时候」不能凭感觉，要看用神落在哪个地支：落在子就在子月／子日。落空亡的，要等这个支值月值日（填实）或对冲的那个支来冲（冲实）；临驿马的按「日」算、事情快；三传合成局的，按那一季算。它给的是窗口和节奏，不是某一天。' },
@@ -73,6 +74,8 @@ export default function Daliuren() {
     () => (ke ? buildDaliurenActions(ke, theme, currentUser?.gender) : []),
     [ke, theme, currentUser?.gender],
   );
+  // 课格只看盘面，与主题无关——同一张盘问什么都一样，所以 deps 只有 ke
+  const keGe = useMemo(() => (ke ? buildKeGe(ke) : []), [ke]);
 
   const runKe = async (next: KeResult) => {
     if (!(await tryConsume())) return;
@@ -234,6 +237,42 @@ export default function Daliuren() {
               <Text style={{ fontSize: 12.5, lineHeight: 1.8, color: 'var(--text-body)' }}>{ke.keTi.note}</Text>
             </div>
           </Card>
+
+          {/* 课格：盘面气象。与主题无关（同一张盘固定），所以放在分主题解读之前 */}
+          {keGe.length > 0 && (
+            <CollapsibleCard
+              title="课格 · 这张盘的气象"
+              icon={<Layers size={16} />}
+              summary={`${keGe.length} 条 · ${keGe.map((g) => g.name).join(' / ')}`}
+              style={{ marginBottom: 16 }}
+            >
+              <Text style={{ display: 'block', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 10 }}>
+                别和「课体」混：课体说的是三传<strong>怎么取出来的</strong>（元首、涉害、伏吟……），
+                课格说的是这张盘<strong>整体长什么样</strong>（三传合成一个局、三支一路连着走、日干的禄落在第几步、贵人顺布还是逆布）。
+                它不改吉凶，只让你先看清这张盘的「气」是顺的、耗的，还是卡着的。
+              </Text>
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {keGe.map((g, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: '9px 10px', borderRadius: 10,
+                      border: '1px solid var(--border-light)',
+                      background: 'rgba(0,0,0,0.015)',
+                    }}
+                  >
+                    <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{g.name}</Text>
+                    <Text style={{ display: 'block', marginTop: 1, fontSize: 12.5, lineHeight: 1.8, color: 'var(--text-body)' }}>
+                      {g.plain}
+                    </Text>
+                    <Text style={{ display: 'block', marginTop: 2, fontSize: 11.5, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+                      {g.basis}
+                    </Text>
+                  </div>
+                ))}
+              </Space>
+            </CollapsibleCard>
+          )}
 
           {/* 分主题解读 */}
           <ThemeReadingCard

@@ -4,7 +4,7 @@ import {
   type KeResult,
 } from '../daliurenCore';
 import {
-  buildAllDaliurenReadings, buildDaliurenActions,
+  buildAllDaliurenReadings, buildDaliurenActions, buildKeGe,
   buildDaliurenReading, buildDaliurenTiming, wangShuaiOf, chuanShapeOf,
 } from '../daliurenReading';
 import { VERDICT_ORDER, THEMES, JUDGE_RULE } from '../divinationCore';
@@ -442,6 +442,137 @@ describe('行动层', () => {
     const all = THEMES.flatMap((th) => buildDaliurenActions(ke, th, 'male'))
       .map((a) => a.action + a.basis).join('');
     for (const banned of ['一定会', '必然', '保证', '绝对', '必定']) {
+      expect(all.includes(banned)).toBe(false);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 课格：这张盘的「气象」
+ *
+ * ⚠️ 课格与「课体」不是一个维度：课体说三传怎么取（元首/涉害/伏吟…），
+ * 课格说整张盘长什么样（成局/连茹/禄/六纯…）。所以课格**不改课体、不产分数**。
+ * ------------------------------------------------------------------ */
+
+describe('课格', () => {
+  const geOf = (d: Date, o?: Parameters<typeof buildKe>[1]) => buildKeGe(buildKe(d, o));
+  const names = (d: Date, o?: Parameters<typeof buildKe>[1]) => geOf(d, o).map((g) => g.name);
+
+  it('至少一条、格名不重复、每条都有可核对的白话与依据', () => {
+    for (let mo = 0; mo < 12; mo += 2) {
+      const gs = geOf(new Date(2026, mo, 11, 10, 0));
+      expect(gs.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(gs.map((g) => g.name)).size).toBe(gs.length);
+      for (const g of gs) {
+        expect(g.plain.length).toBeGreaterThan(8);
+        expect(g.basis.length).toBeGreaterThan(8);
+        expect(g.basis).toMatch(/[子丑寅卯辰巳午未申酉戌亥]/);
+      }
+    }
+  });
+
+  it('三合成局：三传恰见三合三支才论格，四局各对应一个格名', () => {
+    // 三传 → 局：巳酉丑金 / 亥卯未木 / 寅午戌火 / 申子辰水（锚点盘手算核对过）
+    expect(names(new Date(2026, 10, 8, 10, 0), { hourZhi: '亥' })).toContain('从革格');
+    expect(names(new Date(2026, 1, 27, 10, 0), { hourZhi: '未' })).toContain('曲直格');
+    expect(names(new Date(2026, 1, 19, 10, 0), { hourZhi: '卯' })).toContain('炎上格');
+    expect(names(new Date(2026, 0, 11, 10, 0), { hourZhi: '酉' })).toContain('润下格');
+  });
+
+  it('稼穑：三传皆土（辰戌丑未）论稼穑格，且不再叠一个三合格', () => {
+    const k = buildKe(new Date(2026, 0, 3, 10, 0), { hourZhi: '丑' });
+    expect(k.sanChuan.map((s) => s.zhi).sort()).toEqual(['丑', '戌', '未'].sort());
+    const ns = buildKeGe(k).map((g) => g.name);
+    expect(ns).toContain('稼穑格');
+    expect(ns).not.toContain('曲直格');
+    expect(ns).not.toContain('炎上格');
+  });
+
+  it('连茹：三支依次相连才论，进为顺、退为逆', () => {
+    // 三传 亥→子→丑（进）、子→亥→戌（退）
+    expect(names(new Date(2026, 6, 10, 10, 0), { hourZhi: '午' })).toContain('进连茹');
+    expect(names(new Date(2026, 0, 3, 10, 0), { hourZhi: '寅' })).toContain('退连茹');
+  });
+
+  it('伏吟盘不会误判成连茹（三传有同支，间距为 0 不是 1）', () => {
+    const fu = buildKe(new Date(2026, 10, 16, 0, 30), { hourZhi: '子', jiangZhi: '子' });
+    expect(fu.flags.fuYin).toBe(true);
+    const ns = buildKeGe(fu).map((g) => g.name);
+    expect(ns).not.toContain('进连茹');
+    expect(ns).not.toContain('退连茹');
+  });
+
+  it('禄：入三传 与 临日辰 互斥，只出一条', () => {
+    // 丙日，禄在巳，三传 酉/丑/巳 → 禄入末传
+    const k = buildKe(new Date(2026, 10, 8, 10, 0), { hourZhi: '亥' });
+    expect(k.dateInfo.dayGan).toBe('丙');
+    const ns = buildKeGe(k).map((g) => g.name);
+    expect(ns).toContain('禄入三传');
+    expect(ns).not.toContain('禄临日辰');
+    // 甲日，禄在寅，末传寅
+    expect(names(new Date(2026, 0, 20, 10, 0), { hourZhi: '卯' })).toContain('禄入三传');
+  });
+
+  it('六纯：四课上神与三传共七支全阳 / 全阴各有一格', () => {
+    expect(names(new Date(2026, 1, 19, 10, 0), { hourZhi: '丑' })).toContain('六纯·纯阳');
+    expect(names(new Date(2026, 3, 5, 10, 0), { hourZhi: '辰' })).toContain('六纯·纯阴');
+  });
+
+  it('⚠️ 不许有「几乎恒真」的判据：三传失令必须在三成以下（常态不能写成不利）', () => {
+    const HOURS = ['子', '卯', '午', '酉'];
+    let total = 0;
+    let weak = 0;
+    for (let mo = 0; mo < 12; mo++) {
+      for (const h of HOURS) {
+        const gs = geOf(new Date(2026, mo, 11, 10, 0), { hourZhi: h });
+        total++;
+        if (gs.some((g) => g.name === '三传失令')) weak++;
+      }
+    }
+    // 旧判据是「休囚死 ≥2」→ 十二支里旺相恒只占四支，几乎每盘都成立（实测 100%）
+    expect(total).toBe(48);
+    expect(weak / total).toBeLessThan(0.35);
+    expect(weak).toBeGreaterThan(0); // 也不能反过来永不成立
+  });
+
+  it('⚠️ 结构上不可达的格不得复活：三传全空 / 三传同一类 都已删除', () => {
+    // 旬空恒为一对（如寅卯），三传三支要全空必须三支都落进同一对 → 需两支相同，
+    // 而两支相同只出现在伏吟/返吟，其取传法又不与空亡对重合 → 永远不可达。
+    const HOURS = ['子', '卯', '午', '酉'];
+    for (let mo = 0; mo < 12; mo++) {
+      for (const h of HOURS) {
+        const ns = geOf(new Date(2026, mo, 11, 10, 0), { hourZhi: h }).map((g) => g.name);
+        expect(ns).not.toContain('三传全空');
+        // 「六亲全同」只可能发生在三传同五行，那必然已是成局格 → 单出就是同一件事说两遍
+        expect(ns).not.toContain('三传同一类');
+      }
+    }
+  });
+
+  it('与判读解耦：不产分数、不改课体与三传', () => {
+    const k = buildKe(new Date(2026, 10, 8, 10, 0), { hourZhi: '亥' });
+    const before = `${k.keTi.name}|${k.sanChuan.map((s) => s.zhi + s.tianJiang).join(',')}`;
+    const gs = buildKeGe(k);
+    // 只允许这三个字段：后人不许往这里塞 score/weight 把展示层改成判据层
+    for (const g of gs) expect(Object.keys(g).sort()).toEqual(['basis', 'name', 'plain']);
+    expect(`${k.keTi.name}|${k.sanChuan.map((s) => s.zhi + s.tianJiang).join(',')}`).toBe(before);
+    // 判读层的分值也不该因为调用过课格而变化
+    const a = buildDaliurenReading(k, '事业', 'male').score;
+    buildKeGe(k);
+    expect(buildDaliurenReading(k, '事业', 'male').score).toBe(a);
+  });
+
+  it('稳定且防套话：同盘重算一致，异盘的组合不同', () => {
+    const d1 = new Date(2026, 10, 8, 10, 0);
+    const d2 = new Date(2026, 6, 10, 10, 0);
+    expect(JSON.stringify(geOf(d1, { hourZhi: '亥' }))).toBe(JSON.stringify(geOf(d1, { hourZhi: '亥' })));
+    expect(JSON.stringify(geOf(d1, { hourZhi: '亥' }))).not.toBe(JSON.stringify(geOf(d2, { hourZhi: '午' })));
+  });
+
+  it('不用承诺式措辞', () => {
+    const all = [new Date(2026, 10, 8, 10, 0), new Date(2026, 1, 19, 10, 0), new Date(2026, 3, 5, 10, 0)]
+      .flatMap((d) => geOf(d).map((g) => g.plain + g.basis)).join('');
+    for (const banned of ['一定会', '必然', '保证', '绝对', '必定', '百分之']) {
       expect(all.includes(banned)).toBe(false);
     }
   });

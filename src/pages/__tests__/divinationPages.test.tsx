@@ -139,6 +139,10 @@ describe('大六壬页', () => {
       expect(container.textContent).toContain(kind);
     }
     expect(container.textContent).toContain('往哪儿使劲');
+    // 课格层：盘面气象必须与「课体」明确区分，且至少有一条（贵人顺逆恒在）
+    expect(container.textContent).toContain('这张盘的气象');
+    expect(container.textContent).toMatch(/贵人[顺逆]布/);
+    expect(container.textContent).toContain('它不改吉凶');
   });
 });
 

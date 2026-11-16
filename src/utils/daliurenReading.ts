@@ -25,6 +25,7 @@ import { WX_SHENG, WX_KE } from './wuXingRelations';
 import {
   type KeResult, type SanChuanItem,
   liuQinOf, JIANG_TONE, JIANG_PLAIN, LIU_QIN_PLAIN, DI_ZHI_ORDER,
+  isYangZhi, GAN_LU,
 } from './daliurenCore';
 
 /* ------------------------------------------------------------------ *
@@ -925,6 +926,201 @@ export function positionHints(ke: KeResult): string[] {
   const kong = ke.sanChuan.filter((s) => s.kong);
   if (kong.length > 0) out.push(`${kong.map((k) => k.stage + k.zhi).join('、')}落空——这几步要等到填实才算数`);
   out.push(`三传顺序即事情先后：${ke.sanChuan.map((s) => `${s.stage}${s.zhi}`).join(' → ')}`);
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * 课格：这张盘的「气象」
+ *
+ * ⚠️ 与「课体」不是一个维度，别混：
+ *   课体（九宗门/结构课）回答「三传是怎么取出来的」——元首、涉害、伏吟……
+ *   课格（这里）回答「这张盘整体长什么样」——成局、连茹、递生、得令、禄、六纯……
+ *   所以课格**不改课体、不改分值**，只作盘面速览；分数仍由判读层按类神算。
+ *   这样加宽判据也不会动到 `hepanCalibration` 那类分布锚点。
+ * ------------------------------------------------------------------ */
+
+export interface KeGeItem {
+  /** 格名（页面直接当小标题） */
+  name: string;
+  /** 白话：这张盘的气象 */
+  plain: string;
+  /** 盘面依据（必须能被用户对着盘核） */
+  basis: string;
+}
+
+/**
+ * 三传成局五格：三合四局 + 稼穑。
+ * 古法只认「三传全见此局三支」为成局，缺一支算半合、不论格。
+ */
+const JU_GE: Record<string, { name: string; plain: string }> = {
+  木: { name: '曲直格', plain: '这条线是「往上长」的：一步一步长起来，急不来，但只要根还在就停不住。' },
+  火: { name: '炎上格', plain: '这条线是「烧起来」的：起得快、蹿得也快，成不成看后面还有没有柴。' },
+  金: { name: '从革格', plain: '这条线是「重铸」的：旧样子保不住，得改个形才成——不破不立。' },
+  水: { name: '润下格', plain: '这条线是「往下流」的：顺着地势越走越顺，硬拦反而淤住。' },
+  土: { name: '稼穑格', plain: '这条线是「盘整」的：来回搬、慢慢攒，没有大起落，靠的是耐性和存量。' },
+};
+
+const TU_ZHI = ['辰', '戌', '丑', '未'];
+
+/**
+ * 盘面速览。每条都落在可核对的事实上，不出空话、不产分数。
+ * @returns 至少一条（贵人顺逆恒在），最多七条
+ */
+export function buildKeGe(ke: KeResult): KeGeItem[] {
+  const out: KeGeItem[] = [];
+  const [c, z, m] = ke.sanChuan;
+  const zhis = ke.sanChuan.map((s) => s.zhi);
+  const zhiText = zhis.join('/');
+  const monthZhi = ke.dateInfo.monthGz[1];
+  const dayGan = ke.dateInfo.dayGan;
+  const iOf = (x: string) => DI_ZHI_ORDER.indexOf(x);
+  const gap = (a: string, b: string) => ((iOf(b) - iOf(a)) % 12 + 12) % 12;
+
+  /* ① 三传成局 */
+  const ju = SAN_HE_JU.find((j) => j.branches.every((b) => zhis.includes(b)));
+  if (ju) {
+    out.push({
+      name: JU_GE[ju.wx].name,
+      plain: JU_GE[ju.wx].plain,
+      basis: `三传${zhiText}恰成${ju.name}——三合全见，才论成局。`,
+    });
+  } else if (zhis.every((x) => TU_ZHI.includes(x))) {
+    out.push({
+      name: JU_GE.土.name,
+      plain: JU_GE.土.plain,
+      basis: `三传${zhiText}皆土（辰戌丑未），无木火金水相杂。`,
+    });
+  }
+
+  /* ② 三传连茹：三支在十二支上依次相连（顺为进、逆为退） */
+  const d1 = gap(c.zhi, z.zhi);
+  const d2 = gap(z.zhi, m.zhi);
+  if (d1 === 1 && d2 === 1) {
+    out.push({
+      name: '进连茹',
+      plain: '事情是一格一格往前挪的：慢，但每一步都算数，别想跳过中间那一步。',
+      basis: `三传${zhiText}在十二支上依次顺连（${c.zhi}→${z.zhi}→${m.zhi}）。`,
+    });
+  } else if (d1 === 11 && d2 === 11) {
+    out.push({
+      name: '退连茹',
+      plain: '事情是一格一格往回退的：先收再谈，硬往前顶只会退得更多。',
+      basis: `三传${zhiText}在十二支上依次逆连（${c.zhi}→${z.zhi}→${m.zhi}）。`,
+    });
+  }
+
+  /* ③ 三传递生 / 递克：气一路顺下去，或一路耗下去 */
+  const shape = chuanShapeOf(ke.sanChuan);
+  const wxText = zhis.map((x) => DZ_WX[x]).join('→');
+  if (shape.diSheng) {
+    out.push({
+      name: '递生',
+      plain: '气是顺的：前一环推着后一环走，中间不用你硬推，顺着势推一把就够。',
+      basis: `三传${zhiText}的五行依次为${wxText}，一环生一环，贯到底。`,
+    });
+  } else if (shape.diKe) {
+    out.push({
+      name: '递克',
+      plain: '气是耗的：每一环都在啃下一环，越往后越薄——别把力气全押在最后一步。',
+      basis: `三传${zhiText}的五行依次为${wxText}，一环克一环，越往后越薄。`,
+    });
+  }
+
+  /* ④ 三传得令 / 失令（以月建为司令，只看三传整体，不管类神）
+     ⚠️ 阈值不能定成「休囚死 ≥2」——十二支里旺相恒只占四支，那条判据几乎**每张盘都成立**，
+        于是每盘都写「眼下只使得出一半」，把常态说成不利。这里取两端：
+        旺相 ≥2 才算得令；三支**全部**休囚死才算失令；中间态（1 旺 2 衰）是常态，不出。 */
+  const levels = ke.sanChuan.map((s) => wangShuaiOf(s.zhi, monthZhi).level);
+  const strong = levels.filter((l) => l === '旺' || l === '相').length;
+  const weak = levels.filter((l) => l === '休' || l === '囚' || l === '死').length;
+  if (strong >= 2) {
+    out.push({
+      name: '三传得令',
+      plain: '赶上了当令的时候：现在动，力气不白花；过了这个月，同样的劲要打折。',
+      basis: `月建${monthZhi}，三传${zhiText}的旺衰为${levels.join('/')}，${strong} 支旺相。`,
+    });
+  } else if (weak === 3) {
+    out.push({
+      name: '三传失令',
+      plain: '三传全都不当令：不是事情不对，是时候不对——先备料、别硬推，等月令走到再动。',
+      basis: `月建${monthZhi}，三传${zhiText}的旺衰为${levels.join('/')}，三支皆休囚死。`,
+    });
+  }
+
+  /* ⑤ 干支上神的关系：断课时第一眼看的是「我这一头」与「事情那一头」对不对得上 */
+  const woZhi = ke.siKe[0].upper;   // 日干上神（我）
+  const shiZhi = ke.siKe[2].upper;  // 日支上神（事/对方）
+  if (DZ_HE[woZhi] === shiZhi) {
+    out.push({
+      name: '干支上神相合',
+      plain: '你这一头和事情那一头是「合」的：对得上、谈得拢，缺的只是把它落到纸上。',
+      basis: `日干上神${woZhi}与日支上神${shiZhi}为六合（${woZhi}${shiZhi}合）。`,
+    });
+  } else if (DZ_CHONG[woZhi] === shiZhi) {
+    out.push({
+      name: '干支上神相冲',
+      plain: '你这一头和事情那一头是「顶」着的：不是谁不好，是方向相反——先对齐方向再谈别的。',
+      basis: `日干上神${woZhi}与日支上神${shiZhi}相冲（${woZhi}${shiZhi}冲）。`,
+    });
+  }
+
+  /* ⑥ 三传财官印俱全 —— 只有这一种六亲分布值得单出。
+     ⚠️ 曾写「三传三类」与「三传同一类」，两条都被删掉：
+        三传六亲三类全异是常态（约六成盘），写出来等于套话；
+        而「六亲全同」只可能发生在「三传同五行」，那必然已经是成局格（三合或稼穑），
+        再单出一条就是同一件事说两遍。 */
+  const kins = ke.sanChuan.map((s) => s.liuQin);
+  const uniqKins = Array.from(new Set(kins));
+  if (uniqKins.length === 3 && ['妻财', '官鬼', '父母'].every((k) => uniqKins.includes(k))) {
+    out.push({
+      name: '三传财官印全',
+      plain: '钱、事、文书三样同时在盘上：抓手是齐的，缺的只是把它们串起来的那一步。',
+      basis: `三传${zhiText}的六亲依次为${kins.join('/')}，财、官、印三类俱全。`,
+    });
+  }
+
+  /* ⑦ 禄：日干的禄位落在哪一头。措辞不带行业色彩——同一张盘可能在问健康 */
+  const luZhi = GAN_LU[dayGan] || '';
+  const luIdx = luZhi ? zhis.indexOf(luZhi) : -1;
+  if (luIdx >= 0) {
+    out.push({
+      name: '禄入三传',
+      plain: '手上的本钱是「实」的：本事、岗位、人脉都有真落点，不是空想，只是时候未到。',
+      basis: `日干${dayGan}的禄在${luZhi}，正是${ke.sanChuan[luIdx].stage}。`,
+    });
+  } else if (luZhi && (ke.siKe[0].upper === luZhi || ke.siKe[2].upper === luZhi)) {
+    out.push({
+      name: '禄临日辰',
+      plain: '能用的东西已经在你手边：先把手头这些用足，比另开一条路省力。',
+      basis: `日干${dayGan}的禄在${luZhi}，正好是${ke.siKe[0].upper === luZhi ? '日干上神' : '日支上神'}。`,
+    });
+  }
+
+  /* ⑥ 六纯：四课上神 + 三传共七支全阳或全阴（罕见，有则出） */
+  const allZhi = [...ke.siKe.map((k) => k.upper), ...zhis];
+  if (allZhi.every((x) => isYangZhi(x))) {
+    out.push({
+      name: '六纯·纯阳',
+      plain: '整盘都是阳：事情摆在明处、推得动；但也硬——谁也不肯先软，容易僵在那儿。',
+      basis: `四课上神与三传（${allZhi.join('/')}）全为阳支。`,
+    });
+  } else if (allZhi.every((x) => !isYangZhi(x))) {
+    out.push({
+      name: '六纯·纯阴',
+      plain: '整盘都是阴：事情在暗处酝酿，慢；一旦成形也不容易改，别指望临时翻盘。',
+      basis: `四课上神与三传（${allZhi.join('/')}）全为阴支。`,
+    });
+  }
+
+  /* ⑦ 贵人顺逆：恒有一条，作这层的底 */
+  out.push({
+    name: ke.tianDiPan.forward ? '贵人顺布' : '贵人逆布',
+    plain: ke.tianDiPan.forward
+      ? '帮你的人是从前面来的：往上问、往新关系上找，别人牵线比自己去撞有效。'
+      : '气是逆着排的：能帮上忙的人常在旧关系里——往回找，老同事、老上级、老客户。',
+    basis: `贵人${ke.tianDiPan.guiRenZhi}临地盘${ke.tianDiPan.guiRenOnDi}，十二天将${ke.tianDiPan.forward ? '顺' : '逆'}布。`,
+  });
+
   return out;
 }
 
