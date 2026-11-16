@@ -2,6 +2,10 @@ import type { PillarData } from '../pages/Bazi';
 // 五行→脏腑/养护建议的唯一真源（与 baziAnalysis.analyzeHealth 共用）
 import { WX_BODY_BASE, WX_ORGAN_CHECK, wxHealthAdvice } from './wuxingHealth';
 import { normGender } from './kinStars';
+// 五行生克 / 天干十神的唯一出口（不在本文件另抄一张表）
+import { GAN_WX, WX_SHENG, WX_KE, tenGodOf, relationKindOfShiShen } from './wuXingRelations';
+// 地支关系的唯一出口（冲 > 合 > 刑 > 害，一柱取最强一条——与全站同口径）
+import { isChong, isLiuHe, isXing, isHai, DZ_WX } from './diZhiRelations';
 
 // ========== 八字六大领域深度解读（干支 + 十神 + 神煞分层白话） ==========
 // ⚠️ 段落顺序＝判读层级，不是排版偏好：
@@ -109,6 +113,15 @@ export interface DomainDeepInput {
   relations: { type: string; desc: string; pillars?: number[] }[];
   /** 各领域分析结果（baziAnalysis 口径）——合并进深度解读，页面只留一套解读 */
   analyses?: DomainAnalyses;
+  /**
+   * 当前所走大运。有值才会生成「眼下这步运」段；缺值（未起运 / 数据不全）时该段不生成，
+   * 六个领域退回纯命局解读——不写「当前无大运数据」这种占位话。
+   */
+  currentDayun?: { ganZhi: string; startAge: number; endAge: number; startYear?: number; endYear?: number };
+  /** 当前虚岁（与 dayunReading.toNominalAge 同口径）：<23 与 60+ 的措辞要变 */
+  nominalAge?: number;
+  /** 忌神（真源是 PersonChart.jiShen / recommendYongShen.xiShen，与用神互斥） */
+  jiShen?: string[];
 }
 
 // ---------- 工具 ----------
@@ -153,6 +166,181 @@ function dayZhiRelationTypes(relations: { type: string; desc: string; pillars?: 
 /** 柱位列表转可读文本："月柱（庚午）" */
 function fmtPillars(list: { pillar: string; ganZhi: string }[]): string {
   return list.map((p) => `${p.pillar}${p.ganZhi}`).join('、');
+}
+
+/* ------------------------------------------------------------------ *
+ * 眼下这步运：大运 × 领域宫位
+ *
+ * ⚠️ 为什么要有这一段：六个领域原来讲的都是「一生底色」，同一张盘今天看、三年后看
+ *    一字不差——用户真正问的是「现在这十年」。所以补一层大运，但**不新增判据体系**：
+ *    用的还是已有的「喜忌（用神/忌神）＋ 十神（tenGodOf）＋ 地支冲合刑害 ＋ 年龄段」。
+ *
+ * ⚠️ 防套话的关键：每句话都要嵌入具体事实（干支字面、宫位支、冲合关系、岁数区间），
+ *    换一步运必然换一整段。判据不落在这四样上的句子一律不写。
+ *
+ * ⚠️ 60+ 禁提事业/晋升/创业/融资（`dayunReading` 的年龄段纪律，这里同样适用）。
+ * ------------------------------------------------------------------ */
+
+type ZR = '冲' | '合' | '刑' | '害' | '无';
+
+/** 两支关系：冲 > 合 > 刑 > 害（与全站同优先级，一柱只取最强一条） */
+function zhiRelation(a: string, b: string): ZR {
+  if (!a || !b) return '无';
+  if (isChong(a, b)) return '冲';
+  if (isLiuHe(a, b)) return '合';
+  if (isXing(a, b)) return '刑';
+  if (isHai(a, b)) return '害';
+  return '无';
+}
+
+/** 大运干十神 → 这一运的总纲。按 relationKind 归五类，不逐个十神写死（十神名字另行嵌入） */
+const YUN_TONE: Record<string, string> = {
+  bijie: '这一运的气在「比劫」上——主题是身边人：同辈、合伙、同行。机会从这里来，花钱与分账也从这里来',
+  yin: '这一运的气在「印绶」上——主题是靠山与积累：学东西、拿资质、有人提携，比硬闯省力',
+  shishang: '这一运的气在「食伤」上——主题是表达与出手：想法多、动作快，成在主动，败在多嘴',
+  guansha: '这一运的气在「官杀」上——主题是规矩与压力：位置、责任、考核一起来，扛住了就是往上走',
+  cai: '这一运的气在「财星」上——主题是实利：钱与物摆在明处，但得自己去取，不取不动',
+};
+
+/** 各领域在这一运里「怎么用自己」——随十神类变，不随吉凶变 */
+const YUN_SELF_USE: Record<string, string> = {
+  bijie: '这几年最该练的是分清谁是自己人，别把力气花在证明给人看。',
+  yin: '这几年最该做的是「攒」——攒本事、攒资质、攒信用，别急着要结果。',
+  shishang: '这几年最该做的是把想法落成一件具体的事，光说不落地最耗人。',
+  guansha: '这几年最该做的是守规矩、接责任，扛过一次考核，位置就换一层。',
+  cai: '这几年最该做的是把手伸向具体的事与钱，别停在想法上。',
+};
+
+/** 领域落点：按「大运支 × 该领域宫位支」的关系分叉。%G% = 宫位名+支 */
+const YUN_IMPACT: Record<'love' | 'career' | 'family' | 'social', Record<ZR, string>> = {
+  love: {
+    冲: '%G%被冲：感情这块这十年「动」得很——换人、异地、聚少离多，或旧账被翻出来。别在情绪上头那几天做决定。',
+    合: '%G%被合：感情是往一处收的——单身的容易定下来，有伴的会谈到更实的层面（同住、见家长、成家）。',
+    刑: '%G%逢刑：磨在细节上——话说不清、边界不清，反复解释。把话说在前面，比事后补救省力。',
+    害: '%G%受害：麻烦多从「外人」来——长辈意见、朋友起哄、工作占时间，护住两个人的边界。',
+    无: '与%G%没有刑冲合害：感情按原样走，不会被外力突然推一把，也不会突然散。',
+  },
+  career: {
+    冲: '%G%被冲：事业根基在动——换岗、换行、换城市都可能。冲不是坏，是被推着走，走之前把退路铺好。',
+    合: '%G%被合：事业是「被拉住」的——有人递梯子、有平台收你；稳，但要警惕一处待久了钝掉。',
+    刑: '%G%逢刑：磨在心气上——事情不顺不是能力问题，是流程与人事在耗你，别算成自己不行。',
+    害: '%G%受害：防暗处的手——功劳被分、口舌是非。留痕、留证据，比事后争更有效。',
+    无: '与%G%没有刑冲合害：事业按原节奏走，想上台阶得自己加一脚。',
+  },
+  family: {
+    冲: '%G%被冲：家里这头容易「散」——长辈身体、搬迁、各在一地；多回去一趟比多打钱有用。',
+    合: '%G%被合：家里关系往一处拢——有喜事、有团聚，也容易因为绑得太紧而生出管束感。',
+    刑: '%G%逢刑：家里的摩擦多在小事上，谁也不肯先低头；这类年份争对错最亏。',
+    害: '%G%受害：家里的事容易被人传话传歪，重要的话当面说。',
+    无: '与%G%没有刑冲合害：家里按原样走，没有大起大落。',
+  },
+  social: {
+    冲: '%G%被冲：同辈与合作这块在换血——旧圈子散、新圈子来；别急着挽留，也别急着入局。',
+    合: '%G%被合：朋友与合作往一处聚——适合合伙、结盟、进圈子，但先把分账讲清。',
+    刑: '%G%逢刑：人际磨在「谁说了算」上，合伙前把权责写下来。',
+    害: '%G%受害：防口舌与背后的话，重要合作别只听一个人转述。',
+    无: '与%G%没有刑冲合害：人际格局按原样走，不必刻意经营。',
+  },
+};
+
+/** 各领域的宫位锚点（与全站口径一致：年＝长辈／月＝事业根基／日＝自身配偶／时＝子女） */
+function gongOf(key: DomainDeepReading['domainKey'], pillars: PillarData[]): { name: string; zhi: string } | null {
+  const z = (i: number) => pillars[i]?.diZhi || '';
+  switch (key) {
+    case 'love': return { name: '夫妻宫', zhi: z(2) };
+    case 'career': return { name: '月令', zhi: z(1) };
+    case 'family': return { name: '父母宫', zhi: z(0) };
+    case 'social': return { name: '同辈宫', zhi: z(1) };
+    default: return null;
+  }
+}
+
+/** 年龄段措辞：只在「事业 / 健康」两处必须分档，其余领域不年龄化 */
+function ageClause(key: DomainDeepReading['domainKey'], age?: number): string {
+  if (!age) return '';
+  if (key === 'career') {
+    if (age >= 60) return '这个年纪谈「往上走」不实在——这十年的正题是把手里的事交出去、把经验变成别人离不开的东西（带人、做顾问、留作品），名声比职位值钱。';
+    if (age >= 50) return '这个阶段的机会多半来自你已经有的东西——资历、口碑、老关系，而不是从头去闯一个新赛道。';
+    if (age < 23) return '这个年纪真正的大事是长本事、不是找位置——把一项硬技能练到能换钱，比任何机会都值。';
+  }
+  if (key === 'health' && age >= 60) return '这个年纪以养为主：别硬扛、别逞能，体检按时做，小症状别拖。';
+  return '';
+}
+
+/** 健康题不看宫位，看「大运支五行 vs 日主五行」——这十年体质是被补还是被抽 */
+function healthYunBody(dayGan: string, zhi: string, zhiWx: string): string {
+  const dayWx = GAN_WX[dayGan] || '';
+  if (WX_KE[zhiWx] === dayWx) return `大运${zhi}（${zhiWx}）克日主${dayGan}（${dayWx}）——体力是被抽的十年：熬夜、久坐、情绪憋着都会直接变成症状，规律作息就是最好的补。`;
+  if (WX_SHENG[zhiWx] === dayWx) return `大运${zhi}（${zhiWx}）生日主——体力有补给，恢复比平时快；趁这几年把底子养厚，别拿它去透支。`;
+  if (zhiWx === dayWx) return `大运${zhi}与日主同气——体力够用，但要防过旺：上火、失眠、急躁，出汗与静心都得有。`;
+  if (WX_KE[dayWx] === zhiWx) return `大运${zhi}是日主所克——精力花在「管事情」上，累在心多，不是身子弱。`;
+  return `大运${zhi}是日主所生——精力往外泄：操心、带人、做内容都耗神，别把休息也排进计划。`;
+}
+
+/**
+ * 生成「眼下这步运」段。无 currentDayun 时返回空数组——该段整体不出现，
+ * 不留「当前无大运数据」这种占位话。
+ */
+function yunSection(input: DomainDeepInput, key: DomainDeepReading['domainKey']): DomainDeepSection[] {
+  const dy = input.currentDayun;
+  if (!dy || !dy.ganZhi || dy.ganZhi.length < 2) return [];
+  const gan = dy.ganZhi[0];
+  const zhi = dy.ganZhi[1];
+  const ganWx = GAN_WX[gan] || '';
+  const zhiWx = DZ_WX[zhi] || '';
+  const yong = input.yongShen || [];
+  const ji = input.jiShen || [];
+
+  // ① 喜忌基调：干支各自落在用神/忌神上的组合（用神与忌神互斥，交集恒空）
+  // ⚠️ 干支同五行时不能拼成「木木」——按「干支都属木 / 天干X、地支Y」二选一
+  const pairText = ganWx === zhiWx ? `干支都属${ganWx}` : `天干${ganWx}、地支${zhiWx}`;
+  const yongHits = [ganWx, zhiWx].filter((w) => w && yong.includes(w));
+  const jiHits = [ganWx, zhiWx].filter((w) => w && ji.includes(w));
+  let jiDiao: string;
+  if (yongHits.length === 2) {
+    jiDiao = '正好都是你的喜用——大环境顺着你走，同样的努力，回报比平时明显';
+  } else if (jiHits.length === 2) {
+    jiDiao = '正好都是你的忌神——这是逆水期，别指望加速，把该守的守住就是赢';
+  } else if (yongHits.length === 1 && jiHits.length === 1) {
+    jiDiao = `${yongHits[0]}是喜用、${jiHits[0]}是忌神——一半顺一半耗，事情能成，但要多花一道力气`;
+  } else if (yongHits.length === 1) {
+    jiDiao = `其中${yongHits[0]}是你的喜用，另一头中性——底盘稳，但没有额外推力`;
+  } else if (jiHits.length === 1) {
+    jiDiao = `其中${jiHits[0]}是你的忌神——这一头会持续耗你，别在它上面加注`;
+  } else {
+    jiDiao = '既不在喜用里，也不算明显忌神——属于过渡的一段，按部就班即可';
+  }
+
+  // ② 十神主调：大运干对日主是什么气
+  const shiShen = tenGodOf(input.dayGan, gan);
+  const kind = relationKindOfShiShen(shiShen) || '';
+  const tone = YUN_TONE[kind] ? `天干${gan}对日主是「${shiShen}」，${YUN_TONE[kind]}。` : '';
+
+  // ③ 领域落点
+  let body: string;
+  if (key === 'health') {
+    body = healthYunBody(input.dayGan, zhi, zhiWx);
+  } else if (key === 'personality') {
+    body = YUN_SELF_USE[kind] || '';
+  } else if (key === 'career' && (input.nominalAge || 0) >= 60) {
+    // ⚠️ 60+ 不能写「换岗、换行、换城市」「往上走」——这个阶段的冲合只当「人事聚散」讲
+    body = '这一运人事上多有聚散：旧同事、旧关系在换，别去接新摊子；把精力放在交接、带人、留下东西上。';
+  } else {
+    const gong = gongOf(key, input.pillars);
+    const rel = gong && gong.zhi ? zhiRelation(zhi, gong.zhi) : '无';
+    const tpl = YUN_IMPACT[key][rel];
+    body = gong && gong.zhi ? tpl.replace('%G%', `${gong.name}${gong.zhi}`) : '';
+  }
+
+  const age = ageClause(key, input.nominalAge);
+  // 干支与岁数已在标题里，正文不再重复一遍（否则同屏两次「乙卯」「23~32 岁」）
+  const text = `${pairText}：${jiDiao}。${tone}${body}${age ? ' ' + age : ''}`;
+
+  return [{
+    heading: `眼下这步运（${dy.ganZhi} · ${dy.startAge}~${dy.endAge} 岁）`,
+    role: 'primary',
+    text,
+  }];
 }
 
 // ---------- 领域语境神煞文案（命带才写） ----------
@@ -474,7 +662,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
   }
   // 命局指纹无条件置顶——即使没有外部 analyses，也保证每个命盘开篇不同
   pGang.text = `【命局指纹】${fingerprint}` + pGang.text;
-  personalitySections.push(pGang, pDark, pCare, pSha);
+  personalitySections.push(pGang, ...yunSection(input, 'personality'), pDark, pCare, pSha);
   out.push({ domainKey: 'personality', sections: personalitySections });
 
   // ===== 爱情婚姻 =====
@@ -522,7 +710,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     lAdvice.text += ` ${a.love.advice}`;
   }
   if (dominant[0]) lAdvice.text += ` ${GROUP_ADVICE_LOVE[dominant[0]] || ''}`;
-  loveSections.push(lBase, lDark, lAdvice, lSha);
+  loveSections.push(lBase, ...yunSection(input, 'love'), lDark, lAdvice, lSha);
   out.push({ domainKey: 'love', sections: loveSections });
 
   // ===== 事业财运 =====
@@ -548,7 +736,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     heading: '发力建议',
     text: `喜用神为${yongShort}——${yongText[0] || ''}。${findSha(input, (n) => n.includes('驿马')).length > 0 ? '驿马在命，机会在路上——主动出击、多走动多见人，坐等是最亏的打法。' : '你的机会在深耕——同一赛道熬满三年，复利才开始显现；频繁换方向的人，十年后往往还在起点附近。'}`,
   };
-  careerSections.push(cEngine, cMoney, cAdvice);
+  careerSections.push(cEngine, ...yunSection(input, 'career'), cMoney, cAdvice);
 
   // 神煞段只在末尾创建：nobleHelp 有内容但命局无相关神煞时，也要有个落脚处
   let cSha: DomainDeepSection | null = careerShas.length > 0
@@ -625,7 +813,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     hPlan.text += ` ${a.health.wellnessAdvice}`;
   }
   if (dominant[0]) hPlan.text += ` ${GROUP_ADVICE_HEALTH[dominant[0]] || ''}`;
-  healthSections.push(hBase, hWeak, hPlan, hSha);
+  healthSections.push(hBase, ...yunSection(input, 'health'), hWeak, hPlan, hSha);
   out.push({ domainKey: 'health', sections: healthSections });
 
   // ===== 家庭亲情 =====
@@ -662,7 +850,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     fAdv.text += ` ${a.family.advice}`;
   }
   if (dominant[0]) fAdv.text += ` ${GROUP_ADVICE_FAMILY[dominant[0]] || ''}`;
-  familySections.push(fKin, fDark, fAdv, fSha);
+  familySections.push(fKin, ...yunSection(input, 'family'), fDark, fAdv, fSha);
   out.push({ domainKey: 'family', sections: familySections });
 
   // ===== 社交朋友 =====
@@ -697,7 +885,7 @@ export function generateDomainDeepReadings(input: DomainDeepInput): DomainDeepRe
     sAdv.text += ` ${a.social.partnerAdvice}`;
   }
   if (dominant[0]) sAdv.text += ` ${GROUP_ADVICE_SOCIAL[dominant[0]] || ''}`;
-  socialSections.push(sStyle, sShape, sAdv, sSha);
+  socialSections.push(sStyle, ...yunSection(input, 'social'), sShape, sAdv, sSha);
   out.push({ domainKey: 'social', sections: socialSections });
 
   // 出口统一归一化：即便上面某处忘了标 role、或把神煞段 push 到了中间，

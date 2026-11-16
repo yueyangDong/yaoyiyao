@@ -103,6 +103,10 @@ describe('八字排盘页', () => {
       expect(txt).toContain(gz);
     }
     expect(txt).toContain('日主：');
+    // 大运层已接进领域解读（页面必须把 currentDayun 传进 generateDomainDeepReadings，
+    // 否则六领域退回纯命局解读——不会报错，但「眼下这步运」整段静默消失）
+    expect(txt).toContain('眼下这步运');
+    expect(txt).toMatch(/眼下这步运（[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥] · \d+~\d+ 岁）/);
 
     /**
      * 领域深度解读里的神煞段必须**默认折叠**：只降字号降颜色还不够——

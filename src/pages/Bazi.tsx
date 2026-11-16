@@ -1184,6 +1184,20 @@ export default function Bazi() {
       dayGan: baziData.dayGan,
       strengthLevel: strengthAnalysis?.level,
       yongShen: yongShenRec.yongShen,
+      // 忌神与用神同源（recommendYongShen.xiShen），两者互斥——「眼下这步运」靠它判顺逆
+      jiShen: yongShenRec.xiShen,
+      // 当前所走大运：复用组件级 currentDayunStep（虚岁闭区间的唯一出口），
+      // 与结论卡 / 大运卡片高亮同一口径，避免「领域段说甲运、卡片高亮乙运」
+      currentDayun: currentDayunStep
+        ? {
+            ganZhi: currentDayunStep.ganZhi,
+            startAge: currentDayunStep.startAge,
+            endAge: currentDayunStep.endAge,
+            startYear: currentDayunStep.startYear,
+            endYear: currentDayunStep.endYear,
+          }
+        : undefined,
+      nominalAge,
       relations: relationAnalysis,
       // 五行短板与页面其它板块同源，避免同一命盘两处结论打架
       wxStats: wxStats || undefined,
@@ -1198,6 +1212,7 @@ export default function Bazi() {
       },
     });
   }, [baziData, yongShenRec, strengthAnalysis, relationAnalysis, wxStats,
+      currentDayunStep, nominalAge,
       loveAnalysis, careerAnalysis, healthAnalysis, familyAnalysis, socialAnalysis, personality]);
   const domainDeepMap = useMemo(() => {
     const m: Record<string, DomainDeepReading> = {};

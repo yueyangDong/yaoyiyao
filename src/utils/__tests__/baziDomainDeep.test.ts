@@ -253,3 +253,106 @@ describe('normalizeSections 出口归一化', () => {
     }
   });
 });
+
+/**
+ * 眼下这步运（大运 × 领域宫位）
+ *
+ * 命例：甲日主（木），喜用水木；四柱 戊辰 / 丁丑 / 甲子 / 甲戌
+ *  → 夫妻宫子、月令丑、父母宫辰。
+ * 取「丙午」运：午冲子（夫妻宫）、午与丑相害（月令）、午与辰无关系；
+ *  天干丙对甲为「食神」（食伤类）；丙午皆火，既非喜用也非忌神 → 过渡基调。
+ */
+describe('眼下这步运（大运层）', () => {
+  const withYun = (extra: Record<string, any> = {}) =>
+    generateDomainDeepReadings({
+      ...baseInput,
+      currentDayun: { ganZhi: '丙午', startAge: 27, endAge: 36 },
+      nominalAge: 30,
+      jiShen: [],
+      ...extra,
+    });
+  const secOf = (r: any, key: string) => r.sections.find((s: any) => s.heading.includes(key));
+
+  it('缺 currentDayun 时不生成该段（六领域回到 4 段，不留占位话）', () => {
+    for (const r of generateDomainDeepReadings(baseInput)) {
+      expect(r.sections).toHaveLength(4);
+      expect(r.sections.some((s) => s.heading.includes('眼下这步运'))).toBe(false);
+    }
+  });
+
+  it('有大运时六领域各 5 段，大运段是第 2 段、主判、标题写干支与岁数区间', () => {
+    for (const r of withYun()) {
+      expect(r.sections).toHaveLength(5);
+      const y = r.sections[1];
+      expect(y.role).toBe('primary');
+      expect(y.heading).toContain('眼下这步运');
+      expect(y.heading).toContain('丙午');
+      expect(y.heading).toContain('27~36 岁');
+      // 神煞仍是末段：大运段不能挤掉层级
+      expect(r.sections[r.sections.length - 1].role).toBe('modifier');
+    }
+  });
+
+  it('⚠️ 落点按领域宫位分叉：午冲夫妻宫 / 午害月令，两个领域不能同一句话', () => {
+    const list = withYun();
+    const love = list.find((x) => x.domainKey === 'love')!;
+    const career = list.find((x) => x.domainKey === 'career')!;
+    expect(secOf(love, '眼下这步运').text).toContain('夫妻宫子被冲');
+    expect(secOf(career, '眼下这步运').text).toContain('月令丑受害');
+    expect(secOf(love, '眼下这步运').text).not.toBe(secOf(career, '眼下这步运').text);
+    // 无关系的领域走「按原样走」，不能硬造动静
+    const family = list.find((x) => x.domainKey === 'family')!;
+    expect(secOf(family, '眼下这步运').text).toContain('父母宫辰');
+    expect(secOf(family, '眼下这步运').text).toContain('没有刑冲合害');
+  });
+
+  it('⚠️ 喜忌方向必须相反：同一「丙午」，落在喜用与落在忌神的说法不能一样', () => {
+    const good = withYun({ yongShen: ['火', '木'], jiShen: [] });
+    const bad = withYun({ yongShen: ['水', '木'], jiShen: ['火'] });
+    const g = secOf(good.find((x) => x.domainKey === 'career')!, '眼下这步运').text;
+    const b = secOf(bad.find((x) => x.domainKey === 'career')!, '眼下这步运').text;
+    expect(g).toContain('顺着你走');
+    expect(b).toContain('逆水期');
+    expect(g).not.toBe(b);
+  });
+
+  it('健康题不看宫位，看「大运支五行 vs 日主五行」：午火对甲木是「泄」', () => {
+    const health = withYun().find((x) => x.domainKey === 'health')!;
+    const t = secOf(health, '眼下这步运').text;
+    expect(t).toContain('日主所生'); // 木生火 = 精力外泄
+    expect(t).not.toContain('夫妻宫');
+  });
+
+  it('⚠️ 60+ 禁提事业晋升/创业/融资：措辞换成「交出去、名声比职位值钱」', () => {
+    const old = withYun({ nominalAge: 65 }).find((x) => x.domainKey === 'career')!;
+    const t = secOf(old, '眼下这步运').text;
+    expect(t).toContain('名声比职位值钱');
+    for (const banned of ['晋升', '创业', '融资', 'KPI', '副业', '扩张', '合伙人', '人脉']) {
+      expect(t.includes(banned)).toBe(false);
+    }
+  });
+
+  it('⚠️ 换一步运整段就换话（不是换个干支名了事）', () => {
+    const a = withYun().find((x) => x.domainKey === 'love')!;
+    const b = withYun({ currentDayun: { ganZhi: '戊戌', startAge: 37, endAge: 46 } })
+      .find((x) => x.domainKey === 'love')!;
+    expect(secOf(a, '眼下这步运').text).not.toBe(secOf(b, '眼下这步运').text);
+    // 戊戌：戌与子无刑冲合害；丙午：午冲子 —— 结论方向必须不同
+    expect(secOf(a, '眼下这步运').text).toContain('被冲');
+    expect(secOf(b, '眼下这步运').text).toContain('没有刑冲合害');
+  });
+
+  it('干支同五行时不拼成「木木」：写「干支都属火」这类说法', () => {
+    const t = secOf(withYun().find((x) => x.domainKey === 'personality')!, '眼下这步运').text;
+    expect(t).toContain('干支都属火'); // 丙午 = 火火
+    expect(t).not.toMatch(/干支[木火土金水]{2}/); // 不许出现「干支木木」
+  });
+
+  it('大运段本身也要过归一化：role 显式、无空正文', () => {
+    for (const r of withYun()) {
+      const y = r.sections.find((s) => s.heading.includes('眼下这步运'))!;
+      expect(y.role).toBe('primary');
+      expect(y.text.trim().length).toBeGreaterThan(30);
+    }
+  });
+});
