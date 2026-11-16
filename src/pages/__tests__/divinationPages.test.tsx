@@ -255,6 +255,13 @@ describe('命盘旁参', () => {
     await waitFor(() => expect(container.textContent).toContain('旁参 · 你的命盘'), { timeout: 8000 });
   });
 
+  it('灵签页：抽签走完四段动画（祈愿/摇筒/圣杯/显现，约 4.8s）后出现旁参', async () => {
+    const { container } = wrap(<Lingqian />);
+    clickByText(container, '开始抽签');
+    // 四段 interval：80ms×5 + 100ms×11 + 500ms×5 + 100ms×8 ≈ 4.8s，留足余量
+    await waitFor(() => expect(container.textContent).toContain('旁参 · 你的命盘'), { timeout: 20000 });
+  }, 30000);
+
   it('没填出生信息就整块不出现（也不写「请先填写」）', async () => {
     hoisted.user = null;
     try {

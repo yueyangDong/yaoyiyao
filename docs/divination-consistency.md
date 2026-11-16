@@ -412,7 +412,7 @@
 | 学业意象词表 | `lotReading.POEM_IMAGERY` / `GUIDE_KEYS.学业` | 同上（label 与权重断言会红） |
 | 建议文案 | `divinationCore.ADVICE`（主题 × 档位） | 无需（不含判据），但**单用就是套话**——见 §6.5，各板块须接落点句 |
 | 反套话护栏 | 各板块 `<板块>Reading` 的落点句 + `daliuren.test.ts` 的跨盘不变量 | 跨盘重复率统计（§6.5 的两个指标） |
-| 命盘旁参展示项 | `utils/mingPanAside.ts`（数据+文案）、`components/MingPanAside.tsx`（只排版） | `mingPanAside.test.ts` + `divinationPages.test.tsx` 的「命盘旁参」4 条 |
+| 命盘旁参展示项 | `utils/mingPanAside.ts`（数据+文案）、`components/MingPanAside.tsx`（只排版） | `mingPanAside.test.ts` + `divinationPages.test.tsx` 的「命盘旁参」5 条（含灵签四段动画走完） |
 
 > ⚠️ 页面里禁止再出现第二份「用神 → 吉凶」判断。要加新主题，先加 `THEMES`，再依次补
 > `probesOf` / `RELATION_SCORE_BY_THEME` / `DOMAIN_KEYS` / `ADVICE` 四处，TypeScript 会逐处报缺。
