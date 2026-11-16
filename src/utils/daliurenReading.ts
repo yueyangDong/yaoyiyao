@@ -25,7 +25,7 @@ import { WX_SHENG, WX_KE } from './wuXingRelations';
 import {
   type KeResult, type SanChuanItem,
   liuQinOf, JIANG_TONE, JIANG_PLAIN, LIU_QIN_PLAIN, DI_ZHI_ORDER,
-  isYangZhi, GAN_LU,
+  isYangZhi, GAN_LU, benMingOf,
 } from './daliurenCore';
 
 /* ------------------------------------------------------------------ *
@@ -711,7 +711,13 @@ export function buildDaliurenTiming(ke: KeResult, theme?: Theme, gender?: string
  * ------------------------------------------------------------------ */
 
 export interface DaliurenAction {
-  kind: '找人' | '方向' | '方式' | '避坑';
+  /**
+   * 谁出面 = 年命层（只在你填了出生信息时才有）：
+   * 它和「找人」不是一回事——「找人」说的是去哪一类人里借力，
+   * 「谁出面」说的是这件事该你本人去，还是得有人替你先开口。
+   * 两个都挂「找人」会让用户以为页面写重复了，所以单独一类。
+   */
+  kind: '找人' | '方向' | '方式' | '避坑' | '谁出面';
   /** 具体做什么（一句话，可执行） */
   action: string;
   /** 盘面依据（必须含具体支/天将/课体，能被用户核对） */
@@ -817,10 +823,22 @@ const KONG_TIP: Record<Theme, string> = {
 };
 
 /**
- * 行动层。产出 3~4 条，每条都带盘面依据。
+ * 行动层。产出 4~5 条，每条都带盘面依据。
  * @param theme 决定「找的是哪一类人」与事件指代；缺省按事业口径
+ * @param birth 档案里的出生信息（可选）。给了才出「年命」那一条——只用来定「你自己出面还是托人」，
+ *              不参与吉凶计分；没给就静默跳过，不写「你没填生日」那种兜底话。
+ *              ⚠️ 结构上直接传 `UserProfile` 即可（多余字段无所谓），本文件不依赖 UserContext。
  */
-export function buildDaliurenActions(ke: KeResult, theme?: Theme, gender?: string): DaliurenAction[] {
+export interface BirthInput {
+  birthYear?: number | null;
+  birthMonth?: number | null;
+  birthDay?: number | null;
+  birthCalendar?: 'solar' | 'lunar' | null;
+}
+
+export function buildDaliurenActions(
+  ke: KeResult, theme?: Theme, gender?: string, birth?: BirthInput,
+): DaliurenAction[] {
   const t: Theme = theme || '事业';
   const probe = probeOf(t, gender);
   const hit = findHits(ke, probe.primary)[0];
@@ -861,6 +879,60 @@ export function buildDaliurenActions(ke: KeResult, theme?: Theme, gender?: strin
       kind: '找人',
       action: `这张盘上「帮你的人」还没现形，就先按「${fallbackPerson}」去找——${THEME_TARGET[t]}从${dir(ke.tianDiPan.guiRenOnDi)}这一头问起（贵人临${ke.tianDiPan.guiRenOnDi}），找对人比做对事省力。`,
       basis: `${why}；贵人（${guiZhi}）临地盘${ke.tianDiPan.guiRenOnDi}，在${dir(ke.tianDiPan.guiRenOnDi)}，先从这一头问路。`,
+    });
+  }
+
+  /* ---------- ①′ 谁出面（年命 · 本命上神） ---------- */
+  // 古法：「本命，定位不移者也。命上神将为坐命神将」「年命上神可生克制化三传一切物事」，
+  // 又「命上神空亡，一生无成」。断法上讲的是吉凶，但行动层不判吉凶——
+  // 这里只取「命上神 ↔ 类神」这一对生克，回答的是**这件事该你自己出面还是托人**。
+  // ⚠️ 不取行年：三说互斥，见 daliurenCore.benMingOf 的注释。
+  const bm = birth ? benMingOf(birth.birthYear, birth.birthMonth, birth.birthDay, birth.birthCalendar || 'solar') : null;
+  if (bm) {
+    const seat = ke.tianDiPan.positions.find((p) => p.di === bm.zhi);
+    const shangShen = seat?.tian || '';
+    const zuoJiang = seat?.jiang || '';
+    const shangKong = !!shangShen && ke.flags.kongZhi.includes(shangShen);
+    const inChuan = ke.sanChuan.find((s) => s.zhi === bm.zhi);
+    const mingWx = DZ_WX[shangShen] || '';
+    const leiWx = hit ? (DZ_WX[hit.zhi] || '') : '';
+    const rel: '克它' | '生它' | '被它克' | '被它生' | '比和' | '无' = !mingWx || !leiWx
+      ? '无'
+      : mingWx === leiWx ? '比和'
+        : WX_KE[mingWx] === leiWx ? '克它'
+          : WX_KE[leiWx] === mingWx ? '被它克'
+            : WX_SHENG[mingWx] === leiWx ? '生它'
+              : WX_SHENG[leiWx] === mingWx ? '被它生' : '无';
+
+    // 措辞只说「谁去办」：不许出现成不成、快不快 —— 那是判读层的事。
+    // ⚠️ 而且必须带上具体支（本命支 / 命上神 / 类神支），否则 5 种关系只够拼出 5 句话，
+    //    换个盘一字不差 = 套话。实测第一版 action 只有 10 种、最高频占 29%，就是没带支。
+    // ⚠️ 别写「子上坐白虎」：子是本命（地盘位），坐上去的是天盘支，天将挂在**天盘支**上。
+    //    所以句子里必须把「上见何支」和「此支乘何将」分开说，否则用户对着盘核对不上。
+    const ton = JIANG_TONE[zuoJiang] ?? 0;
+    const zuoTip = ton > 0
+      ? `你这一头（本命${bm.zhi}上见${shangShen}）坐${zuoJiang}，直接自己出面递话，别绕中间人。`
+      : ton < 0
+        ? `你自己出面容易把话说僵——本命${bm.zhi}上见${shangShen}乘${zuoJiang}，找个中间人陪你开口。`
+        : `你自己跑流程、递材料最合适——本命${bm.zhi}上见${shangShen}乘${zuoJiang}，别转手。`;
+    const byRel: Record<typeof rel, string> = {
+      克它: `这件事你自己出面比托人快——你这一头（${bm.zhi}上见${shangShen}）压得住${hit?.zhi}那一头。`,
+      比和: `你自己去谈就行——${bm.zhi}上见${shangShen}，与${hit?.zhi}同一股气，话对得上。`,
+      被它克: `你先别自己冲在前头——${hit?.zhi}那一头正压着你这一头（${bm.zhi}上见${shangShen}），找个中间人替你先开口。`,
+      被它生: `不用你追着跑——${hit?.zhi}那一头在生你这一头（${bm.zhi}上见${shangShen}），让对方先开口。`,
+      生它: `你自己推得动，但要出力——你这一头（${bm.zhi}上见${shangShen}）在往${hit?.zhi}那头送，别指望对方主动。`,
+      无: zuoTip,
+    };
+    const lead = shangKong
+      ? `你本人这一头眼下是「空」的——话说出去暂时不算数，先托人递话，等${shangShen}填实了再自己出面。`
+      : byRel[rel];
+    const relWord: Record<typeof rel, string> = {
+      克它: '克', 生它: '生', 被它克: '被克于', 被它生: '受生于', 比和: '比和于', 无: '无从比',
+    };
+    out.push({
+      kind: '谁出面',
+      action: lead,
+      basis: `本命${bm.zhi}（${bm.ganZhi}年${bm.approximate ? '，按公历年未分立春' : ''}），命上神${shangShen}${zuoJiang ? `乘${zuoJiang}` : ''}${shangKong ? '（落旬空）' : ''}；${rel === '无' ? `${probe.primary}不入三传、也不上日干支，只能在命上论` : `此支${mingWx}${relWord[rel]}类神${probe.primary}之${hit?.zhi}（${leiWx}）`}${inChuan ? `；本命正入${inChuan.stage}` : ''}。`,
     });
   }
 

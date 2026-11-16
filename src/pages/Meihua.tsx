@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card, Button, InputNumber, Typography, Space, Divider,
   Tag, Row, Col, Radio, message, Descriptions, Alert,
@@ -172,13 +172,12 @@ export default function Meihua() {
     [result, theme],
   );
 
-  useEffect(() => {
-    if (currentUser && num1 === null && num2 === null && num3 === null) {
-      setNum1(currentUser.birthYear);
-      setNum2(currentUser.birthMonth);
-      setNum3(currentUser.birthDay);
-    }
-  }, [currentUser]);
+  // ⚠️ 这里以前会拿 currentUser 的 birthYear/birthMonth/birthDay 预填三个起卦数。
+  //    那是个硬错，不是便利：`calcMeiHua` 只做 num%8 / num%6，生日是定值——
+  //    同一个人不管问什么、哪天问，永远得到同一卦同一动爻，「一事一占」当场失效；
+  //    而且生日不是「当下所见之数」，与梅花「心动则占、触机而发」的前提正好相反。
+  //    数字起卦的正确取数方式：随手取当时看见的数（页数、车牌、钟点、字数）。
+  //    真要用八字，也只能另开一块并列展示，不能从这里塞进起卦环节。
 
   const handleCalc = async () => {
     if (mode !== 'date' && (!num1 || !num2 || !num3)) { message.warning('请输入三个数字'); return; }
@@ -246,7 +245,7 @@ export default function Meihua() {
               <Col><InputNumber min={1} placeholder="上卦数" value={num1} onChange={setNum1} style={{ width: 100 }} /></Col>
               <Col><InputNumber min={1} placeholder="下卦数" value={num2} onChange={setNum2} style={{ width: 100 }} /></Col>
               <Col><InputNumber min={1} placeholder="动爻数" value={num3} onChange={setNum3} style={{ width: 100 }} /></Col>
-              <Col><Text style={{ color: 'var(--text-secondary)' }}>输入3个数（如日期、门牌号、随意数字）</Text></Col>
+              <Col><Text style={{ color: 'var(--text-secondary)' }}>取当下随手所见的三个数（页数、车牌、钟点都行）——同一组数永远起出同一卦，所以每次要换着取</Text></Col>
             </Row>
           )}
           <Button type="primary" size="large" icon={<ExperimentOutlined />} onClick={handleCalc}>

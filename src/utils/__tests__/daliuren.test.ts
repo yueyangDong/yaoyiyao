@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildKe, monthJiangOf, liuQinOf, JI_GONG, DI_ZHI_ORDER, ZHONG_QI_JIANG,
+  benMingOf,
   type KeResult,
 } from '../daliurenCore';
 import {
@@ -691,5 +692,144 @@ describe('去套话（跨盘不变量）', () => {
     const ke = keOf(ANCHOR);
     const advices = buildAllDaliurenReadings(ke, 'male').map((r) => r.advice);
     expect(new Set(advices).size).toBeGreaterThanOrEqual(4);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 年命（本命）
+ *
+ * 为什么要这一层：用户档案里本来就有出生年月日，古法占式程序的第 9 步也是「年命」。
+ * 但年命进来只能回答「这件事该你自己出面还是托人」——不许参与吉凶计分，
+ * 否则等于给同一个变量乘两次，还会把 verdictOf 的分布锚点带偏。
+ * ------------------------------------------------------------------ */
+
+describe('年命（本命）', () => {
+  const HOURS12 = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const BIRTHS = [1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995]
+    .map((y) => ({ birthYear: y, birthMonth: 6, birthDay: 10 }));
+  const SAMPLE: KeResult[] = [];
+  for (let mo = 0; mo < 12; mo += 2) {
+    for (const h of HOURS12) SAMPLE.push(keOf(new Date(2026, mo, 11, 10, 0), { hourZhi: h }));
+  }
+  // 扫一遍约 6s，两个「分布」断言共用同一份结果，别各扫一次
+  let cached: Array<{ action: string; basis: string }> | null = null;
+  const scanAll = () => {
+    if (cached) return cached;
+    const out: Array<{ action: string; basis: string }> = [];
+    for (const k of SAMPLE) {
+      for (const t of THEMES) {
+        for (const b of BIRTHS) {
+          const a = nmOf(k, t, b);
+          if (a) out.push({ action: a.action, basis: a.basis });
+        }
+      }
+    }
+    cached = out;
+    return out;
+  };
+  const withBirth = (k: KeResult, t: Parameters<typeof buildDaliurenActions>[1], b: object) =>
+    buildDaliurenActions(k, t, 'male', b);
+  const nmOf = (k: KeResult, t: Parameters<typeof buildDaliurenActions>[1], b: object) =>
+    withBirth(k, t, b).find((a) => a.basis.includes('本命'));
+
+  it('本命 = 生年之支，以立春为界（不是元旦）', () => {
+    expect(benMingOf(1984, 6, 10)?.zhi).toBe('子');
+    expect(benMingOf(1984, 6, 10)?.ganZhi).toBe('甲子');
+    expect(benMingOf(1984, 1, 20)?.zhi).toBe('亥');
+    expect(benMingOf(1984, 1, 20)?.ganZhi).toBe('癸亥');
+    expect(benMingOf(2000, 1, 1)?.zhi).toBe('卯');
+    expect(benMingOf(1990, 6, 15)?.zhi).toBe('午');
+    expect(benMingOf(1984, 1, 20)?.approximate).toBe(false);
+  });
+
+  it('只有年份时退回公历年干支并标 approximate（不装作精确）', () => {
+    const r = benMingOf(2000, null, null);
+    expect(r?.zhi).toBe('辰');
+    expect(r?.approximate).toBe(true);
+  });
+
+  it('农历与公历是两个口径，不能混着算', () => {
+    // 农历 1991 年正月初一 = 公历 1991-02-15（立春后，辛未）；公历 1991-01-01 仍在庚午年
+    expect(benMingOf(1991, 1, 1, 'lunar')?.zhi).toBe('未');
+    expect(benMingOf(1991, 1, 1, 'solar')?.zhi).toBe('午');
+  });
+
+  it('无效输入返回 null 且不抛错（页面据此静默跳过，不写「你没填生日」）', () => {
+    expect(benMingOf(null)).toBeNull();
+    expect(benMingOf(undefined)).toBeNull();
+    expect(benMingOf(1899, 5, 5)).toBeNull();
+    expect(benMingOf(2999, 5, 5)).toBeNull();
+    expect(() => benMingOf(1990, 2, 30)).not.toThrow();
+  });
+
+  it('不给出生信息就只有 4 条，给了才多出「年命」这一条', () => {
+    const k = keOf(ANCHOR);
+    const without = buildDaliurenActions(k, '事业', 'male');
+    expect(without.length).toBe(4);
+    expect(without.some((a) => a.basis.includes('本命'))).toBe(false);
+
+    const withB = withBirth(k, '事业', { birthYear: 1984, birthMonth: 6, birthDay: 10 });
+    expect(withB.length).toBe(5);
+    expect(withB.filter((a) => a.basis.includes('本命')).length).toBe(1);
+  });
+
+  it('年命那一条必须挂「谁出面」标签（不能和「找人」混成两条一样的），且 basis 能被用户对着盘核', () => {
+    const a = nmOf(keOf(ANCHOR), '事业', { birthYear: 1984, birthMonth: 6, birthDay: 10 })!;
+    expect(a.kind).toBe('谁出面');
+    expect(a.basis).toMatch(/本命[子丑寅卯辰巳午未申酉戌亥]（[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]年/);
+    expect(a.basis).toMatch(/命上神[子丑寅卯辰巳午未申酉戌亥]/);
+    // 「上见何支」与「此支乘何将」必须分开说，不能写成「子上坐白虎」
+    expect(a.action).not.toMatch(/[子丑寅卯辰巳午未申酉戌亥]上坐[贵螣朱六勾青空白常玄阴后]/);
+  });
+
+  it('只讲「谁去办」，不许判成败（行动层的边界）', () => {
+    const BAN = /一定|必然|肯定|注定|保证|肯定会|必定/;
+    for (const k of SAMPLE.slice(0, 24)) {
+      for (const t of THEMES) {
+        for (const b of BIRTHS.slice(0, 4)) {
+          const a = nmOf(k, t, b);
+          if (!a) continue;
+          expect(a.action).not.toMatch(BAN);
+          expect(a.basis).not.toMatch(BAN);
+        }
+      }
+    }
+  });
+
+  it('五种生克 + 空亡 + 无类神 + 坐命将三档，全部真的出现过（没有死分支）', () => {
+    const seen = new Set<string>();
+    for (const { action, basis } of scanAll()) {
+      if (basis.includes('落旬空')) seen.add('空亡');
+      if (action.includes('压得住')) seen.add('克它');
+      if (action.includes('同一股气')) seen.add('比和');
+      if (action.includes('正压着你')) seen.add('被它克');
+      if (action.includes('在生你这一头')) seen.add('被它生');
+      if (action.includes('在往')) seen.add('生它');
+      if (basis.includes('只能在命上论')) {
+        seen.add('无类神');
+        if (action.includes('直接自己出面')) seen.add('坐命吉将');
+        if (action.includes('容易把话说僵')) seen.add('坐命凶将');
+        if (action.includes('跑流程、递材料')) seen.add('坐命中性');
+      }
+    }
+    for (const b of ['克它', '比和', '被它克', '被它生', '生它', '空亡', '无类神', '坐命吉将', '坐命凶将', '坐命中性']) {
+      expect(seen.has(b), `分支「${b}」一次都没走到，说明是死代码`).toBe(true);
+    }
+  }, 30000);
+
+  it('不许变成套话：action 的说法要够散，最高频远低于六成', () => {
+    const acts = scanAll().map((x) => x.action);
+    const m: Record<string, number> = {};
+    for (const s of acts) m[s] = (m[s] || 0) + 1;
+    const top = Math.max(...Object.values(m));
+    expect(top / acts.length).toBeLessThan(0.6);
+    expect(Object.keys(m).length).toBeGreaterThan(200);
+  }, 30000);
+
+  it('不同本命给不同的话：同一张盘换个出生年，不能一字不差', () => {
+    const k = keOf(ANCHOR);
+    const lines = BIRTHS.map((b) => nmOf(k, '事业', b)?.action || '');
+    const uniq = new Set(lines.filter(Boolean));
+    expect(uniq.size).toBeGreaterThanOrEqual(3);
   });
 });

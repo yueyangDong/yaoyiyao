@@ -21,9 +21,10 @@
  *    仍相同则阳日取干上神、阴日取支上神。
  */
 
-import { Lunar } from 'lunar-typescript';
+import { Lunar, Solar } from 'lunar-typescript';
 import { DZ_ORDER, DZ_WX, DZ_CHONG, isChong } from './diZhiRelations';
 import { WX_SHENG, WX_KE, GAN_WX, YANG_GAN } from './wuXingRelations';
+import { ganZhiOfYear } from './liunianReading';
 
 /* ------------------------------------------------------------------ *
  * 类型
@@ -568,4 +569,62 @@ export function buildRandomKe(seedDate: Date = new Date()): KeResult {
   const jiang = DZ_ORDER[Math.floor(Math.random() * 12)];
   const hour = DZ_ORDER[Math.floor(Math.random() * 12)];
   return buildKe(seedDate, { jiangZhi: jiang, hourZhi: hour, mode: 'random' });
+}
+
+/* ------------------------------------------------------------------ *
+ * 年命（本命）
+ *
+ * 古法占式程序的第 9 步就是「年命」：太岁 → 月将 → 时日 → 天地盘 → 四课 →
+ * 三传 → 贵人（天将）→ 遁干 → 六亲 → **年命**。它不改盘面，但断事要看。
+ *
+ * ⚠️ 这里**只取本命，不取行年**，是刻意的取舍，不是漏做：
+ *   · 本命 = 生年之支，诸家无异说（「子年生人，以地盘子为本命」「本命，定位不移者也」）；
+ *   · 行年却有三说互斥——① 《大六壬探源》男「一岁起丙寅，逆数整岁、顺数零岁」；
+ *     ② 《六壬精要》「一岁丙寅，依次二岁丁卯……一路顺行，六十一周而复始」；
+ *     ③ 《六甲起行年法》「一岁顺行至十一，却逆行」。三者过了四十岁给出的干支各不相同，
+ *     无一方能称「正法」。本项目不采假精确，宁取无分歧的那一个。
+ *
+ * ⚠️ 年支以**立春**为界（太岁换年），不是元旦、也不是正月初一：
+ *   1 月底 2 月初出生的人按公历年取模会整整差一年，差一年就是另一个命宫。
+ *   有月日就按立春分界精确取；只有年份才退回公历年干支，并标 approximate 让上层知道。
+ * ------------------------------------------------------------------ */
+
+export interface BenMing {
+  /** 本命之支（命宫，看盘时当地盘位用） */
+  zhi: string;
+  /** 生年干支 */
+  ganZhi: string;
+  /** true = 只按公历年推算，未做立春分界（调用方若在意，可提醒补生日） */
+  approximate: boolean;
+}
+
+/**
+ * 生年 → 本命。无有效年份返回 null（上层静默跳过这条，不写「你没填生日」）。
+ * @param calendar 'lunar' 时 year/month/day 按农历传（档案里 birthCalendar 就是这个口径）
+ */
+export function benMingOf(
+  birthYear?: number | null,
+  birthMonth?: number | null,
+  birthDay?: number | null,
+  calendar: 'solar' | 'lunar' = 'solar',
+): BenMing | null {
+  if (!birthYear || !Number.isFinite(birthYear)) return null;
+  const y = Math.trunc(birthYear);
+  const nowY = new Date().getFullYear();
+  if (y < 1900 || y > nowY) return null;
+
+  const m = birthMonth ? Math.trunc(birthMonth) : 0;
+  const d = birthDay ? Math.trunc(birthDay) : 0;
+  if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+    try {
+      const lunar = calendar === 'lunar' ? Lunar.fromYmd(y, m, d) : Solar.fromYmd(y, m, d).getLunar();
+      const gz = lunar.getYearInGanZhiByLiChun();
+      if (gz && gz.length === 2) return { zhi: gz.charAt(1), ganZhi: gz, approximate: false };
+    } catch {
+      // 非法日期（如 2 月 30 日）落到下面的公历年推算，不抛给页面
+    }
+  }
+
+  const fb = ganZhiOfYear(y);
+  return { zhi: fb.zhi, ganZhi: fb.ganZhi, approximate: true };
 }

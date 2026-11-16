@@ -43,12 +43,13 @@ const RELATION_COLOR: Record<string, string> = {
   无克: 'var(--text-disabled)',
 };
 
-/** 行动层四类的颜色：找人/方向是「往哪使劲」，方式/避坑是「怎么使劲、别往哪撞」 */
+/** 行动层五类的颜色：找人/方向是「往哪使劲」，方式/避坑是「怎么使劲、别往哪撞」，谁出面是「谁去」 */
 const ACTION_COLOR: Record<string, string> = {
   找人: 'gold',
   方向: 'blue',
   方式: 'cyan',
   避坑: 'orange',
+  谁出面: 'purple',
 };
 
 export default function Daliuren() {
@@ -70,9 +71,10 @@ export default function Daliuren() {
     [ke, theme, currentUser?.gender],
   );
   // 行动层同理：「该找谁」在不同主题下是不同的人（勾陈＝经办／老病历／牵旧关系的人）
+  // 年命要读档案里的出生信息（只用来定「你自己出面还是托人」，不参与吉凶）；没填就静默少一条
   const actions = useMemo(
-    () => (ke ? buildDaliurenActions(ke, theme, currentUser?.gender) : []),
-    [ke, theme, currentUser?.gender],
+    () => (ke ? buildDaliurenActions(ke, theme, currentUser?.gender, currentUser ?? undefined) : []),
+    [ke, theme, currentUser],
   );
   // 课格只看盘面，与主题无关——同一张盘问什么都一样，所以 deps 只有 ke
   const keGe = useMemo(() => (ke ? buildKeGe(ke) : []), [ke]);
@@ -372,6 +374,7 @@ export default function Daliuren() {
               <Text style={{ display: 'block', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 10 }}>
                 这一层不重新判吉凶，只把上面的结论翻成能做的事：找哪一类人、往哪个方向使劲、用什么方式推、哪里别撞。
                 每条都附了盘面依据——觉得不对，就按依据自己改。
+                档案里填了出生日期的，还会多一条「谁出面」：它看你出生那一年的地支（本命）上坐着什么，只决定这件事你自己去还是让人替你先开口。
               </Text>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {actions.map((a, i) => (
