@@ -14,11 +14,13 @@
 
 import {
   type Theme, type ThemeReading, type Evidence, type Verdict,
-  verdictOf, clampScore, sortEvidence, composeSummary, adviceOf, JUDGE_RULE, bandOf,
+  verdictOf, clampScore, sortEvidence, composeSummary, adviceOf, JUDGE_RULE, bandOf, THEME_WORD,
 } from './divinationCore';
 
 export interface LotReadingInput {
   lotType: 'guanyin' | 'guandi' | 'zhuge';
+  /** 签题（如「钟离成道」）。落点句要靠它把话钉到这一支签上——缺了就只能说「本签」 */
+  name?: string;
   /** '上上' | '上' | '中' | '下' | '下下'；诸葛神数传统不分等级，传空串 */
   level: string;
   poem: string;
@@ -148,6 +150,18 @@ function firstClause(text: string, max = 26): string {
   return pick.length > max ? `${pick.slice(0, max)}…` : pick;
 }
 
+/**
+ * 短引文：第一小句本身就超过 max 字时，宁可不引。
+ * ⚠️ 用 `firstClause` 硬截会得到「诉讼中的一个小小…」——半句话比不引更难看，
+ *    而且用户没法拿它去核（签谱上没有这半句）。
+ */
+function briefQuote(text: string, max = 12): string {
+  const s = (text || '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  const first = s.split(/[。；;！!？?，,、\n]/).map((x) => x.trim()).filter(Boolean)[0] || '';
+  return first && first.length <= max ? first : '';
+}
+
 /** 关帝的 interpretation 是「事业：xxx\n财运：xxx」的行文本，按行拆成结构化 */
 function parseInlineDomains(text: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -232,6 +246,84 @@ export function clampByLevel(score: number, level: string): number {
   return s;
 }
 
+/* ------------------------------------------------------------------ *
+ * 落点句：档位原则之后那一句「这一签在这一项上到底给没给话」
+ *
+ * ⚠️ 灵签是四个板块里最容易被写成套话的：签只有 100 支、分五等，
+ *    `adviceOf(theme, verdict)` 只有 5 个说法——一整支签换掉，一个字都不变。
+ *    但灵签的盘面事实不是「盘」，是**这一签的文字**，所以落点只能落在
+ *    「这句话从哪一层来的、跟签等顺不顺、仙机里几格是不是一个调」上——
+ *    这三样用户都能翻着签谱逐条核，核不动的断言一句都不写。
+ * ⚠️ 只讲结构，不讲时机：应期/早晚在这套签里本来就没有判据，编不出来。
+ * ------------------------------------------------------------------ */
+
+/** 仙机各格互相对照：同一支签上前后说法不一致，本身就是信息 */
+function guideCrossCheck(input: LotReadingInput, theme: Theme): string {
+  const guide = input.guide || {};
+  const keys = GUIDE_KEYS[theme].filter((k) => guide[k]);
+  if (!keys.length) return '';
+  // ⚠️ 每一格都要带原话（「先亏后盈」「不必执着」），否则就是「同一签上两格不同调」
+  //    这种换个盘一字不差的恒真句——它比档位句更难被发现，因为读着像判据。
+  const tones = keys
+    .map((k) => ({ k, t: toneScore(guide[k]), v: briefQuote(guide[k]) }))
+    .filter((x) => x.t !== 0);
+  if (!tones.length) {
+    return keys.length > 1 ? `；仙机里「${keys.join('」「')}」几格都没给方向` : '';
+  }
+  const qv = (x: { k: string; v: string }) => (x.v ? `「${x.k}」写「${x.v}」` : `「${x.k}」`);
+  const plus = tones.filter((x) => x.t > 0);
+  const minus = tones.filter((x) => x.t < 0);
+  if (plus.length && minus.length) {
+    return `；仙机里${qv(plus[0])}、${qv(minus[0])}——同一签上两格不同调，按更保守的那一格打算`;
+  }
+  if (tones.length >= 2) return `；仙机里${tones.map(qv).join('、')}——几格是同一个方向`;
+  return `；仙机里只有「${tones[0].k}」一格给了方向${tones[0].v ? `（写的是「${tones[0].v}」）` : ''}`;
+}
+
+function dropPointOf(
+  input: LotReadingInput,
+  theme: Theme,
+  hit: DomainHit | null,
+  graded: boolean,
+  base: number,
+  hitTone: number,
+  poemTone: number,
+): string {
+  // 签题是这一支签的唯一标识：带上它，「翻哪一页去核」才有答案。
+  // ⚠️ 诸葛神数的 name 就是「第N签」，把它嵌进句子会读出「「第4签」不分项」这种怪话。
+  const raw = (input.name || '').trim();
+  const who = raw && !/^第\d+签$/.test(raw) ? `「${raw}」` : '这一签';
+  const src = !hit
+    ? `${who}没有往「${THEME_WORD[theme]}」上落一句，只能按签诗口气推，依据最薄`
+    : hit.kind === 'structured'
+      ? `${who}「${hit.label.replace('签文分项·', '')}」这一栏是签文自带的，翻原签能逐字对上`
+      : hit.kind === 'guide'
+        ? `${who}在仙机「${hit.label.replace('仙机·', '')}」那一格里有话，是签谱原有的项`
+        : hit.kind === 'imagery'
+          ? `${who}没有这一项的正经断语，只能拿签诗里的意象去读，这一层最薄`
+          : '没有分项，只能按整段解签白话去推';
+
+  const dirTxt = ((): string => {
+    if (!graded) {
+      // 诸葛神数不分等级也没有分项——唯一能钉到这一支签上的，是签诗自己的头一句
+      const q = briefQuote((input.poem || '').replace(/\n/g, '，'), 16);
+      return q
+        ? `签本身不分上中下等，方向只能按签诗头一句「${q}」的口气推`
+        : '签本身不分上中下等，方向是按签文口气推的';
+    }
+    if (hitTone > 0 && base > 0) return '与签等是同一个方向，前后不打架';
+    if (hitTone < 0 && base > 0) return '签等摆得高、这一项的原话却不热——两处不同调时，以这一项为准';
+    if (hitTone > 0 && base < 0) return '签等本身不高、这一项偏偏留了口气——不是矛盾，是整签底子差、这一处有转机';
+    if (hitTone < 0 && base < 0) return '与签等都往低处走，方向一致';
+    // 分项一句吉凶字眼都没有时，方向只能挂到签诗的语气上——不能只说「不偏不倚」了事
+    if (poemTone > 0) return '这一栏的原话里没有吉凶字眼，签诗念着却是顺的，方向按签等与签诗两头定';
+    if (poemTone < 0) return '这一栏的原话里没有吉凶字眼，签诗念着也不热，两头都没帮上忙';
+    return '这一栏和签诗都没给方向，只能按签等定调';
+  })();
+
+  return `落点在这一签上：${src}；${dirTxt}${guideCrossCheck(input, theme)}。`;
+}
+
 export function buildLotReading(input: LotReadingInput, theme: Theme): ThemeReading {
   const level = (input.level || '').replace('签', '').trim();
   const graded = !!LEVEL_SCORE[level];
@@ -260,8 +352,10 @@ export function buildLotReading(input: LotReadingInput, theme: Theme): ThemeRead
   /* ---------- 2. 本签分项：微调 ---------- */
   const hit = findDomain(input, theme);
   let offset = 0;
+  let hitTone = 0;
   if (hit) {
     const t = toneScore(hit.text);
+    hitTone = t;
     // 分项断语是原签自带的一档（0.5）；签诗意象只是降级证据，力度更低（0.3）
     const cap = hit.kind === 'imagery' ? 0.3 : 0.5;
     offset = t * cap;
@@ -307,7 +401,7 @@ export function buildLotReading(input: LotReadingInput, theme: Theme): ThemeRead
     subject: graded ? `${level}签 · ${hit?.label || '签诗语气'}` : `未分级签 · ${hit?.label || '签诗语气'}`,
     summary: composeSummary(theme, verdict, headline, tail),
     evidence: sortEvidence(evidence),
-    advice: adviceOf(theme, verdict),
+    advice: `${adviceOf(theme, verdict)}${dropPointOf(input, theme, hit, graded, base, hitTone, poemTone)}`,
     note: JUDGE_RULE.lot,
   };
 }

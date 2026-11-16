@@ -329,6 +329,16 @@ interface AnalyzedProbe {
   evidence: Evidence[];
   /** 用神自身的五行，供三合局等「局级」判据比对 */
   probeWx?: string;
+  /** 用神落在第几爻（1-6）；不上卦时为 undefined */
+  pos?: number;
+  /** 用神持世 / 临应 / 都不是 */
+  shiYing?: string;
+  /** 用神是否动爻 */
+  moving?: boolean;
+  /** 用神不上卦时，伏在第几爻的飞神之下 */
+  fuHost?: number;
+  /** 用神所在地支（「第几爻」之外，用户还能按这一个字对上） */
+  zhi?: string;
   flags: { yuePo?: boolean; riPo?: boolean; kong?: boolean; mu?: boolean; hua?: string; fu?: boolean };
 }
 
@@ -371,7 +381,7 @@ function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
         detail: `「${spec.liuQin}」不上卦，伏在第${fu.hostPosition}爻飞神之下（${fu.fuNaJia}，属${fu.fuWuXing}）。${extra || '伏而不出'}。${clause('fu', v * spec.polarity > 0, disease)}。`,
         weight: v * spec.polarity,
       });
-      return { spec, strength, evidence: ev, probeWx: fu?.fuWuXing, flags };
+      return { spec, strength, evidence: ev, probeWx: fu?.fuWuXing, flags, fuHost: fu.hostPosition };
     }
     strength -= 4;
     ev.push({
@@ -667,7 +677,10 @@ function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
     }
   }
 
-  return { spec, strength, evidence: ev, probeWx: yaoWx, flags };
+  return {
+    spec, strength, evidence: ev, probeWx: yaoWx, flags,
+    pos: yao.position, shiYing: yao.shiYing, moving: !!yao.isMoving, zhi: yaoZhi,
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -676,6 +689,75 @@ function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
 
 function guaShort(guaName: string): string {
   return guaName.includes('为') ? guaName[0] : guaName.slice(2);
+}
+
+/* ------------------------------------------------------------------ *
+ * 落点句：把「档位原则」翻成「在这张盘上落在哪」
+ *
+ * ⚠️ `adviceOf(theme, verdict)` 只有 5 个档位，单用就是套话（实测健康题「平」档
+ *    占 60.4% 的盘，换一张一字不差）。所以档位句只讲「该做什么」，真正属于
+ *    这张盘的那半句必须由「用神落在第几爻、在哪一头、动不动」来定——
+ *    这些用户都能对着卦面逐条核（第几爻就是从上往下数第几行）。
+ *
+ * ⚠️ 落点句**只讲结构，不讲时机**。档位句已经在说「现在就谈／先守住」，
+ *    落点句再来一句「急不来」「它眼下没劲」，同一段里就打架（大六壬踩过这个坑）。
+ * ------------------------------------------------------------------ */
+
+/** 爻位取象：《易》以初为事之始、上为事之终，二五为内外卦之中位 */
+const YAO_WEI: Record<number, string> = {
+  1: '初爻是这件事的起点，根还没扎稳',
+  2: '二爻在内卦中间，管的是内部条件——自己的准备、身边的人',
+  3: '三爻是内卦末位，要出还没出，最容易卡在「想动没动」那一段',
+  4: '四爻进了外卦，事情交到外部、交到别人手上',
+  5: '五爻是卦里的主位，这一位谁占着，事就由谁定调',
+  6: '上爻是卦的尽头，事情已经走到收尾那一段',
+};
+const YAO_NAME = ['', '初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
+
+function dropPointOf(analyzed: AnalyzedProbe[], theme: Theme): string {
+  /* 健康题是两星：病势与解神落在哪一爻，本身就是「先有哪个、后治哪个」 */
+  if (theme === '健康') {
+    const bing = analyzed.find((x) => x.spec.polarity === -1);
+    const yao = analyzed.find((x) => x.spec.polarity === 1);
+    const bp = bing?.pos;
+    const yp = yao?.pos;
+    if (bp && yp) {
+      const bz = bing?.zhi || '';
+      const yz = yao?.zhi || '';
+      const order = bp === yp
+        ? `病与药挤在同一个位置（都是第${bp}爻、${bz}）——怎么调都是冲这一处去`
+        : bp < yp
+          ? `病在下面（第${bp}爻${bz}）、药在它上面（第${yp}爻${yz}）——底子那一层是病根，解法在它之后`
+          : `药在下面（第${yp}爻${yz}）、病在它上面（第${bp}爻${bz}）——转机在底子那一层，浮在面上的症状是次生的`;
+      return `落点在盘面上：${order}。`;
+    }
+  }
+
+  const a = analyzed[0];
+  if (!a) return '';
+
+  if (a.flags.fu) {
+    return a.fuHost
+      ? `落点在盘面上：它在这张盘上不露面，伏在第${a.fuHost}爻底下——台面上没有它，眼下能谈的只是底下那一层。`
+      : '落点在盘面上：整张盘找不到它，这一头还没有成形。';
+  }
+  if (!a.pos) return '';
+
+  const zhi = a.zhi || '';
+  // 健康题的这一头是病神（或解神），叫它「用神」就是把判据说反了
+  const disease = a.spec.polarity === -1;
+  const roleWord = theme === '健康' ? (disease ? '病势' : '药与恢复力') : '用神';
+  // ⚠️ 每一个小句都要带「第几爻／哪个字」，否则就是「换个盘还成立」的恒真句——
+  //    实测把它写成「这一爻又正好持世」时，整句重复率反而从 0.32 涨到 0.41。
+  const who = a.shiYing === '世'
+    ? (disease ? `${zhi}这一爻正持世，病根就在你自己身上，不是外面带回来的` : `${zhi}这一爻正持世，开关长在你自己手上`)
+    : a.shiYing === '应'
+      ? (disease ? `${zhi}落在应上，这毛病多半是从环境、从别人那里带过来的` : `${zhi}落在应上，讲的是对方那一头，你使多大劲也到不了那儿`)
+      : `${zhi}不在世（你）上、也不在应（对方）上，是六爻里的中间一环`;
+  const mov = a.moving
+    ? `；${zhi}还是动爻——最后变成什么样，由它变出来的那一爻说了算`
+    : `；${zhi}这一爻不动，这一位不会自己变`;
+  return `落点在盘面上：${roleWord}落在${YAO_NAME[a.pos]}（${zhi}），${YAO_WEI[a.pos]}；${who}${mov}。`;
 }
 
 export function buildLiuyaoReading(
@@ -743,7 +825,7 @@ export function buildLiuyaoReading(
     theme,
     verdict,
     buildHeadline(theme, verdict, analyzed, chart),
-    buildTail(verdict, chart, theme),
+    buildTail(verdict, chart),
   );
 
   const extraNote = [
@@ -758,7 +840,7 @@ export function buildLiuyaoReading(
     subject,
     summary,
     evidence: sortEvidence(evidence),
-    advice: adviceOf(theme, verdict),
+    advice: `${adviceOf(theme, verdict)}${dropPointOf(analyzed, theme)}`,
     note: extraNote || undefined,
   };
 }
@@ -807,7 +889,7 @@ function buildHeadline(
 }
 
 /** 结论后半句：动爻与变卦决定「会往哪走」，这层不能省，否则结论变成静态标签 */
-function buildTail(verdict: Verdict, chart: LiuyaoChartLike, theme: Theme): string {
+function buildTail(verdict: Verdict, chart: LiuyaoChartLike): string {
   const dongCount = chart.dongYaoCount ?? chart.benGua.yaoList.filter((y) => y.isMoving).length;
   const zhiName = chart.zhiGua?.guaName;
   const benName = chart.benGua.guaName;
@@ -819,7 +901,9 @@ function buildTail(verdict: Verdict, chart: LiuyaoChartLike, theme: Theme): stri
     return `${move}，事从「${benName}」走向「${zhiName}」。${dir}`;
   }
   if (dongCount === 0) return '无动爻，事情的性质已经定了：守住现状、把细节做扎实，就是最好的策略。';
-  return adviceOf(theme, verdict);
+  // 有动爻却看不出变卦（盘面缺 zhiGua，或变出与本体同名）——这时不能拿档位句顶上来：
+  // advice 已经带着档位句，这里再复读一次就是同一段话出现两遍。
+  return `有${dongCount}爻在动，却没变出另一个卦——变化的着力点在动爻本身，不在结局那一头。`;
 }
 
 /** 一次算满六个主题，页面切主题不用重算盘面 */

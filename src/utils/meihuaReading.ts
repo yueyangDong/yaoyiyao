@@ -110,6 +110,43 @@ function guaName(i: number): string {
   return GUA_NAMES[i] || '?';
 }
 
+/* ------------------------------------------------------------------ *
+ * 落点句：档位原则之后那一句「这一卦的力落在哪」
+ *
+ * ⚠️ 与六爻同一条纪律：`adviceOf` 只有 5 个档位，单用就是套话。
+ *    梅花的盘面可核事实是「动在第几爻」与「体用各是哪一卦」——
+ *    动爻位置就是从上往下数第几行，用户一眼能对上。
+ * ⚠️ 只讲结构，不讲时机：应期已经由 `buildMeihuaExtras.timing` 单独回答，
+ *    这里再提「什么时候」就是两处抢答，还容易打架。
+ * ------------------------------------------------------------------ */
+
+/** 爻位取象（与六爻同源：初为事之始、上为事之终） */
+const YAO_WEI: Record<number, string> = {
+  1: '初爻是这件事的起点，一动就先动根基',
+  2: '二爻在内卦中间，动的是内部条件',
+  3: '三爻在内卦末位，要出还没出，最容易被卡住',
+  4: '四爻进了外卦，动的是外部、是别人那一头',
+  5: '五爻是卦里的主位，这一位动，整件事跟着改调',
+  6: '上爻是卦的尽头，动在收尾那一段',
+};
+const YAO_CN = ['', '一', '二', '三', '四', '五', '六'];
+
+function dropPointOf(result: MeiHuaResult, theme: Theme, tiWx: string, yongWx: string): string {
+  const d = result.dongYao;
+  const where = d <= 3 ? '下卦' : '上卦';
+  // 动爻所在的那一卦为「用」，另一卦为「体」——体不动，所以它是你的立足处
+  const bianNow = result.bianRelation ? relationScore(theme, result.bianRelation) : null;
+  const baseNow = relationScore(theme, result.relation);
+  let trend = '';
+  if (bianNow !== null && Math.sign(bianNow) !== Math.sign(baseNow) && bianNow !== 0) {
+    trend = bianNow > baseNow
+      ? `；不过变出来的是${result.bianYongWuxing}，比眼下这一面更贴你——前后不是一个调子，往后的那一段会比开头顺`
+      : `；可变出来的是${result.bianYongWuxing}，不如眼下这一面——前后不是一个调子，越往后越要收着走`;
+  }
+  return `这一卦的动在${YAO_CN[d] || d}爻（${where}），${YAO_WEI[d] || '这一位'}` +
+    `；变的是${guaName(result.yongGua)}（${yongWx}）那一半，体卦${guaName(result.tiGua)}（${tiWx}）不动，一直是你站着的位置${trend}。`;
+}
+
 export function buildMeihuaReading(
   result: MeiHuaResult,
   theme: Theme,
@@ -213,7 +250,7 @@ export function buildMeihuaReading(
     subject,
     summary,
     evidence: sortEvidence(evidence),
-    advice: adviceOf(theme, verdict),
+    advice: `${adviceOf(theme, verdict)}${dropPointOf(result, theme, tiWx, yongWx)}`,
     note: '梅花以「体=你、用=所问之事」取象：体卦旺、用卦来生，最省力；用卦克体，再努力也逆风。卦辞与六十四卦意象只描述处境，不单独定吉凶。',
   };
 }

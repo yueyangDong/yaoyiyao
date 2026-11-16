@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { decodePan } from 'iching-shifa';
 import {
-  verdictOf, VERDICT_BANDS, THEMES, JUDGE_RULE,
+  verdictOf, adviceOf, VERDICT_BANDS, THEMES, JUDGE_RULE,
   type Theme, type Verdict, type ThemeReading,
 } from '../divinationCore';
 import {
@@ -14,6 +14,7 @@ import { calcMeiHua } from '../meihuaUtils';
 import { buildLotReading, buildAllLotReadings, clampByLevel, imageryHits, imageryQuote } from '../lotReading';
 import { guanyinLots } from '../../data/guanyinLots';
 import { guandiLots } from '../../data/guandiLots';
+import { ZHUGES_LOTS } from '../../data/zhugeshensuan';
 
 /* ------------------------------------------------------------------ *
  * 夹具
@@ -616,5 +617,159 @@ describe('灵签：学业没有「功名」仙机项时怎么断', () => {
     expect(imageryHits('一朝金榜姓名闻', '学业')).toContain('金榜');
     expect(imageryHits('一朝金榜姓名闻', '爱情')).not.toContain('金榜');
     expect(imageryQuote('青灯夜读十年深，\n一朝金榜姓名闻。', ['金榜'])).toContain('金榜');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 4.5 去套话：advice 必须是「档位原则 + 这张盘的落点」
+ *
+ * ⚠️ 这一组是回归护栏。曾经的情况：三个板块的 advice 都是
+ *    `adviceOf(theme, verdict)`——只有 5 个档位，换个盘一字不差
+ *    （实测六爻健康「平」占 60.4%、梅花健康 60.4%、梅花整句重复率 0.402）。
+ *    谁要是把落点句拿掉、或者把落点写回「换个盘还成立」的恒真句，这里会红。
+ * ------------------------------------------------------------------ */
+
+/** 三个板块的样本盘：六爻用真实排盘、梅花铺满 8×8×6、灵签全签库 */
+function corpus() {
+  const liuyao: ThemeReading[][] = [];
+  const codes: string[] = [];
+  for (const a of ['6', '7', '8', '9']) for (const b of ['6', '7', '8', '9']) codes.push(`${a}${b}${b}${a}${b}${a}`);
+  for (let i = 0; i < 48; i++) {
+    const pan = decodePan(codes[i % codes.length], {
+      year: 2026, month: (i * 7) % 12 + 1, day: (i * 11) % 27 + 1, hour: (i * 5) % 24,
+    });
+    liuyao.push(buildAllLiuyaoReadings(pan as any, i % 2 ? 'male' : 'female'));
+  }
+
+  const meihua: ThemeReading[][] = [];
+  const zhix = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  for (let sh = 0; sh < 8; sh++) {
+    for (let xi = 0; xi < 8; xi++) {
+      for (let d = 1; d <= 6; d++) {
+        meihua.push(buildAllMeihuaReadings(calcMeiHua(sh + 1, xi + 1, d), zhix[(sh * 8 + xi + d) % 12]));
+      }
+    }
+  }
+
+  const inputs: any[] = [];
+  for (const g of guanyinLots) {
+    inputs.push({
+      lotType: 'guanyin', name: g.name, level: g.level.replace('签', ''), poem: g.poem,
+      explanation: [g.qianyu, g.jieyue].filter(Boolean).join('\n\n'),
+      interpretation: Object.entries(g.interpretations || {}).map(([k, v]) => `${k}：${v}`).join('\n'),
+      interpretations: g.interpretations, guide: g.xianji, story: g.diangu,
+    });
+  }
+  for (const g of guandiLots) inputs.push({ ...g, lotType: 'guandi' });
+  for (const g of ZHUGES_LOTS) inputs.push({ ...g, lotType: 'zhuge' });
+  const lot = inputs.map((x) => buildAllLotReadings(x));
+
+  return { 六爻: liuyao, 梅花: meihua, 灵签: lot };
+}
+
+let cachedCorpus: ReturnType<typeof corpus> | null = null;
+const getCorpus = () => (cachedCorpus ||= corpus());
+
+describe('去套话：advice 要落到这张盘／这一签上', () => {
+  it('advice 一律是「档位原则」开头，落点接在后面（页面按原则→落点读）', () => {
+    for (const sets of Object.values(getCorpus())) {
+      for (const set of sets) {
+        for (const r of set) {
+          expect(r.advice.startsWith(adviceOf(r.theme, r.verdict))).toBe(true);
+          expect(r.advice.length).toBeGreaterThan(adviceOf(r.theme, r.verdict).length + 8);
+        }
+      }
+    }
+  });
+
+  it('⚠️ 落点句必须带盘面事实，不能只是又一句原则', () => {
+    const { 六爻, 梅花, 灵签 } = getCorpus();
+    for (const set of 六爻) {
+      for (const r of set) {
+        // 位置必须点出来：或「病在下面（第3爻卯）」的阿拉伯数字位，或「落在四爻（申）」
+        expect(r.advice).toMatch(/[一二三四五六]爻|第[1-6]爻/);
+        if (r.theme === '健康') {
+          // 健康题看的是病与药各在哪一爻，不是「用神在哪一头」
+          expect(r.advice).toMatch(/病|药/);
+        } else {
+          expect(r.advice).toMatch(/持世|落在应上|中间一环/);
+        }
+      }
+    }
+    for (const set of 梅花) {
+      for (const r of set) {
+        expect(r.advice).toMatch(/动在[一二三四五六]爻/);
+        expect(r.advice).toContain('体卦');
+      }
+    }
+    for (const set of 灵签) {
+      for (const r of set) {
+        expect(r.advice).toMatch(/签文|仙机|签诗|整段解签/);
+      }
+    }
+  });
+
+  it('健康题的落点不许把病神叫成「用神」（判据说反了）', () => {
+    for (const set of getCorpus().六爻) {
+      const health = set.find((r) => r.theme === '健康')!;
+      expect(health.advice).not.toMatch(/用神落在/);
+      expect(health.advice).toMatch(/病势|药与恢复力|病在|药在/);
+    }
+  });
+
+  it('落点只讲结构、不讲时机（档位句已经在讲时机，两处会打架）', () => {
+    for (const sets of Object.values(getCorpus())) {
+      for (const set of sets) {
+        for (const r of set) {
+          const drop = r.advice.slice(adviceOf(r.theme, r.verdict).length);
+          expect(drop).not.toMatch(/急不来|慢慢来|越早越好|趁早|再等等看/);
+        }
+      }
+    }
+  });
+
+  it('⚠️ 槽位重复率：任一「主题-advice」最高频说法不得超过六成', () => {
+    for (const [board, sets] of Object.entries(getCorpus())) {
+      const slots: Record<string, Map<string, number>> = {};
+      for (const set of sets) {
+        for (const r of set) {
+          const m = (slots[r.theme] ||= new Map());
+          m.set(r.advice, (m.get(r.advice) || 0) + 1);
+        }
+      }
+      for (const [theme, m] of Object.entries(slots)) {
+        const total = [...m.values()].reduce((a, c) => a + c, 0);
+        const top = Math.max(...m.values());
+        expect(top / total, `${board}/${theme} 最高频 ${((top / total) * 100).toFixed(0)}%`).toBeLessThan(0.6);
+      }
+    }
+  });
+
+  it('⚠️ 整句重复率：两份文案共有的整句占较短一方的比例，平均 <0.35', () => {
+    const sents = (s: string) => new Set(s.split(/[。；！？\n]/).map((x) => x.trim()).filter((x) => x.length >= 6));
+    for (const [board, sets] of Object.entries(getCorpus())) {
+      const sample = sets.filter((_, i) => i % Math.max(1, Math.floor(sets.length / 14)) === 0).slice(0, 14);
+      const texts = sample.map((set) =>
+        set.map((r) => `${r.summary}。${r.advice}。${r.evidence.map((e) => e.detail).join('。')}`).join('。'));
+      const S = texts.map(sents);
+      let sum = 0;
+      let cnt = 0;
+      for (let i = 0; i < S.length; i++) {
+        for (let j = i + 1; j < S.length; j++) {
+          let inter = 0;
+          for (const g of S[i]) if (S[j].has(g)) inter++;
+          sum += inter / Math.min(S[i].size, S[j].size);
+          cnt++;
+        }
+      }
+      expect(sum / cnt, `${board} 整句重复率 ${(sum / cnt).toFixed(3)}`).toBeLessThan(0.35);
+    }
+  }, 30000);
+
+  it('同一张盘的六个主题，advice 不能六份一样（档位句随主题换）', () => {
+    const { 六爻 } = getCorpus();
+    for (const set of 六爻.slice(0, 12)) {
+      expect(new Set(set.map((r) => r.advice)).size).toBeGreaterThanOrEqual(4);
+    }
   });
 });

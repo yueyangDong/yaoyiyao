@@ -186,7 +186,10 @@ const ADVICE: Record<Theme, Record<Verdict, string>> = {
  * ⚠️ 这张表是按「主题 × 档位」出的，只有 5 个档位——**单用它就是套话**：
  * 同一档位下换个盘一字不差（实测最热的「平」档占六成盘）。
  * 约定：档位句只讲「该做什么」（原则），各板块必须再叠一句**因盘而异**的落点句
- * （类神落在第几步、旺衰、空亡……），页面展示的是「原则 + 落点」两段。
+ * （类神落在第几步、第几爻、哪一签，旺衰、空亡……），页面展示的是「原则 + 落点」两段。
+ *
+ * 四个板块（六爻 / 梅花 / 灵签 / 大六壬）都已在各自 `<板块>Reading` 里实现 `dropPointOf`，
+ * 护栏在 `divinationReading.test.ts` 与 `daliuren.test.ts`——谁把落点拿掉，那里会红。
  */
 export function adviceOf(theme: Theme, verdict: Verdict): string {
   return ADVICE[theme][verdict];
