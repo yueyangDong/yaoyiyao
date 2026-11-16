@@ -360,6 +360,37 @@
 
 - 梅花**数字起卦不得用生日预填**（2026-11-16 修）：`calcMeiHua` 只做 `num%8 / num%6`，生日是定值 → 同一个人问什么都是同一卦，「一事一占」当场失效；且生日不是「当下所见之数」，与梅花触机而发的前提正好相反。取数写成「随手取当时看见的三个数」。
 
+### 7.1 命盘旁参：§7.0 里唯一被放行的那一格怎么落地
+
+判据层不接八字，但**展示层并列**可以——这就是「旁参」：四个占卜页结果区末尾各挂一块可折叠的「旁参 · 你的命盘」，把用户自己的四柱摆出来，让他自己对照。
+
+`src/utils/mingPanAside.ts`（数据与文案）+ `src/components/MingPanAside.tsx`（只排版）。
+
+三条硬边界，都有测试盯：
+
+1. **不产分数、不进判据**。结构里连 `score` / `verdict` / `level` 字段都没有（不是值为 0，是压根没有），序列化后也不许出现「大吉/小凶/评分」。占卜的吉凶仍只由 `divinationCore.verdictOf` 决定。
+2. **不做判词**。只陈述盘面（你是辛金、很弱、喜火木、现在走乙酉运），不写「所以你该……」。要给建议去八字页。
+3. **缺信息就整块不渲染**。档案没出生年月日时 `buildMingPanAside` 返回 null，页面什么都不显示——不写「请先填写出生信息」这种空状态（占卜页的主角是卦，不是档案）。
+
+口径全部借道既有唯一出口，不自建：
+
+| 用到什么 | 走谁 |
+| --- | --- |
+| 四柱 | `personChart.buildRawChart`（全站唯一构造四柱处） |
+| 真太阳时 | `UserContext.correctSolarTime`（经度取 `birthplace.longitude`） |
+| 当前大运 | `personChart.currentDayunOf`（内部已是虚岁闭区间） |
+| 强弱 / 用忌 | `baziAnalysis.analyzeDayMasterStrength` / `recommendYongShen` + `wuxingFlow.calcWuxingStats` |
+| 五行配色 | `mingPanAside.WX_COLOR`（与八字页 `WX_COLORS` 同源，改色两处同步） |
+
+已知范围（不是 bug，但要知道）：
+
+- **晚子时流派固定取 2**，与八字页表单 `initialValue` 一致。用户在八字页手动改过流派时，23:00–24:00 出生的人两处会差一天。
+- **时辰未知按午时推定**（`hour` 传 null），且此时**不做真太阳时校正**——基准本身是假的，再校正只是制造假精确（与 `Bazi.tsx` 的 `hourUnknown` 分支同口径）。
+- **性别未知就不给大运**：大运顺逆由「年干阴阳 × 性别」决定，猜错整排反着走。四柱/强弱与性别无关，照常显示。
+- 农历闰月必须显式传 `isLeap`（取 `StoredUser.isLeapMonth`），漏传会整体错一个月。
+
+⚠️ 这条纪律要接着守：**旁参里不许长出判据**。想加「所以今年适合不适合这个卦」这种话，那不是旁参，那是判据层——§7.0 已经否掉了。
+
 - 不引入「年月日时全盘」的流月流日细断——三板块仍是一次性占断。
 - 六爻不做**多爻合断的复杂组合**（如多局并见、飞神伏神连环），只保留三合局（单局）+ 忌神/原神同动 + 卦变伏吟反吟。
 - 灵签不做跨签比较（不排行、不推荐重抽到吉签为止）。
@@ -381,6 +412,7 @@
 | 学业意象词表 | `lotReading.POEM_IMAGERY` / `GUIDE_KEYS.学业` | 同上（label 与权重断言会红） |
 | 建议文案 | `divinationCore.ADVICE`（主题 × 档位） | 无需（不含判据），但**单用就是套话**——见 §6.5，各板块须接落点句 |
 | 反套话护栏 | 各板块 `<板块>Reading` 的落点句 + `daliuren.test.ts` 的跨盘不变量 | 跨盘重复率统计（§6.5 的两个指标） |
+| 命盘旁参展示项 | `utils/mingPanAside.ts`（数据+文案）、`components/MingPanAside.tsx`（只排版） | `mingPanAside.test.ts` + `divinationPages.test.tsx` 的「命盘旁参」4 条 |
 
 > ⚠️ 页面里禁止再出现第二份「用神 → 吉凶」判断。要加新主题，先加 `THEMES`，再依次补
 > `probesOf` / `RELATION_SCORE_BY_THEME` / `DOMAIN_KEYS` / `ADVICE` 四处，TypeScript 会逐处报缺。

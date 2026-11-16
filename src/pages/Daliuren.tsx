@@ -11,6 +11,7 @@ import { useDailyQuota } from '../hooks/useDailyQuota';
 import type { Theme } from '../utils/divinationCore';
 import { buildKe, buildRandomKe, DI_ZHI_ORDER, JIANG_PLAIN, LIU_QIN_PLAIN, type KeResult } from '../utils/daliurenCore';
 import { buildAllDaliurenReadings, buildDaliurenActions, buildDaliurenTiming, buildKeGe, positionHints } from '../utils/daliurenReading';
+import MingPanAside from '../components/MingPanAside';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -516,6 +517,9 @@ export default function Daliuren() {
               ))}
             </Space>
           </Card>
+
+          {/* 旁参：把用户自己的盘摆出来做对照，不产判据、不改上面任何结论 */}
+          <MingPanAside />
 
           <div style={{ textAlign: 'center' }}>
             <Button onClick={reset} icon={<RefreshCw size={16} />} size="large">重新起课</Button>

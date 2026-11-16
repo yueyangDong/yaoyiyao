@@ -10,6 +10,7 @@ import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, mon
 import { buildAllMeihuaReadings, buildMeihuaExtras } from '../utils/meihuaReading';
 import type { Theme } from '../utils/divinationCore';
 import ThemeReadingCard from '../components/ThemeReadingCard';
+import MingPanAside from '../components/MingPanAside';
 import { meihuaTexts } from '../data/meihuaFullTexts';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 
@@ -482,6 +483,9 @@ export default function Meihua() {
               />
             </Card>
           )}
+
+          {/* 旁参：把用户自己的盘摆出来做对照，不产判据、不改上面任何结论 */}
+          <MingPanAside />
         </>
       )}
       {quotaModal}

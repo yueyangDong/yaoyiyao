@@ -13,6 +13,7 @@ import { buildAllLiuyaoReadings } from '../utils/liuyaoReading';
 import type { Theme, ThemeReading } from '../utils/divinationCore';
 import { THEME_WORD } from '../utils/divinationCore';
 import ThemeReadingCard from '../components/ThemeReadingCard';
+import MingPanAside from '../components/MingPanAside';
 import { hexagramTexts } from '../data/hexagramFullTexts';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 
@@ -659,6 +660,9 @@ export default function Liuyao() {
             })}
           </Card>
             </CollapsibleCard>
+
+          {/* 旁参：把用户自己的盘摆出来做对照，不产判据、不改上面任何结论 */}
+          <MingPanAside />
 
           <div style={{ textAlign: 'center' }}>
             <Button onClick={resetAll} icon={<RefreshCw size={16} />} size="large">重新起卦</Button>

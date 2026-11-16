@@ -1,6 +1,6 @@
 // 占卜三板块页面冒烟：只保证「能挂载、能起卦、切主题出结论、不炸」。
 // 判据正确性由 utils/__tests__/divinationReading.test.ts 覆盖，这里不重复。
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 
 // 页面依赖 supabase 登录态与每日额度，冒烟测试里全部打桩——
@@ -10,12 +10,18 @@ vi.mock('../../context/AuthContext', () => ({
   AuthProvider: ({ children }: any) => children,
   useAuth: () => ({ user: null, session: null, loading: false }),
 }));
-// currentUser 要能在单个用例里换（大六壬的年命层只在填了出生日期时才出）
+// currentUser 要能在单个用例里换（大六壬的年命层、命盘旁参都只在填了出生信息时才出）。
+// ⚠️ 用 importOriginal 保留真实导出：页面/组件还会用到 correctSolarTime 等纯函数，
+//    整体替换会让它们变成 undefined（旁参就踩过这个）。
 const hoisted = vi.hoisted(() => ({ user: null as any }));
-vi.mock('../../context/UserContext', () => ({
-  UserProvider: ({ children }: any) => children,
-  useUser: () => ({ currentUser: hoisted.user, addHistory: () => {} }),
-}));
+vi.mock('../../context/UserContext', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    UserProvider: ({ children }: any) => children,
+    useUser: () => ({ currentUser: hoisted.user, addHistory: () => {}, users: [], history: [] }),
+  };
+});
 vi.mock('../../hooks/useDailyQuota', () => ({
   useDailyQuota: () => ({ tryConsume: async () => true, quotaModal: null }),
 }));
@@ -198,5 +204,67 @@ describe('灵签页', () => {
     await waitFor(() => expect(container.textContent).toContain('分主题解读'), { timeout: 8000 });
     expect(container.textContent).toContain('未分级');
     expect(hasVerdict(container.textContent || '')).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 命盘旁参（展示层）
+ *
+ * 四个占卜页各接了一块「旁参 · 你的命盘」。它不是判据，但**必须真的渲染出来**——
+ * 这类断链本项目踩过（伏神曾写成 pan.fuShen 恒 undefined，分支永不进）。
+ * 判据正确性在 utils/__tests__/mingPanAside.test.ts，这里只验接线。
+ * ------------------------------------------------------------------ */
+
+describe('命盘旁参', () => {
+  const FULL_USER = {
+    id: 'u-aside', name: '测试', gender: '男' as const,
+    birthYear: 1990, birthMonth: 6, birthDay: 15, birthHour: 14, birthMinute: 30,
+    birthplace: { province: '广东省', city: '深圳市', district: '南山区', longitude: 113.93 },
+    birthCalendar: 'solar' as const, isLeapMonth: false,
+    createdAt: '', updatedAt: '',
+  };
+
+  beforeAll(() => { hoisted.user = FULL_USER; });
+  afterAll(() => { hoisted.user = null; });
+
+  const clickByText = (container: HTMLElement, text: string) => {
+    const btn = Array.from(container.querySelectorAll('button')).find((b) =>
+      (b.textContent || '').includes(text),
+    );
+    expect(btn, `没找到按钮「${text}」`).toBeTruthy();
+    fireEvent.click(btn!);
+  };
+
+  it('大六壬页：起课后出现旁参，且写明不参与判读', async () => {
+    const { container } = wrap(<Daliuren />);
+    clickByText(container, '以此刻起课');
+    await waitFor(() => expect(container.textContent).toContain('旁参 · 你的命盘'), { timeout: 8000 });
+    expect(container.textContent).toContain('不参与上面的判读');
+    expect(container.textContent).toContain('偏弱不等于命差');
+  });
+
+  it('六爻页：起卦后出现旁参', async () => {
+    const { container } = wrap(<Liuyao />);
+    clickByText(container, '大衍筮法起卦');
+    await waitFor(() => expect(container.textContent).toContain('旁参 · 你的命盘'), { timeout: 8000 });
+  });
+
+  it('梅花页：起卦后出现旁参', async () => {
+    const { container } = wrap(<Meihua />);
+    clickByText(container, '时间起卦');
+    await waitFor(() => expect(container.textContent).toContain('旁参 · 你的命盘'), { timeout: 8000 });
+  });
+
+  it('没填出生信息就整块不出现（也不写「请先填写」）', async () => {
+    hoisted.user = null;
+    try {
+      const { container } = wrap(<Daliuren />);
+      clickByText(container, '以此刻起课');
+      await waitFor(() => expect(container.textContent).toContain('分主题解读'), { timeout: 8000 });
+      expect(container.textContent).not.toContain('旁参');
+      expect(container.textContent).not.toContain('请先填写');
+    } finally {
+      hoisted.user = FULL_USER;
+    }
   });
 });

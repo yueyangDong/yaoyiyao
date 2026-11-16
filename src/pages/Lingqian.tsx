@@ -14,6 +14,7 @@ import { useUser } from '../context/UserContext';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import CollapsibleCard from '../components/CollapsibleCard';
 import ThemeReadingCard from '../components/ThemeReadingCard';
+import MingPanAside from '../components/MingPanAside';
 import { buildAllLotReadings } from '../utils/lotReading';
 import type { Theme, ThemeReading } from '../utils/divinationCore';
 // @ts-ignore - canvas-confetti types not available
@@ -542,6 +543,9 @@ export default function Lingqian() {
           </Card>
 
           {/* 操作按钮 */}
+          {/* 旁参：把用户自己的盘摆出来做对照，不产判据、不改上面任何结论 */}
+          <MingPanAside />
+
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <Space>
               <Button
