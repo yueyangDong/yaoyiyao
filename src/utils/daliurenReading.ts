@@ -886,7 +886,9 @@ export function buildDaliurenActions(
   // 古法：「本命，定位不移者也。命上神将为坐命神将」「年命上神可生克制化三传一切物事」，
   // 又「命上神空亡，一生无成」。断法上讲的是吉凶，但行动层不判吉凶——
   // 这里只取「命上神 ↔ 类神」这一对生克，回答的是**这件事该你自己出面还是托人**。
-  // ⚠️ 不取行年：三说互斥，见 daliurenCore.benMingOf 的注释。
+  // ⚠️ 不取行年：顺逆是共识，探源那套数法与一路顺逆等价（验算过），
+  //    真正有争议的是「起点是否随生年旬变」——《六甲起行年法》一派另有算法。
+  //    详见 daliurenCore.benMingOf 的注释。
   const bm = birth ? benMingOf(birth.birthYear, birth.birthMonth, birth.birthDay, birth.birthCalendar || 'solar') : null;
   if (bm) {
     const seat = ke.tianDiPan.positions.find((p) => p.di === bm.zhi);
