@@ -103,5 +103,22 @@ describe('八字排盘页', () => {
       expect(txt).toContain(gz);
     }
     expect(txt).toContain('日主：');
+
+    /**
+     * 领域深度解读里的神煞段必须**默认折叠**：只降字号降颜色还不够——
+     * 正文仍占三四行，扫读时照样抢注意力。这里钉住「默认不占版面 + 点开才出正文」。
+     * （顺带覆盖「神煞一览」已改成默认折叠卡：summary 里写明颗数与排序口径。）
+     */
+    expect(txt).toContain('附｜神煞修饰');
+    expect(txt).toContain('按发力排序');
+    const toggles = Array.from(container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]'));
+    expect(toggles.length).toBeGreaterThan(0);
+    const first = toggles[0];
+    expect(first.getAttribute('aria-expanded')).toBe('false');
+    const bodyLen = (container.textContent || '').length;
+    fireEvent.click(first);
+    expect(first.getAttribute('aria-expanded')).toBe('true');
+    // 展开后正文才进 DOM（神煞段是条件渲染，不是 CSS 隐藏）
+    expect((container.textContent || '').length).toBeGreaterThan(bodyLen);
   }, 30000);
 });

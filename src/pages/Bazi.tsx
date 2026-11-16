@@ -14,6 +14,7 @@ import PayWall from '../components/PayWall';
 import { chartTargetKey } from '../lib/payment';
 import { analyzePersonality } from '../utils/baziPersonality';
 import CollapsibleCard from '../components/CollapsibleCard';
+import { ChevronDown } from 'lucide-react';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
@@ -443,8 +444,10 @@ function FlowDetailBody({ flow }: { flow: FlowInteraction }) {
   );
 }
 
-// 领域深度解读区块（干支 + 十神 + 神煞分层白话）
+// 领域深度解读区块（十神/旺衰为主判，神煞为修饰）
 function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string }) {
+  // ⚠️ hook 必须在 `if (!d) return null` 之前——否则 d 从空变有时 hook 数量会变（React 会报错）
+  const [shaOpen, setShaOpen] = useState(false);
   if (!d) return null;
   return (
     <div style={{
@@ -452,19 +455,92 @@ function DomainDeepBlock({ d, accent }: { d?: DomainDeepReading; accent?: string
       background: 'rgba(107,154,122,0.05)', borderRadius: 6,
       border: `1px solid ${accent || 'rgba(107,154,122,0.2)'}`,
     }}>
-      <Text strong style={{ fontSize: 13.5, color: 'var(--wx-wood)', display: 'block', marginBottom: 8 }}>
-        深度解读 · 干支与神煞
+      <Text strong style={{ fontSize: 13.5, color: 'var(--wx-wood)', display: 'block', marginBottom: 2 }}>
+        深度解读 · 十神为主，神煞为辅
       </Text>
-      {d.sections.map((sec, i) => (
-        <div key={i} style={{ marginBottom: i < d.sections.length - 1 ? 10 : 0 }}>
-          <Text strong style={{ fontSize: 12.5, color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>
-            {i + 1}. {sec.heading}
-          </Text>
-          <Text style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.8, display: 'block' }}>
-            {sec.text}
-          </Text>
-        </div>
-      ))}
+      <Text style={{ display: 'block', fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 8 }}>
+        先看十神、月令、旺衰与喜用神（这些是主判）；神煞只解释气质与提示，不单独定吉凶。
+      </Text>
+      {d.sections.map((sec, i) => {
+        // ⚠️ 神煞段不占序号、降权显示、且**默认折叠**：
+        //    只把它改成灰色小字还不够——正文仍占三四行，扫读时照样抢注意力。
+        //    折叠成一行后，默认视野里只剩主判；想了解气质提示的人才点开。
+        if (sec.role === 'modifier') {
+          return (
+            <div
+              key={i}
+              style={{
+                marginTop: 4, paddingTop: 8,
+                borderTop: i > 0 ? '1px dashed var(--border-light)' : undefined,
+              }}
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={shaOpen}
+                onClick={() => setShaOpen((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShaOpen((v) => !v);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 6, minHeight: 26, cursor: 'pointer', userSelect: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <Text style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, minWidth: 0 }}>
+                  附｜{sec.heading}
+                </Text>
+                <span style={{
+                  display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
+                  fontSize: 11, color: 'var(--text-disabled)',
+                }}>
+                  {shaOpen ? '收起' : '展开'}
+                  <ChevronDown
+                    size={13}
+                    strokeWidth={1.8}
+                    style={{
+                      transform: shaOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </span>
+              </div>
+              {shaOpen && (
+                <Text style={{
+                  display: 'block', marginTop: 4,
+                  fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8,
+                }}>
+                  {sec.text}
+                </Text>
+              )}
+            </div>
+          );
+        }
+        const no = d.sections.slice(0, i + 1).filter((s) => s.role !== 'modifier').length;
+        return (
+          <div key={i} style={{ marginBottom: i < d.sections.length - 1 ? 10 : 0 }}>
+            <Text
+              strong
+              style={{
+                fontSize: 12.5, color: 'var(--text-primary)',
+                display: 'block', marginBottom: 2,
+              }}
+            >
+              {no}. {sec.heading}
+            </Text>
+            <Text style={{
+              fontSize: 13, color: 'var(--text-body)',
+              lineHeight: 1.8, display: 'block',
+            }}>
+              {sec.text}
+            </Text>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1753,8 +1829,21 @@ export default function Bazi() {
             </CollapsibleCard>
           </Card>
 
-          {/* 神煞：按实际发力降序，每颗一段「本局解释」（通用释义见四柱表内 Popover，不在此重复） */}
-          <Card title="神煞一览" style={{ marginBottom: 16 }}>
+          {/* 神煞：按实际发力降序，每颗一段「本局解释」（通用释义见四柱表内 Popover，不在此重复）
+              ⚠️ 神煞是修饰项，标题与导语都必须写明「不单独定吉凶」——
+                 否则用户看到这一屏彩色卡片，会以为神煞才是主判。
+              ⚠️ 默认折叠：它和「日主强弱 / 五行旺衰 / 命格 / 十神组合」是并列的折叠卡，
+                 但只有这一张是修饰项。折起来之后，默认视野里先看到的一律是主判。 */}
+          <CollapsibleCard
+            title="神煞一览（修饰项 · 不单独定吉凶）"
+            summary={baziData.shenSha.length === 0
+              ? '本盘未发现常见神煞 · 点开看说明'
+              : `${baziData.shenSha.length} 颗 · 按发力排序，点开可看每颗含义`}
+            style={{ marginBottom: 16 }}
+          >
+            <Text style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.75, marginBottom: 8 }}>
+              神煞只解释气质与提示，不参与定吉凶。这一盘的强弱、格局与喜忌，看下方的「日主强弱分析 / 五行旺衰 / 命格分析 / 十神组合」。
+            </Text>
             {baziData.shenSha.length === 0 ? (
               <Alert message="此八字四柱中未发现常见神煞，但不代表不好——平凡也是一种福气。" type="info" showIcon />
             ) : (() => {
@@ -1828,7 +1917,7 @@ export default function Bazi() {
                   </>
                 );
               })()}
-          </Card>
+          </CollapsibleCard>
 
           {/* 日主强弱 + 用神 */}
           {strengthAnalysis && (
