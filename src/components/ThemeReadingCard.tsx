@@ -10,7 +10,7 @@ interface Props {
   theme: Theme;
   onChange: (t: Theme) => void;
   /** 板块标识，用于取对应的判读口径声明 */
-  board: 'liuyao' | 'meihua' | 'lot';
+  board: 'liuyao' | 'meihua' | 'lot' | 'daliuren';
   title?: string;
 }
 
@@ -157,7 +157,7 @@ export default function ThemeReadingCard({ readings, theme, onChange, board, tit
               <Paragraph style={{ fontSize: 12, lineHeight: 1.8, color: 'var(--text-secondary)', margin: 0 }}>
                 {JUDGE_RULE[board]}
                 <br />
-                档位刻度：{bandOf('大吉').min} 分以上为「大吉」，依次为「吉 / 平 / 小凶」，{bandOf('凶').min} 分以下为「凶」。三个板块共用同一把尺子，所以同一件事在不同板块得到的方向应当一致；若不一致，看「判读依据」里权重最大那条即可知道分歧出在哪。
+                档位刻度：{bandOf('大吉').min} 分以上为「大吉」，依次为「吉 / 平 / 小凶」，{bandOf('凶').min} 分以下为「凶」。各板块共用同一把尺子，所以同一件事在不同板块得到的方向应当一致；若不一致，看「判读依据」里权重最大那条即可知道分歧出在哪。
               </Paragraph>
             ),
           },

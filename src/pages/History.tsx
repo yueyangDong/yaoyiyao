@@ -16,6 +16,7 @@ const MODULE_INFO: Record<string, { title: string; icon: React.ReactNode; color:
   nayin: { title: '纳音查询', icon: <Waves size={16} strokeWidth={1.5} />, color: 'var(--module-green)' },
   liuyao: { title: '六爻占卜', icon: <Sparkles size={16} strokeWidth={1.5} />, color: 'var(--module-gold)' },
   meihua: { title: '梅花易数', icon: <Flower2 size={16} strokeWidth={1.5} />, color: 'var(--module-red)' },
+  daliuren: { title: '大六壬', icon: <Compass size={16} strokeWidth={1.5} />, color: 'var(--module-blue)' },
   fengshui: { title: '风水相宅', icon: <Compass size={16} strokeWidth={1.5} />, color: 'var(--module-gold)' },
   dream: { title: '周公解梦', icon: <Moon size={16} strokeWidth={1.5} />, color: 'var(--module-blue)' },
   lingqian: { title: '灵签抽签', icon: <ScrollText size={16} strokeWidth={1.5} />, color: 'var(--module-gray)' },

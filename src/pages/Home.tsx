@@ -23,6 +23,7 @@ const MODULES = [
   { key: 'liuyao', path: '/liuyao', title: '六爻占卜', subtitle: '三枚铜钱，问个明白', color: 'var(--module-gold)', icon: <Sparkles size={22} strokeWidth={1.5} /> },
   { key: 'lingqian', path: '/lingqian', title: '灵签抽签', subtitle: '摇一支签，听听签文怎么说', color: 'var(--module-gray)', icon: <ScrollText size={22} strokeWidth={1.5} /> },
   { key: 'meihua', path: '/meihua', title: '梅花易数', subtitle: '观物起卦，处处皆可问', color: 'var(--module-red)', icon: <Flower2 size={22} strokeWidth={1.5} /> },
+  { key: 'daliuren', path: '/daliuren', title: '大六壬', subtitle: '四课三传，看事从哪来、往哪去', color: 'var(--module-blue)', icon: <Compass size={22} strokeWidth={1.5} /> },
   { key: 'nayin', path: '/nayin', title: '纳音查询', subtitle: '六十甲子，听听你的五行纳音', color: 'var(--module-green)', icon: <Waves size={22} strokeWidth={1.5} /> },
   { key: 'fengshui', path: '/fengshui', title: '风水相宅', subtitle: '看看宅相，图个安居顺遂', color: 'var(--module-gold)', icon: <Compass size={22} strokeWidth={1.5} /> },
   { key: 'dream', path: '/dream', title: '周公解梦', subtitle: '梦里乾坤，醒来解一解', color: 'var(--module-blue)', icon: <Moon size={22} strokeWidth={1.5} /> },

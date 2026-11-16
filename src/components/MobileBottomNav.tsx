@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Binary, Star, Sparkles, Flower2, ScrollText, Sun,
+  Binary, Star, Sparkles, Flower2, ScrollText, Sun, Compass,
 } from 'lucide-react';
 
 const TABS = [
@@ -24,6 +24,7 @@ const TABS = [
       { key: 'daily', label: '每日一爻', path: '/daily', icon: <Sun size={16} /> },
       { key: 'liuyao', label: '六爻占卜', path: '/liuyao', icon: <Sparkles size={16} /> },
       { key: 'meihua', label: '梅花易数', path: '/meihua', icon: <Flower2 size={16} /> },
+      { key: 'daliuren', label: '大六壬', path: '/daliuren', icon: <Compass size={16} /> },
       { key: 'lingqian', label: '灵签抽签', path: '/lingqian', icon: <ScrollText size={16} /> },
     ],
     icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18V9h12v9a4 4 0 0 1-8 0Z"/></svg>,

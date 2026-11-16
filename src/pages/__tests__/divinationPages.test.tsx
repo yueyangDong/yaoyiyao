@@ -41,6 +41,7 @@ import { UserProvider } from '../../context/UserContext';
 import Meihua from '../Meihua';
 import Liuyao from '../Liuyao';
 import Lingqian from '../Lingqian';
+import Daliuren from '../Daliuren';
 
 // 页面依赖 useDailyQuota → useAuth + useNavigate，必须给全 Provider 链
 const wrap = (node: React.ReactNode) =>
@@ -104,6 +105,29 @@ describe('六爻页', () => {
     await waitFor(() => expect(container.textContent).toContain('判读依据'));
     expect(hasVerdict(container.textContent || '')).toBe(true);
     // 取用速查必须说明健康题方向相反（否则用户会以为官鬼旺一律是好事）
+    expect(container.textContent).toContain('官鬼旺是病势盛');
+  });
+});
+
+describe('大六壬页', () => {
+  it('正时起课后出现四课、三传、十二宫与分主题解读', async () => {
+    const { container } = wrap(<Daliuren />);
+    expect(container.textContent).toContain('大六壬');
+
+    const run = Array.from(container.querySelectorAll('button')).find((b) =>
+      (b.textContent || '').includes('以此刻起课'),
+    );
+    expect(run).toBeTruthy();
+    fireEvent.click(run!);
+
+    await waitFor(() => expect(container.textContent).toContain('分主题解读'), { timeout: 8000 });
+    expect(hasVerdict(container.textContent || '')).toBe(true);
+    // 盘面四层必须都在：课体、四课、三传、十二宫
+    expect(container.textContent).toContain('课体');
+    expect(container.textContent).toContain('四课');
+    expect(container.textContent).toContain('三传');
+    expect(container.textContent).toContain('天地盘');
+    // 取用速查必须写清健康题方向相反
     expect(container.textContent).toContain('官鬼旺是病势盛');
   });
 });

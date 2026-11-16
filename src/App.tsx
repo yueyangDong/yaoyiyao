@@ -14,6 +14,7 @@ const Ziwei = React.lazy(() => import('./pages/Ziwei'));
 const Nayin = React.lazy(() => import('./pages/Nayin'));
 const Liuyao = React.lazy(() => import('./pages/Liuyao'));
 const Meihua = React.lazy(() => import('./pages/Meihua'));
+const Daliuren = React.lazy(() => import('./pages/Daliuren'));
 const Fengshui = React.lazy(() => import('./pages/Fengshui'));
 const Dream = React.lazy(() => import('./pages/Dream'));
 const Lingqian = React.lazy(() => import('./pages/Lingqian'));
@@ -56,6 +57,9 @@ export default function App() {
             } />
             <Route path="/meihua" element={
               <Suspense fallback={<PageSkeleton />}><Meihua /></Suspense>
+            } />
+            <Route path="/daliuren" element={
+              <Suspense fallback={<PageSkeleton />}><Daliuren /></Suspense>
             } />
             <Route path="/fengshui" element={
               <Suspense fallback={<PageSkeleton />}><Fengshui /></Suspense>

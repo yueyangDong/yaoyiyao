@@ -368,6 +368,7 @@ export default function Profile() {
               { name: 'ziwei', label: '紫微斗数' },
               { name: 'liuyao', label: '六爻占卜' },
               { name: 'meihua', label: '梅花易数' },
+              { name: 'daliuren', label: '大六壬' },
               { name: 'fengshui', label: '风水相宅' },
             ];
             const items = modules.filter(m =>
