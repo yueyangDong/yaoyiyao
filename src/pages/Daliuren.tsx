@@ -10,7 +10,7 @@ import ThemeReadingCard from '../components/ThemeReadingCard';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import type { Theme } from '../utils/divinationCore';
 import { buildKe, buildRandomKe, DI_ZHI_ORDER, JIANG_PLAIN, LIU_QIN_PLAIN, type KeResult } from '../utils/daliurenCore';
-import { buildAllDaliurenReadings, buildDaliurenTiming, positionHints } from '../utils/daliurenReading';
+import { buildAllDaliurenReadings, buildDaliurenActions, buildDaliurenTiming, positionHints } from '../utils/daliurenReading';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -24,6 +24,7 @@ const BEGINNER_GUIDE = [
   { term: '十二天将', plain: '贵人、螣蛇、朱雀、六合、勾陈、青龙、天空、白虎、太常、玄武、太阴、天后。它们给事情加「气质」：贵人主有人帮、白虎主硬碰硬、玄武主有没说清的部分。天将只修饰，不定吉凶。' },
   { term: '类神', plain: '你问什么，就要在盘上找对应的那一类：问钱看妻财、问工作看官鬼、问文书看父母、问病看官鬼（但方向相反，旺是病重）。类神落在初传还是末传，决定这件事是「眼前」还是「以后」。' },
   { term: '应期', plain: '「什么时候」不能凭感觉，要看用神落在哪个地支：落在子就在子月／子日。落空亡的，要等这个支值月值日（填实）或对冲的那个支来冲（冲实）；临驿马的按「日」算、事情快；三传合成局的，按那一季算。它给的是窗口和节奏，不是某一天。' },
+  { term: '所以呢', plain: '盘看懂了要能落到「明天做什么」。最后一层把「驿马主快」「贵人临亥」翻成三件事：找哪一类人、往哪个方向使劲、用什么方式推。它只定方向、不替你拍板——医生、合同、账目仍按现实里的规矩来。' },
 ];
 
 const THEME_GUIDE = [
@@ -39,6 +40,14 @@ const RELATION_COLOR: Record<string, string> = {
   下贼上: 'var(--wx-fire)',
   上克下: 'var(--wx-earth)',
   无克: 'var(--text-disabled)',
+};
+
+/** 行动层四类的颜色：找人/方向是「往哪使劲」，方式/避坑是「怎么使劲、别往哪撞」 */
+const ACTION_COLOR: Record<string, string> = {
+  找人: 'gold',
+  方向: 'blue',
+  方式: 'cyan',
+  避坑: 'orange',
 };
 
 export default function Daliuren() {
@@ -57,6 +66,11 @@ export default function Daliuren() {
   // 应期随主题变（锚点是该类神的落点），所以要传 theme；性别决定爱情题锚在妻财还是官鬼
   const timing = useMemo(
     () => (ke ? buildDaliurenTiming(ke, theme, currentUser?.gender) : null),
+    [ke, theme, currentUser?.gender],
+  );
+  // 行动层同理：「该找谁」在不同主题下是不同的人（勾陈＝经办／老病历／牵旧关系的人）
+  const actions = useMemo(
+    () => (ke ? buildDaliurenActions(ke, theme, currentUser?.gender) : []),
     [ke, theme, currentUser?.gender],
   );
 
@@ -307,6 +321,50 @@ export default function Daliuren() {
               </Space>
 
               <Alert style={{ marginTop: 10 }} type="info" showIcon message={timing.note} />
+            </Card>
+          )}
+
+          {/* 行动层：只把上面的结论翻成「找谁、往哪走、怎么推」，不重新判吉凶 */}
+          {actions.length > 0 && (
+            <Card
+              title={<><Compass size={16} /> 所以呢 · 该找谁、往哪走</>}
+              style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+            >
+              <Text style={{ display: 'block', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 10 }}>
+                这一层不重新判吉凶，只把上面的结论翻成能做的事：找哪一类人、往哪个方向使劲、用什么方式推、哪里别撞。
+                每条都附了盘面依据——觉得不对，就按依据自己改。
+              </Text>
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {actions.map((a, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', gap: 8, alignItems: 'flex-start',
+                      padding: '9px 10px', borderRadius: 10,
+                      border: '1px solid var(--border-light)',
+                      background: 'rgba(0,0,0,0.015)',
+                    }}
+                  >
+                    <Tag color={ACTION_COLOR[a.kind]} style={{ fontSize: 11, margin: '1px 0 0', flex: '0 0 auto' }}>
+                      {a.kind}
+                    </Tag>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ display: 'block', fontSize: 13, lineHeight: 1.8, color: 'var(--text-body)' }}>
+                        {a.action}
+                      </Text>
+                      <Text style={{ display: 'block', marginTop: 2, fontSize: 11.5, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+                        {a.basis}
+                      </Text>
+                    </div>
+                  </div>
+                ))}
+              </Space>
+              <Alert
+                style={{ marginTop: 10 }}
+                type="warning"
+                showIcon
+                message="它给的是「往哪儿使劲」，不是「保证成」。医疗、法律、财务上的决定仍按现实规矩来——该看的医生要看，该签的合同要读，该算的账要算。"
+              />
             </Card>
           )}
 

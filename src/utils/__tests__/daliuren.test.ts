@@ -4,7 +4,8 @@ import {
   type KeResult,
 } from '../daliurenCore';
 import {
-  buildAllDaliurenReadings, buildDaliurenReading, buildDaliurenTiming, wangShuaiOf, chuanShapeOf,
+  buildAllDaliurenReadings, buildDaliurenActions,
+  buildDaliurenReading, buildDaliurenTiming, wangShuaiOf, chuanShapeOf,
 } from '../daliurenReading';
 import { VERDICT_ORDER, THEMES, JUDGE_RULE } from '../divinationCore';
 import { DZ_CHONG } from '../diZhiRelations';
@@ -300,5 +301,148 @@ describe('应期层', () => {
     const t = buildDaliurenTiming(ke);
     expect(['快', '平', '慢']).toContain(t.speed.level);
     expect(t.speed.why.length).toBeGreaterThan(4);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 行动层：把盘面翻成「找谁、往哪走、怎么推」
+ * 锚点盘同上：元首课，三传 酉(官鬼,勾陈)→辰(妻财,玄武,空)→亥(父母)，空亡辰/巳，驿马申。
+ * ------------------------------------------------------------------ */
+
+describe('行动层', () => {
+  const ke = keOf(ANCHOR);
+  const of = (t?: Parameters<typeof buildDaliurenActions>[1]) => buildDaliurenActions(ke, t, 'male');
+  const pick = (t: Parameters<typeof buildDaliurenActions>[1], kind: string) =>
+    of(t).find((a) => a.kind === kind)!;
+
+  it('四类动作齐备：找人 / 方向 / 方式 / 避坑（页面按这四类分条）', () => {
+    const kinds = of('事业').map((a) => a.kind);
+    expect(kinds).toEqual(['找人', '方向', '方式', '避坑']);
+    // 换主题也不能塌成三条：课体恒在，方向恒给
+    for (const th of THEMES) {
+      const ks = buildDaliurenActions(ke, th, 'male').map((a) => a.kind);
+      expect(ks).toContain('找人');
+      expect(ks).toContain('方向');
+      expect(ks).toContain('方式');
+      expect(ks).toContain('避坑');
+    }
+  });
+
+  it('每条都要带可核对的盘面依据，且不留空串、不写「缺数据」', () => {
+    for (const th of THEMES) {
+      for (const a of buildDaliurenActions(ke, th, 'male')) {
+        expect(a.action.length).toBeGreaterThan(6);
+        expect(a.basis.length).toBeGreaterThan(6);
+        expect(a.action).not.toContain('缺数据');
+        expect(a.basis).not.toContain('缺数据');
+        // basis 必须能被用户对着盘核：含地支、天将、课体、方位之一
+        expect(a.basis).toMatch(/[子丑寅卯辰巳午未申酉戌亥]|天将|课体|驿马/);
+      }
+    }
+  });
+
+  it('⚠️ 同一颗天将换主题就是另一类人：事业「勾陈＝老经办」，健康「勾陈＝老病历」', () => {
+    const career = pick('事业', '找人');
+    const med = pick('健康', '找人');
+    expect(career.basis).toContain('勾陈');
+    expect(med.basis).toContain('勾陈');
+    expect(career.action).toContain('经办');
+    expect(med.action).toContain('病历');
+    expect(career.action).not.toBe(med.action);
+  });
+
+  it('⚠️ 凶将不是人选：类神乘玄武时，「找人」必须回落到吉将并说明理由', () => {
+    // 财运：妻财乘玄武（辰），玄武主「没说清的部分」，不能当「该去找的人」
+    const money = pick('财运', '找人');
+    expect(money.basis).toContain('玄武');
+    expect(money.basis).toContain('不是人选');
+    expect(money.action).not.toContain('暗处的人');
+    expect(money.action).toContain('还没现形');
+    // 爱情题回落的是牵线人，不是「有第三方没说清的人」
+    expect(pick('爱情', '找人').action).toContain('牵线人');
+    expect(pick('爱情', '找人').action).not.toContain('第三方');
+  });
+
+  it('⚠️ 「空」的提醒分主题：财运说别付钱，爱情说别摊牌，两者不能互换', () => {
+    const money = pick('财运', '方式').action;
+    const love = pick('爱情', '方式').action;
+    expect(money).toContain('付钱');
+    expect(love).toContain('摊牌');
+    expect(love).not.toContain('付钱');
+    expect(money).not.toContain('摊牌');
+    // 问健康的人不该被嘱咐「定金」「签字」
+    expect(pick('健康', '方式').action).not.toContain('定金');
+    expect(pick('健康', '方式').action).not.toContain('签字');
+  });
+
+  it('⚠️ 方向锚点不落旬空之支：妻财辰空 → 改锚三传中不空的那一支', () => {
+    expect(ke.flags.kongZhi).toContain('辰');
+    const d = pick('财运', '方向');
+    expect(d.basis).toContain('旬空');
+    expect(d.basis).not.toContain('锚定辰');
+    // 通盘检查：任何主题给出的锚定支都不能是空支
+    for (const th of THEMES) {
+      const basis = pick(th, '方向').basis;
+      const m = basis.match(/锚定(.)/);
+      if (m) expect(ke.flags.kongZhi.includes(m[1])).toBe(false);
+    }
+  });
+
+  it('方式由课体定，且 manner 文本跨主题通用（不写只适合事业的「走审批」）', () => {
+    const way = pick('健康', '方式');
+    expect(way.basis).toContain(ke.keTi.name);
+    expect(way.action).not.toContain('审批');
+    expect(way.action).not.toContain('客户');
+  });
+
+  it('避坑必须落在具体盘面事实上：要么对面压过来、要么重空、要么天将、要么伏吟', () => {
+    for (const th of THEMES) {
+      const p = pick(th, '避坑');
+      expect(p.basis).toMatch(/克|旬空|乘|伏吟/);
+    }
+  });
+
+  it('⚠️ 天将按「天盘支」取，不按「在哪一课取到」：类神从四课取到时也要有将名', () => {
+    // 这张盘的妻财不在三传，落「日干上神」（子）乘太常——若只读三传的 tianJiang，
+    // 就会写出「妻财乘落…」这种断句
+    const sk = keOf(new Date(2026, 10, 1, 1, 0), { hourZhi: '戌' });
+    const a = buildDaliurenActions(sk, '爱情', 'male').find((x) => x.kind === '找人')!;
+    expect(a.basis).toContain('日干上神');
+    expect(a.basis).toContain('太常');
+    expect(a.basis).not.toMatch(/乘[（落，。；）]/);
+    expect(a.action).toContain('熟人');
+  });
+
+  it('天将不会缺席：任意盘任意主题下，「乘」后面必须跟将名', () => {
+    const dates = [
+      new Date(2026, 10, 1, 1, 0), new Date(2026, 10, 8, 9, 0), new Date(2026, 10, 16, 16, 35),
+      new Date(2026, 6, 10, 12, 0), new Date(2026, 0, 20, 6, 0),
+    ];
+    for (const d of dates) {
+      const k = keOf(d);
+      for (const th of THEMES) {
+        for (const a of buildDaliurenActions(k, th, 'male')) {
+          expect(a.basis).not.toMatch(/乘[（落，。；）]/);
+          expect(a.action).not.toMatch(/乘[（落，。；）]/);
+        }
+      }
+    }
+  });
+
+  it('⚠️ 防套话：换盘必须换话（同一套句子换个盘还成立就是套话）', () => {
+    const other = keOf(new Date(2026, 6, 10, 12, 0));
+    const a = buildDaliurenActions(ke, '事业', 'male');
+    const b = buildDaliurenActions(other, '事业', 'male');
+    const dirA = a.find((x) => x.kind === '方向')!;
+    const dirB = b.find((x) => x.kind === '方向')!;
+    expect(dirA.basis).not.toBe(dirB.basis);
+  });
+
+  it('不使用承诺式措辞，也不给医疗/法律/财务的指令', () => {
+    const all = THEMES.flatMap((th) => buildDaliurenActions(ke, th, 'male'))
+      .map((a) => a.action + a.basis).join('');
+    for (const banned of ['一定会', '必然', '保证', '绝对', '必定']) {
+      expect(all.includes(banned)).toBe(false);
+    }
   });
 });

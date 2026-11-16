@@ -659,6 +659,262 @@ export function buildDaliurenTiming(ke: KeResult, theme?: Theme, gender?: string
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * 行动层：把「驿马主快」「贵人临亥」翻成「找谁、往哪、怎么做、别踩哪」
+ *
+ * ⚠️ 为什么单独一层：吉凶说「会怎么样」，应期说「什么时候」，都还没回答用户
+ *    关掉页面之前最想问的那句——「所以我现在该干什么」。但这一层**不许生新判据**：
+ *    每一条都必须由盘面已有事实推出来（贵人落宫、驿马支、类神乘的天将、课体、
+ *    旬空、四课上下关系），并且把这些事实写进 basis 让用户能自己核对。
+ *
+ * ⚠️ 也不许越界：占卜不给医疗/法律/财务的指令，只给「找谁、往哪个方向、
+ *    用什么方式开口」这类可核对的行动，判断权始终在用户手里。
+ * ------------------------------------------------------------------ */
+
+export interface DaliurenAction {
+  kind: '找人' | '方向' | '方式' | '避坑';
+  /** 具体做什么（一句话，可执行） */
+  action: string;
+  /** 盘面依据（必须含具体支/天将/课体，能被用户核对） */
+  basis: string;
+}
+
+/** 地支 → 方位（后天八卦方位，子正北；地支固定方位，不随盘变） */
+const ZHI_DIRECTION: Record<string, string> = {
+  子: '正北', 丑: '东北偏北', 寅: '东北偏东', 卯: '正东',
+  辰: '东南偏东', 巳: '东南偏南', 午: '正南', 未: '西南偏南',
+  申: '西南偏西', 酉: '正西', 戌: '西北偏西', 亥: '西北偏北',
+};
+
+/** 天将 → 该找的是「哪一类人」。只描述人的属性，不判吉凶 */
+const JIANG_PERSON: Record<string, string> = {
+  贵人: '有位置、能拍板的前辈或上级',
+  螣蛇: '消息灵通的中间人（听消息，别全信）',
+  朱雀: '能写能说的人——文书、法务、经办窗口',
+  六合: '能牵线的中间人——客户介绍、同行引荐、共同朋友',
+  勾陈: '管旧账、跑流程的老经办',
+  青龙: '手上有资源或预算的东家',
+  天空: '只会许诺的人（他的话一定要落到纸上）',
+  白虎: '能办硬事的人——一线负责人、执法、医、工程',
+  太常: '管后勤与日常的人（饭桌上谈成的事多在他手上）',
+  玄武: '暗处的人（可以听，别托付）',
+  太阴: '不露面却说得上话的内助',
+  天后: '女性长辈或照料型的人',
+};
+
+/**
+ * ⚠️ 健康题的天将不能套上面那张表：
+ * 「官鬼乘勾陈」在事业题是「跑流程的老经办」，在健康题却是「老病历」——
+ * 同一颗星换个主题就是另一类人。这就是「该分档却写死」的硬错，必须单独一张。
+ */
+const JIANG_PERSON_MED: Record<string, string> = {
+  贵人: '有经验的主任级医生（别在小诊所反复试）',
+  螣蛇: '让你越查越慌的那条线——认准一家把检查做完整',
+  朱雀: '能把病历与报告讲清楚的人（复查、转诊靠他）',
+  六合: '能帮你约上号、接上人的熟人',
+  勾陈: '掌握旧病历、旧检查结果的老医生',
+  青龙: '愿意给你好资源的一方（好科室、好设备）',
+  天空: '别信「包好」「马上见效」这类许诺',
+  白虎: '要动手处置的那一类——外科、急诊、该做的检查',
+  太常: '偏调理与日常起居的那一类（营养、作息、康复）',
+  玄武: '有没说清的症状——把既往资料带全，别漏说',
+  太阴: '细心、愿意听你说完的医护',
+  天后: '照料型的医护或家人（能陪你去的那种）',
+};
+
+/** 爱情题同理：「暗处的人」在感情里是「没说清的第三方」，不是合作方 */
+const JIANG_PERSON_LOVE: Record<string, string> = {
+  贵人: '双方都敬重的长辈或介绍人',
+  螣蛇: '爱传话的人（听一半就好）',
+  朱雀: '会说话、会递话的中间人',
+  六合: '现成的牵线人——共同朋友、同事、介绍人',
+  勾陈: '牵着旧关系的人（前任、旧账相关）',
+  青龙: '条件不错的介绍对象',
+  天空: '许诺多、兑现少的人',
+  白虎: '脾气硬的人——硬碰只会更僵',
+  太常: '常来往的熟人（饭局上的介绍最有效）',
+  玄武: '有第三方没说清的人或事',
+  太阴: '不露面却说得上话的人（她的闺蜜、家人）',
+  天后: '女性长辈或她的好友',
+};
+
+/** 课体 → 这件事该用什么方式推（只说动作，不说好坏；措辞要能跨主题通用） */
+const KE_TI_ACTION: Record<string, string> = {
+  元首: '按正规路子走：该走的程序走完，别一上来就托关系绕开它',
+  重审: '先把内部或自己这一头理顺，再往外推。外部推不动，通常是里面还没通',
+  比用: '两条路都通，选与你气场更像的那条走到底，别脚踩两条船',
+  涉害: '几条路都带伤，挑伤得最轻的那条走，别追求最优解',
+  遥克: '目标隔着一层，先找中间人搭桥，别直接冲上去',
+  昴星: '先别出手，等对方给信号。这阶段越主动越被动',
+  别责: '没有正面对手，去借力——借人、借平台、借名头',
+  八专: '事与己贴得太近，先拉开一段时间或换个位置再看',
+  伏吟: '别推。该做的做完就停，硬推只会在原地消耗',
+  返吟: '别反复改主意：定了就执行，改到第三次事情就散了',
+};
+
+/**
+ * 各主题「这件事」指代什么——让「找人」那句落在具体事上
+ */
+const THEME_TARGET: Record<Theme, string> = {
+  事业: '你想要的这个位置或项目',
+  爱情: '你想要的这段关系',
+  亲情: '家里这件事',
+  财运: '这笔钱或这个单子',
+  健康: '这次的身体问题',
+  学业: '这场考试或这份材料',
+};
+
+/**
+ * 「这一步是空的」该怎么落地——同样必须分主题。
+ * ⚠️ 让问健康的人「别付钱」、让问感情的人「定金再谈」，就是把财务话术套到别处去了。
+ */
+const KONG_TIP: Record<Theme, string> = {
+  事业: '先别表态、别签字，把话落到纸面或一张定金上再谈',
+  爱情: '先别摊牌、别定关系，等对方把话说到明处',
+  亲情: '先别一口答应，把话问到底再说',
+  财运: '先别付钱、别投，等钱或合同真到位',
+  健康: '结果没出来之前别自己下结论，也别急着定方案',
+  学业: '先别急着报名或交材料，等条件确认清楚再递',
+};
+
+/**
+ * 行动层。产出 3~4 条，每条都带盘面依据。
+ * @param theme 决定「找的是哪一类人」与事件指代；缺省按事业口径
+ */
+export function buildDaliurenActions(ke: KeResult, theme?: Theme, gender?: string): DaliurenAction[] {
+  const t: Theme = theme || '事业';
+  const probe = probeOf(t, gender);
+  const hit = findHits(ke, probe.primary)[0];
+  const dir = (z: string) => ZHI_DIRECTION[z] || '';
+  const out: DaliurenAction[] = [];
+
+  /* ---------- ① 找谁 ---------- */
+  // ⚠️ 天将取人必须按主题分表：同一颗「勾陈」在事业是跑流程的经办，在健康是老病历。
+  // ⚠️ 而且「凶将」不能当「去找的人」：天空/玄武/白虎/螣蛇描述的是风险，不是人选
+  //    ——写出「去找暗处的人」「去找有第三方没说清的人」就是逻辑错位。
+  const personTable = t === '健康' ? JIANG_PERSON_MED : t === '爱情' ? JIANG_PERSON_LOVE : JIANG_PERSON;
+  const HAZARD_JIANG = ['天空', '玄武', '白虎', '螣蛇'];
+  const PERSON_FALLBACK: Record<Theme, string> = {
+    事业: '贵人', 爱情: '六合', 健康: '贵人', 亲情: '贵人', 财运: '青龙', 学业: '朱雀',
+  };
+  // ⚠️ 天将在天地盘上「按天盘支」挂，不按「在哪一课挂」：类神从三传取到时直接读，
+  //    从四课取到时要回天地盘查同一支的天将——否则会写出「官鬼乘（这一颗主风险…）」这种断句。
+  const jiangOfZhi = (z: string) => ke.tianDiPan.positions.find((p) => p.tian === z)?.jiang || '';
+  const jiang = hit ? (hit.item?.tianJiang || jiangOfZhi(hit.zhi)) : '';
+  const cheng = jiang ? `乘${jiang}` : '';
+  const usablePerson = jiang && personTable[jiang] && !HAZARD_JIANG.includes(jiang) ? personTable[jiang] : '';
+  if (hit && usablePerson) {
+    out.push({
+      kind: '找人',
+      action: `先去找「${usablePerson}」这一类人——${THEME_TARGET[t]}要多借一道手，别一个人扛。`,
+      basis: `${probe.primary}${cheng}落${hit.where}（${hit.zhi}），这类人在${dir(hit.zhi)}；方位只是参照，圈子对得上更重要。`,
+    });
+  } else {
+    const fallbackKey = PERSON_FALLBACK[t];
+    const fallbackPerson = personTable[fallbackKey];
+    const guiZhi = ke.tianDiPan.guiRenZhi;
+    const why = !hit
+      ? `${probe.primary}不入三传也不上日干支`
+      : jiang
+        ? `${probe.primary}${cheng}（这一颗主风险，不是人选）`
+        : `${probe.primary}落${hit.where}（${hit.zhi}），未取到天将`;
+    out.push({
+      kind: '找人',
+      action: `这张盘上「帮你的人」还没现形，就先按「${fallbackPerson}」去找——围绕${THEME_TARGET[t]}，找对人比做对事省力。`,
+      basis: `${why}；贵人（${guiZhi}）临地盘${ke.tianDiPan.guiRenOnDi}，在${dir(ke.tianDiPan.guiRenOnDi)}，先从这一头问路。`,
+    });
+  }
+
+  /* ---------- ② 往哪 ---------- */
+  const ma = ke.sanChuan.find((s) => s.yiMa);
+  if (ma) {
+    out.push({
+      kind: '方向',
+      action: `要动就往${dir(ma.zhi)}动——换场地、出差、走一趟见人，都比在原地等强。`,
+      basis: `${ma.stage}${ma.zhi}临日马（日支${ke.dateInfo.dayZhi}的马在${ke.flags.yiMaZhi}），驿马主「动」，这个方向最省力。`,
+    });
+  } else {
+    // ⚠️ 锚点不能落在旬空之支上：空是「暂时不落实」，拿它指方向等于指了个虚位。
+    const kongZhi = ke.flags.kongZhi;
+    const firstLive = ke.sanChuan.find((s) => !s.kong)?.zhi || ke.sanChuan[0].zhi;
+    const hitIsKong = !!hit && kongZhi.includes(hit.zhi);
+    const focusZhi = hit && !hitIsKong ? hit.zhi : firstLive;
+    const anchorBy = hit
+      ? (hitIsKong ? `${probe.primary}落${hit.zhi}，但${hit.zhi}旬空、不作着力点` : `${probe.primary}落此`)
+      : `取三传中不空的${focusZhi}（发用之支）`;
+    out.push({
+      kind: '方向',
+      action: `这件事的着力点在${dir(focusZhi)}——相关的人、场合、机会往那个方向找；三传无马，不必刻意远行。`,
+      basis: `锚定${focusZhi}（${anchorBy}），三传${ke.sanChuan.map((s) => s.zhi).join('/')}无驿马。`,
+    });
+  }
+
+  /* ---------- ③ 怎么做（课体定方式） ---------- */
+  const tiWord = Object.keys(KE_TI_ACTION).find((k) => ke.keTi.name.includes(k));
+  if (tiWord) {
+    const c0 = ke.sanChuan[0];
+    const kongHit = c0.kong || (hit?.item?.kong ?? false);
+    out.push({
+      kind: '方式',
+      // ⚠️ 「空」的提醒也必须分主题：让问健康的人「别付钱」、让问感情的人「定金再谈」都是错位
+      action: `${KE_TI_ACTION[tiWord]}。${kongHit ? `而且现在这一步是「空」的——${KONG_TIP[t]}。` : ''}`,
+      basis: `课体${ke.keTi.name}，发用${c0.dunGan}${c0.zhi}${kongHit ? `；${c0.kong ? '发用' : '类神'}落旬空（${ke.flags.kongZhi.join('、')}空）` : ''}。`,
+    });
+  }
+
+  /* ---------- ④ 别踩哪里 ---------- */
+  const ganUp = ke.siKe[0].upper;
+  const zhiUp = ke.siKe[2].upper;
+  const guiWx = DZ_WX[ganUp];
+  const shiWx = DZ_WX[zhiUp];
+  const kongCount = ke.sanChuan.filter((s) => s.kong).length;
+  if (shiWx && guiWx && WX_KE[shiWx] === guiWx) {
+    out.push({
+      kind: '避坑',
+      action: '别硬顶：对面正在压你这一头，硬碰只会更僵——换时间、换场合、或换一个层级去谈。',
+      basis: `第三课上神${zhiUp}（${shiWx}）克第一课上神${ganUp}（${guiWx}），压力是从对面过来的。`,
+    });
+  } else if (kongCount >= 2) {
+    out.push({
+      kind: '避坑',
+      action: '现在多数的「进展」都还悬着——别提前庆祝，也别提前投入；等落地了再动。',
+      basis: `三传里 ${kongCount} 支落旬空（${ke.flags.kongZhi.join('、')}空），过程热但结果没落实。`,
+    });
+  } else if (jiang === '白虎' || jiang === '玄武' || jiang === '天空') {
+    // 同一颗天将，在健康/爱情里提醒的是完全不同的事
+    const tip = t === '健康'
+      ? (jiang === '白虎' ? '别硬扛——该做的检查别拖，能动刀的别拖成慢病'
+        : jiang === '玄武' ? '症状里有没说清的部分，别自己按感觉定性'
+          : '别信「包好」「一次就好」这类许诺')
+      : t === '爱情'
+        ? (jiang === '玄武' ? '这段里还有没说清的第三方，先弄清再动'
+          : jiang === '白虎' ? '硬碰只会更僵，缓一缓再看'
+            : '对方许诺多、兑现少，先看他做了什么')
+        : `这条线上${jiang === '白虎' ? '有硬碰硬的成分' : jiang === '玄武' ? '有没说清的部分' : '口惠多于实惠'}——别把底牌先亮出来`;
+    out.push({
+      kind: '避坑',
+      action: `${tip}。`,
+      basis: `类神${probe.primary}乘${jiang}，天将只定气质、定不了成不成，但提醒你留一手。`,
+    });
+  } else if (ke.flags.fuYin) {
+    out.push({
+      kind: '避坑',
+      action: '别在这段时间做「大动作」——换方向、签约、摊牌都往后放，先守住手里已有的。',
+      basis: '伏吟课天地盘重叠，静中无变；这阶段的动作多半花在原地。',
+    });
+  } else {
+    out.push({
+      kind: '避坑',
+      action: '盘上没有明显的坑——那就别自己造：别反复起课问同一件事，也别把结论当承诺。',
+      basis: kongCount === 0
+        ? `三传${ke.sanChuan.map((s) => s.zhi).join('/')}都不落旬空（${ke.flags.kongZhi.join('、')}空），四课上下也无单向压制。`
+        : `三传${ke.sanChuan.map((s) => s.zhi).join('/')}里落旬空的只有 ${kongCount} 支（${ke.flags.kongZhi.join('、')}空），四课上下也无单向压制。`,
+    });
+  }
+
+  return out;
+}
+
 /** 十二宫盘上「哪一宫值得看」的提示语（页面用，不改判据） */
 export function positionHints(ke: KeResult): string[] {
   const out: string[] = [];

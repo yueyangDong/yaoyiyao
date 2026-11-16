@@ -133,6 +133,12 @@ describe('大六壬页', () => {
     expect(container.textContent).toContain('应期');
     expect(container.textContent).toContain('不给具体某一天');
     expect(container.textContent).toContain('最近的');
+    // 行动层：四类动作都要落到页面上，且必须声明「不替你做决定」
+    expect(container.textContent).toContain('所以呢');
+    for (const kind of ['找人', '方向', '方式', '避坑']) {
+      expect(container.textContent).toContain(kind);
+    }
+    expect(container.textContent).toContain('往哪儿使劲');
   });
 });
 
