@@ -10,9 +10,11 @@ vi.mock('../../context/AuthContext', () => ({
   AuthProvider: ({ children }: any) => children,
   useAuth: () => ({ user: null, session: null, loading: false }),
 }));
+// currentUser 要能在单个用例里换（大六壬的年命层只在填了出生日期时才出）
+const hoisted = vi.hoisted(() => ({ user: null as any }));
 vi.mock('../../context/UserContext', () => ({
   UserProvider: ({ children }: any) => children,
-  useUser: () => ({ currentUser: null, addHistory: () => {} }),
+  useUser: () => ({ currentUser: hoisted.user, addHistory: () => {} }),
 }));
 vi.mock('../../hooks/useDailyQuota', () => ({
   useDailyQuota: () => ({ tryConsume: async () => true, quotaModal: null }),
@@ -143,6 +145,28 @@ describe('大六壬页', () => {
     expect(container.textContent).toContain('这张盘的气象');
     expect(container.textContent).toMatch(/贵人[顺逆]布/);
     expect(container.textContent).toContain('它不改吉凶');
+  });
+
+  it('填了出生日期后，行动层多一条「谁出面」（年命层），没填则不出', async () => {
+    hoisted.user = {
+      id: 'u-test', gender: 'male', birthYear: 1984, birthMonth: 6, birthDay: 10,
+      birthHour: null, birthMinute: null, birthplace: null, birthplaceLng: null,
+      birthCalendar: 'solar',
+    };
+    try {
+      const { container } = wrap(<Daliuren />);
+      const run = Array.from(container.querySelectorAll('button')).find((b) =>
+        (b.textContent || '').includes('以此刻起课'),
+      );
+      fireEvent.click(run!);
+      await waitFor(() => expect(container.textContent).toContain('谁出面'), { timeout: 8000 });
+      // 只讲「谁去办」，不许替用户断言成败
+      expect(container.textContent).not.toMatch(/一定|必然|注定|保证会/);
+      // 页面要说清这条从哪来，否则「本命」是悬空术语
+      expect(container.textContent).toContain('本命');
+    } finally {
+      hoisted.user = null;
+    }
   });
 });
 
