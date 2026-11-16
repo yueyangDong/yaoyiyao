@@ -4,9 +4,10 @@ import {
   type KeResult,
 } from '../daliurenCore';
 import {
-  buildAllDaliurenReadings, buildDaliurenReading, wangShuaiOf, chuanShapeOf,
+  buildAllDaliurenReadings, buildDaliurenReading, buildDaliurenTiming, wangShuaiOf, chuanShapeOf,
 } from '../daliurenReading';
 import { VERDICT_ORDER, THEMES, JUDGE_RULE } from '../divinationCore';
+import { DZ_CHONG } from '../diZhiRelations';
 
 /* ------------------------------------------------------------------ *
  * 夹具
@@ -190,5 +191,114 @@ describe('分主题判读', () => {
   it('判读口径已登记，页面才能说明「凭什么这么判」', () => {
     expect(JUDGE_RULE.daliuren).toContain('类神');
     expect(JUDGE_RULE.daliuren).toContain('三传');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 应期层
+ *
+ * 锚点盘（2026-11-16 16:35）：元首课，月建亥，甲午日，三传 酉(官鬼)→辰(妻财,空)→亥(父母)，
+ * 空亡辰/巳，驿马申。这些事实是手算核对过的，下面的断言全部落在这几条上。
+ * ------------------------------------------------------------------ */
+
+describe('应期层', () => {
+  const ke = keOf(ANCHOR);
+  const main = (t: ReturnType<typeof buildDaliurenTiming>) => t.windows[0];
+
+  it('主窗口恒在首位、标「主」，且是类神/发用那一支（页面顺序＝判读层级）', () => {
+    expect(main(buildDaliurenTiming(ke)).role).toBe('主');
+    // 未定主题 → 取发用（初传）
+    expect(main(buildDaliurenTiming(ke)).zhi).toBe(ke.sanChuan[0].zhi);
+    expect(main(buildDaliurenTiming(ke)).basis).toContain('发用');
+  });
+
+  it('⚠️ 换主题必须换主窗口：锚点跟着类神落点走', () => {
+    // 三传：酉官鬼 / 辰妻财 / 亥父母
+    expect(main(buildDaliurenTiming(ke, '事业', 'male')).zhi).toBe('酉');
+    expect(main(buildDaliurenTiming(ke, '健康', 'male')).zhi).toBe('酉'); // 病神同取官鬼
+    expect(main(buildDaliurenTiming(ke, '财运', 'male')).zhi).toBe('辰');
+    expect(main(buildDaliurenTiming(ke, '学业', 'male')).zhi).toBe('亥');
+    expect(main(buildDaliurenTiming(ke, '亲情', 'male')).zhi).toBe('亥');
+    // 爱情分性别：男取妻财（辰），女取官鬼（酉）
+    expect(main(buildDaliurenTiming(ke, '爱情', 'male')).zhi).toBe('辰');
+    expect(main(buildDaliurenTiming(ke, '爱情', 'female')).zhi).toBe('酉');
+  });
+
+  it('落旬空的类神要等「冲实」：辰空 → 参考窗口出现戌，并写明理由', () => {
+    const t = buildDaliurenTiming(ke, '财运', 'male');
+    expect(main(t).zhi).toBe('辰');
+    const chong = t.windows.find((w) => w.zhi === '戌');
+    expect(chong).toBeDefined();
+    expect(chong!.role).toBe('参考');
+    expect(chong!.basis).toContain('冲实');
+    expect(t.rules.join('')).toContain('落空');
+  });
+
+  it('日月两尺度都要给：月＝干支行对应的农历月，日＝最近一个该支之日', () => {
+    const t = buildDaliurenTiming(ke, '事业', 'male');
+    const w = main(t);
+    // 月建亥（十月）→ 酉为八月，隔 10 个月
+    expect(w.when).toContain('农历八月');
+    expect(w.when).toContain('10 个月后');
+    // 甲午日 → 最近酉日 3 天后
+    expect(w.dayHint).toContain('3 天后');
+    // 亲情题锚在亥（末传）＝本月、5 天后
+    const jia = main(buildDaliurenTiming(ke, '亲情', 'male'));
+    expect(jia.when).toContain('就在本月');
+    expect(jia.dayHint).toContain('5 天后');
+  });
+
+  it('判据编号连续、不跳号（缺哪条就少一号，不能出现 ①③④）', () => {
+    const CIRCLED = ['①', '②', '③', '④', '⑤'];
+    for (const th of [undefined, '事业', '财运', '亲情'] as const) {
+      const t = buildDaliurenTiming(ke, th as any, 'male');
+      t.rules.forEach((r, i) => {
+        expect(r.startsWith(CIRCLED[i])).toBe(true);
+      });
+      // 驿马一条恒在（有马说马、无马也要交代"按常速论"）
+      expect(t.rules.join('')).toContain('驿马');
+    }
+  });
+
+  it('窗口不重复、最多三个，主窗口不参与参考排序', () => {
+    const t = buildDaliurenTiming(ke, '事业', 'male');
+    expect(t.windows.length).toBeGreaterThanOrEqual(2);
+    expect(t.windows.length).toBeLessThanOrEqual(3);
+    expect(new Set(t.windows.map((w) => w.zhi)).size).toBe(t.windows.length);
+    expect(t.windows.filter((w) => w.role === '主')).toHaveLength(1);
+  });
+
+  it('伏吟盘：参考窗口取「冲发用」，rules 里写明伏吟要等冲', () => {
+    const fu = keOf(new Date(2026, 10, 16, 0, 30), { hourZhi: '子', jiangZhi: '子' });
+    const t = buildDaliurenTiming(fu);
+    expect(t.windows.length).toBeGreaterThanOrEqual(2);
+    expect(t.rules.join('')).toContain('伏吟');
+    // 冲哪一支由发用决定，不能写死「午」——伏吟的初传未必是子
+    const anchorZhi = t.windows[0].zhi;
+    expect(t.windows.some((w) => w.zhi === DZ_CHONG[anchorZhi])).toBe(true);
+  });
+
+  it('⚠️ 防套话：不同主题的应期结论不能雷同，不同盘也不能雷同', () => {
+    const a = buildDaliurenTiming(ke, '事业', 'male');
+    const b = buildDaliurenTiming(ke, '财运', 'male');
+    expect(a.summary).not.toBe(b.summary); // 锚点不同 → 窗口不同
+    const c = buildDaliurenTiming(keOf(new Date(2026, 6, 10, 12, 0)), '事业', 'male');
+    expect(c.summary).not.toBe(a.summary);
+  });
+
+  it('免责与克制：明写「不给具体某一天」，且不出现承诺式措辞', () => {
+    const t = buildDaliurenTiming(ke, '事业', 'male');
+    expect(t.note).toContain('不给具体某一天');
+    expect(t.note).toContain('不作承诺');
+    const all = [t.summary, t.note, ...t.rules, ...t.windows.map((w) => w.when + w.dayHint + w.basis)].join('');
+    for (const banned of ['一定会', '必然', '保证', '绝对', '必定']) {
+      expect(all.includes(banned)).toBe(false);
+    }
+  });
+
+  it('节奏给得出理由（快/平/慢都要能说出是哪条盘面事实）', () => {
+    const t = buildDaliurenTiming(ke);
+    expect(['快', '平', '慢']).toContain(t.speed.level);
+    expect(t.speed.why.length).toBeGreaterThan(4);
   });
 });

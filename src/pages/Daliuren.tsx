@@ -10,7 +10,7 @@ import ThemeReadingCard from '../components/ThemeReadingCard';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import type { Theme } from '../utils/divinationCore';
 import { buildKe, buildRandomKe, DI_ZHI_ORDER, JIANG_PLAIN, LIU_QIN_PLAIN, type KeResult } from '../utils/daliurenCore';
-import { buildAllDaliurenReadings, positionHints } from '../utils/daliurenReading';
+import { buildAllDaliurenReadings, buildDaliurenTiming, positionHints } from '../utils/daliurenReading';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -23,6 +23,7 @@ const BEGINNER_GUIDE = [
   { term: '课体', plain: '课体是这张盘的「类型名」：元首（顺理成章）、重审（由内而起）、涉害（几条路都带伤）、昴星（悬着没抓手）、伏吟（原地打转）、返吟（翻来覆去）。它定的是事情的走法，不是好坏。' },
   { term: '十二天将', plain: '贵人、螣蛇、朱雀、六合、勾陈、青龙、天空、白虎、太常、玄武、太阴、天后。它们给事情加「气质」：贵人主有人帮、白虎主硬碰硬、玄武主有没说清的部分。天将只修饰，不定吉凶。' },
   { term: '类神', plain: '你问什么，就要在盘上找对应的那一类：问钱看妻财、问工作看官鬼、问文书看父母、问病看官鬼（但方向相反，旺是病重）。类神落在初传还是末传，决定这件事是「眼前」还是「以后」。' },
+  { term: '应期', plain: '「什么时候」不能凭感觉，要看用神落在哪个地支：落在子就在子月／子日。落空亡的，要等这个支值月值日（填实）或对冲的那个支来冲（冲实）；临驿马的按「日」算、事情快；三传合成局的，按那一季算。它给的是窗口和节奏，不是某一天。' },
 ];
 
 const THEME_GUIDE = [
@@ -53,6 +54,11 @@ export default function Daliuren() {
     [ke, currentUser?.gender],
   );
   const hints = useMemo(() => (ke ? positionHints(ke) : []), [ke]);
+  // 应期随主题变（锚点是该类神的落点），所以要传 theme；性别决定爱情题锚在妻财还是官鬼
+  const timing = useMemo(
+    () => (ke ? buildDaliurenTiming(ke, theme, currentUser?.gender) : null),
+    [ke, theme, currentUser?.gender],
+  );
 
   const runKe = async (next: KeResult) => {
     if (!(await tryConsume())) return;
@@ -223,6 +229,86 @@ export default function Daliuren() {
             board="daliuren"
             title="问什么看什么：分主题解读"
           />
+
+          {/* 应期：只回答「什么时候」，不动吉凶。锚点＝类神落点（与判读同一套取用） */}
+          {timing && (
+            <Card
+              title={<><Clock size={16} /> 应期 · 大概什么时候见分晓</>}
+              style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}
+            >
+              <Space size={6} wrap style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, color: 'var(--text-secondary)' }}>节奏</Text>
+                <Tag color={timing.speed.level === '快' ? 'green' : timing.speed.level === '慢' ? 'orange' : 'default'}>
+                  {timing.speed.level}
+                </Tag>
+                <Text style={{ fontSize: 12, color: 'var(--text-body)' }}>{timing.speed.why}</Text>
+              </Space>
+
+              <Text style={{ display: 'block', fontSize: 13, lineHeight: 1.85, color: 'var(--text-body)', marginBottom: 10 }}>
+                {timing.summary}
+              </Text>
+
+              {/* 主窗口＝类神/发用之支，用一张卡单独承重；参考窗口压成两行，层级一眼可分 */}
+              {(() => {
+                const mainW = timing.windows.find((w) => w.role === '主');
+                const refs = timing.windows.filter((w) => w.role === '参考');
+                if (!mainW) return null;
+                return (
+                  <>
+                    <div style={{
+                      border: '1px solid rgba(201,169,110,0.45)', borderRadius: 10, padding: '10px 12px',
+                      background: 'rgba(201,169,110,0.07)',
+                    }}>
+                      <Space size={8} wrap>
+                        <Tag style={{ fontSize: 11, border: 'none', background: 'rgba(201,169,110,0.22)', color: '#a8832f' }}>
+                          主
+                        </Tag>
+                        <Text style={{ fontSize: 24, fontFamily: 'var(--font-display)', color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                          {mainW.zhi}
+                        </Text>
+                        <Text style={{ fontSize: 12.5, color: 'var(--text-body)' }}>{mainW.when}</Text>
+                      </Space>
+                      <Text style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-body)' }}>
+                        {mainW.dayHint}
+                      </Text>
+                      <Text style={{ display: 'block', marginTop: 2, fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                        {mainW.basis}
+                      </Text>
+                    </div>
+
+                    {refs.map((w) => (
+                      <div key={w.zhi} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 8 }}>
+                        <Tag style={{ fontSize: 10.5, border: 'none', background: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', marginTop: 1 }}>
+                          参考
+                        </Tag>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={{ fontSize: 12.5, color: 'var(--text-body)' }}>
+                            {w.when}
+                          </Text>
+                          <Text style={{ display: 'block', fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                            {w.dayHint}；{w.basis}
+                          </Text>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
+
+              <Divider style={{ margin: '10px 0' }} />
+
+              <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4, color: 'var(--text-primary)' }}>
+                这一盘按什么推出来的
+              </Text>
+              <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                {timing.rules.map((r, i) => (
+                  <Text key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{r}</Text>
+                ))}
+              </Space>
+
+              <Alert style={{ marginTop: 10 }} type="info" showIcon message={timing.note} />
+            </Card>
+          )}
 
           {/* 四课 */}
           <Card title="四课 · 事从哪里起" style={{ marginBottom: 16, borderColor: 'var(--border-light)' }}>

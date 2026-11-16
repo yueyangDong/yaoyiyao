@@ -129,6 +129,10 @@ describe('大六壬页', () => {
     expect(container.textContent).toContain('天地盘');
     // 取用速查必须写清健康题方向相反
     expect(container.textContent).toContain('官鬼旺是病势盛');
+    // 应期层：主窗口必须打「主」标，且明写不给具体某一天
+    expect(container.textContent).toContain('应期');
+    expect(container.textContent).toContain('不给具体某一天');
+    expect(container.textContent).toContain('最近的');
   });
 });
 
