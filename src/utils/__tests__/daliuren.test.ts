@@ -577,3 +577,119 @@ describe('课格', () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * 去套话：判据是「这句换任何盘还成立吗？」
+ *
+ * ⚠️ 这一组是回归护栏。曾经的情况：课体证据在 90 张盘上一字不差、
+ *    天将证据在 21 张盘上一字不差、advice 按档位出（六成盘同句）、
+ *    课格 20 条的 plain 全是常量。改文案时若把落点弄丢，这里会红。
+ * ------------------------------------------------------------------ */
+
+describe('去套话（跨盘不变量）', () => {
+  const HOURS = ['子', '卯', '午', '酉'];
+  const sample: ReturnType<typeof buildKe>[] = [];
+  for (let mo = 0; mo < 12; mo++) {
+    for (const h of HOURS) sample.push(buildKe(new Date(2026, mo, 11, 10, 0), { hourZhi: h }));
+  }
+
+  /** 收集「槽位 → 文本数组」 */
+  const slotsOf = () => {
+    const slots: Record<string, string[]> = {};
+    const put = (k: string, v: string) => { (slots[k] ||= []).push(v); };
+    for (const ke of sample) {
+      for (const r of buildAllDaliurenReadings(ke, 'male')) {
+        put(`${r.theme}|advice`, r.advice);
+        for (const e of r.evidence) put(`${r.theme}|ev.${e.label}`, e.detail);
+      }
+      for (const th of THEMES) {
+        for (const a of buildDaliurenActions(ke, th, 'male')) put(`${th}|act.${a.kind}`, a.action);
+      }
+      for (const g of buildKeGe(ke)) put(`keGe|${g.name}`, g.plain);
+    }
+    return slots;
+  };
+
+  it('⚠️ 没有「一槽一句」：任何槽位在 12 张以上样本里，最高频说法不得超过六成', () => {
+    const slots = slotsOf();
+    const bad: string[] = [];
+    for (const [slot, arr] of Object.entries(slots)) {
+      if (arr.length < 12) continue; // 稀有格（如纯阳）样本少，不适用
+      const cnt: Record<string, number> = {};
+      for (const v of arr) cnt[v] = (cnt[v] || 0) + 1;
+      const top = Math.max(...Object.values(cnt));
+      if (top / arr.length >= 0.6) {
+        bad.push(`${slot}: ${((top / arr.length) * 100).toFixed(0)}% ×${arr.length} —— ${Object.keys(cnt).find((k) => cnt[k] === top)!.slice(0, 40)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('天将证据必须带落点（哪一步、哪一支），不能只写「X 乘 Y——主……」', () => {
+    for (const ke of sample.slice(0, 12)) {
+      for (const r of buildAllDaliurenReadings(ke, 'male')) {
+        for (const e of r.evidence.filter((x) => x.label.startsWith('天将·'))) {
+          expect(e.detail).toContain('落在');
+          expect(e.detail).toMatch(/初传|中传|末传|日干上神|日支上神/);
+          // 同一颗天将乘同一六亲的固定尾句已经删掉，不许回来
+          expect(e.detail).not.toContain('不改事情的方向');
+        }
+      }
+    }
+  });
+
+  it('课体证据必须带上这一次的三传，不能只报课体名', () => {
+    for (const ke of sample.slice(0, 12)) {
+      const zhis = ke.sanChuan.map((s) => s.zhi);
+      for (const r of buildAllDaliurenReadings(ke, 'male')) {
+        for (const e of r.evidence.filter((x) => x.label.startsWith('课体·'))) {
+          expect(zhis.some((z) => e.detail.includes(z))).toBe(true);
+          expect(e.detail).toContain('起手');
+        }
+      }
+    }
+  });
+
+  it('advice 必须是「档位原则 + 这张盘的落点」，落点缺了就等于套话', () => {
+    for (const ke of sample.slice(0, 12)) {
+      for (const r of buildAllDaliurenReadings(ke, 'male')) {
+        expect(r.advice).toMatch(/起手|落在中间|收尾|你这一头|对面那一头|没摆到明面上/);
+        expect(r.advice.length).toBeGreaterThan(42);
+      }
+    }
+  });
+
+  it('⚠️ 不同盘的两份文案不能读成同一篇：整句重复率平均 <0.35、最高 <0.85', () => {
+    const texts = sample.slice(0, 16).map((ke) => {
+      const buf: string[] = [];
+      for (const r of buildAllDaliurenReadings(ke, 'male')) buf.push(r.summary, r.advice, ...r.evidence.map((e) => e.detail));
+      for (const a of buildDaliurenActions(ke, '事业', 'male')) buf.push(a.action);
+      for (const g of buildKeGe(ke)) buf.push(g.plain);
+      return buf.join('。');
+    });
+    const sents = (s: string) => new Set(s.split(/[。；！？]/).map((x) => x.trim()).filter((x) => x.length > 8));
+    const S = texts.map(sents);
+    let sum = 0;
+    let cnt = 0;
+    let mx = 0;
+    for (let i = 0; i < S.length; i++) {
+      for (let j = i + 1; j < S.length; j++) {
+        // 三传课体完全相同的两张盘，话接近是对的——那不是套话，是同一张盘
+        let inter = 0;
+        for (const g of S[i]) if (S[j].has(g)) inter++;
+        const rate = inter / Math.min(S[i].size, S[j].size);
+        sum += rate;
+        cnt++;
+        if (rate > mx) mx = rate;
+      }
+    }
+    expect(sum / cnt).toBeLessThan(0.35);
+    expect(mx).toBeLessThan(0.85);
+  });
+
+  it('同一张盘的六个主题，advice 不能六份都一样（档位句随主题换）', () => {
+    const ke = keOf(ANCHOR);
+    const advices = buildAllDaliurenReadings(ke, 'male').map((r) => r.advice);
+    expect(new Set(advices).size).toBeGreaterThanOrEqual(4);
+  });
+});

@@ -93,7 +93,11 @@ export interface ThemeReading {
   summary: string;
   /** 依据清单，顺序即权重顺序（ |weight| 从大到小） */
   evidence: Evidence[];
-  /** 行动建议，按主题 × 档位出，不按盘面出（避免出现「换个盘还是这句」） */
+  /**
+   * 行动建议 = 档位原则 + 因盘而异的落点，两段拼起来。
+   * ⚠️ 旧的注释写着「按主题 × 档位出，不按盘面出（避免出现『换个盘还是这句』）」——
+   * 那句话把因果说反了：按档位出**正是**「换个盘还是这句」的来源。现在强制叠落点句。
+   */
   advice: string;
   /** 降级说明：数据缺失、伏神、未分级签等，必须显式告知而不是悄悄兜底 */
   note?: string;
@@ -178,6 +182,12 @@ const ADVICE: Record<Theme, Record<Verdict, string>> = {
   },
 };
 
+/**
+ * ⚠️ 这张表是按「主题 × 档位」出的，只有 5 个档位——**单用它就是套话**：
+ * 同一档位下换个盘一字不差（实测最热的「平」档占六成盘）。
+ * 约定：档位句只讲「该做什么」（原则），各板块必须再叠一句**因盘而异**的落点句
+ * （类神落在第几步、旺衰、空亡……），页面展示的是「原则 + 落点」两段。
+ */
 export function adviceOf(theme: Theme, verdict: Verdict): string {
   return ADVICE[theme][verdict];
 }

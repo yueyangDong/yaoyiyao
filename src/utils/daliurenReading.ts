@@ -283,7 +283,9 @@ function analyze(ke: KeResult, theme: Theme, liuQin: string, scale: number, with
       if (tone !== 0) {
         evidence.push({
           label: `天将·${jiang}`,
-          detail: `${jiang}乘${liuQin}——${JIANG_PLAIN[jiang] || ''}。天将只改气质与助力，不改事情的方向。`,
+          // ⚠️ 必须带落点：只写「X 乘 Y——主……」的话，同一颗天将乘同一六亲的盘一字不差
+          //    （实测 21 张盘同一句）。「天将不改吉凶」这条口径放在页面上说一次，不逐条复读。
+          detail: `${jiang}乘${liuQin}，落在${main.where}（${main.zhi}）——${JIANG_PLAIN[jiang] || ''}。`,
           weight: tone * 0.8 * scale,
         });
       }
@@ -330,16 +332,23 @@ function analyze(ke: KeResult, theme: Theme, liuQin: string, scale: number, with
       weight: (shape.diSheng ? 1.2 : shape.diKe ? -1.2 : 0) * scale,
     });
     if (shape.kongCount >= 2) {
+      const kongZhis = ke.sanChuan.filter((s) => s.kong).map((s) => `${s.stage}${s.zhi}`);
       evidence.push({
         label: '传空',
-        detail: `三传里有 ${shape.kongCount} 个落空——过程热热闹闹，结果容易停在「说了但没落地」上。`,
+        // ⚠️ 必须点名是哪几步落空：只写「有 2 个落空」，几十张盘一字不差
+        detail: `${kongZhis.join('、')}落空（${ke.flags.kongZhi.join('、')}空）——过程热热闹闹，结果容易停在「说了但没落地」上。`,
         weight: -1.2 * scale,
       });
     }
 
     const kt = keTiWeight(ke.keTi.name, theme);
     if (kt.text) {
-      evidence.push({ label: `课体·${ke.keTi.name.split('·')[0]}`, detail: kt.text, weight: kt.w * scale });
+      evidence.push({
+        label: `课体·${ke.keTi.name.split('·')[0]}`,
+        // ⚠️ 只说「重审课：事从内部起」不行——这一句在几十张盘上一字不差。必须带上这一次的落点
+        detail: `${kt.text}这张盘按它取出${ke.sanChuan.map((s) => s.zhi).join('→')}，从${ke.sanChuan[0].zhi}起手。`,
+        weight: kt.w * scale,
+      });
     }
 
     const ganUp = ke.siKe[0].upper;
@@ -376,6 +385,35 @@ function analyze(ke: KeResult, theme: Theme, liuQin: string, scale: number, with
  * 对外入口
  * ------------------------------------------------------------------ */
 
+/**
+ * 「落到你这张盘上」的一句。
+ *
+ * ⚠️ `adviceOf(theme, verdict)` 是按「主题 × 档位」查表的，只有 5 个档位——
+ *    于是六成以上的盘拿到同一句（实测：爱情「平」69%、亲情「平」69%）。
+ *    这就是套话的定义：换个盘一字不差。所以档位句只讲「该做什么」，
+ *    真正属于这张盘的那半句必须由类神落在第几步、旺衰如何来定。
+ */
+function dropPointOf(ke: KeResult, theme: Theme, gender?: string): string {
+  const probe = probeOf(theme, gender);
+  const hit = findHits(ke, probe.primary)[0];
+  if (!hit) {
+    return `这张盘上${probe.primary}没入三传、也不在日干支上——不是没这回事，是这次没摆到明面上，先按常规节奏走。`;
+  }
+  const kong = ke.flags.kongZhi.includes(hit.zhi);
+  // ⚠️ 落点句**只讲结构，不讲时机、不讲「有没有劲」**。
+  //    档位句已经带了时机判断（「现在就谈」「先守住」），落点句再来一句「急不来」「它没劲」
+  //    就会自相矛盾——曾出现「可以加一档力度」紧接着「它眼下没劲，先养着」。
+  //    所以这里只说「这一步在整条线的哪个位置、它意味着什么」，旺衰的实情交给「月建·类神」那条依据。
+  const byWhere: Record<Hit['where'], string> = {
+    初传: `它落在起手（${hit.zhi}）——这一步成不成，决定后面两步有没有戏`,
+    中传: `它落在中间（${hit.zhi}）——两头都靠这一环接上，断了就两头空`,
+    末传: `它落在收尾（${hit.zhi}）——它的样子，就是这件事最后的样子`,
+    日干上神: `它压在你这一头（${hit.zhi}）——这件事的变量主要在你身上`,
+    日支上神: `它落在对面那一头（${hit.zhi}）——这件事的变量主要在对方身上`,
+  };
+  return `${byWhere[hit.where]}${kong ? `；不过${hit.zhi}这支还在旬空，眼下说的都是「还没落实」的部分` : ''}。`;
+}
+
 export function buildDaliurenReading(ke: KeResult, theme: Theme, gender?: string): ThemeReading {
   const probe = probeOf(theme, gender);
   const main = analyze(ke, theme, probe.primary, 1, true);
@@ -397,7 +435,7 @@ export function buildDaliurenReading(ke: KeResult, theme: Theme, gender?: string
     subject,
     summary: composeSummary(theme, verdict, headline),
     evidence,
-    advice: adviceOf(theme, verdict),
+    advice: `${adviceOf(theme, verdict)}${dropPointOf(ke, theme, gender)}`,
     note: `本课取「${probe.primary}${probe.secondary && probe.secondary !== probe.primary ? `」为主、「${probe.secondary}` : ''}」为类神。${probe.why}`,
   };
 }
@@ -821,7 +859,7 @@ export function buildDaliurenActions(ke: KeResult, theme?: Theme, gender?: strin
         : `${probe.primary}落${hit.where}（${hit.zhi}），未取到天将`;
     out.push({
       kind: '找人',
-      action: `这张盘上「帮你的人」还没现形，就先按「${fallbackPerson}」去找——围绕${THEME_TARGET[t]}，找对人比做对事省力。`,
+      action: `这张盘上「帮你的人」还没现形，就先按「${fallbackPerson}」去找——${THEME_TARGET[t]}从${dir(ke.tianDiPan.guiRenOnDi)}这一头问起（贵人临${ke.tianDiPan.guiRenOnDi}），找对人比做对事省力。`,
       basis: `${why}；贵人（${guiZhi}）临地盘${ke.tianDiPan.guiRenOnDi}，在${dir(ke.tianDiPan.guiRenOnDi)}，先从这一头问路。`,
     });
   }
@@ -904,9 +942,19 @@ export function buildDaliurenActions(ke: KeResult, theme?: Theme, gender?: strin
       basis: '伏吟课天地盘重叠，静中无变；这阶段的动作多半花在原地。',
     });
   } else {
+    // ⚠️ 「无坑」是多数盘的结局（约六成）。若只给一句固定话，这层等于没讲——
+    //    必须落到这张盘的具体支上：气顺的、有劲的、都没劲的，三种说法。
+    const monthZhi = ke.dateInfo.monthGz[1];
+    const lvList = ke.sanChuan.map((s) => ({ zhi: s.zhi, lv: wangShuaiOf(s.zhi, monthZhi).level }));
+    const best = lvList.find((x) => x.lv === '旺') || lvList.find((x) => x.lv === '相');
+    const tip = chuanShapeOf(ke.sanChuan).diSheng
+      ? `盘上没有硬坑，气还是顺的（${ke.sanChuan.map((s) => s.zhi).join('→')}一路相生）——顺着走完就行，别自己加戏。`
+      : best
+        ? `盘上没有硬坑：${best.zhi}这一步最有劲（${best.lv}），把它做到底，别同时开三条线。`
+        : '盘上没有硬坑，可三步的劲都差不多（都不当令）——那就别自己造：别反复起课问同一件事，也别把结论当承诺。';
     out.push({
       kind: '避坑',
-      action: '盘上没有明显的坑——那就别自己造：别反复起课问同一件事，也别把结论当承诺。',
+      action: tip,
       basis: kongCount === 0
         ? `三传${ke.sanChuan.map((s) => s.zhi).join('/')}都不落旬空（${ke.flags.kongZhi.join('、')}空），四课上下也无单向压制。`
         : `三传${ke.sanChuan.map((s) => s.zhi).join('/')}里落旬空的只有 ${kongCount} 支（${ke.flags.kongZhi.join('、')}空），四课上下也无单向压制。`,
@@ -963,7 +1011,20 @@ const JU_GE: Record<string, { name: string; plain: string }> = {
 const TU_ZHI = ['辰', '戌', '丑', '未'];
 
 /**
+ * 六亲的「人事短名」。课格不随主题变，措辞就不能带行业色彩——
+ * 官鬼不能只写「职位」（问健康的盘上它是病），所以取一个两边都说得通的词。
+ */
+const QIN_SHORT: Record<string, string> = {
+  父母: '人事与文书', 兄弟: '同辈与合力', 子孙: '产出与转机', 妻财: '钱与实物', 官鬼: '压力与位子',
+};
+
+const LV_SCORE: Record<string, number> = { 旺: 2, 相: 1.5, 休: -1, 囚: -1.5, 死: -2 };
+
+/**
  * 盘面速览。每条都落在可核对的事实上，不出空话、不产分数。
+ *
+ * ⚠️ 每条 plain 都必须带这张盘的具体支／步位／旺衰。
+ *    只写「这个格意味着什么」就是套话——换个盘一字不差（审计见 docs/daliuren.md §七）。
  * @returns 至少一条（贵人顺逆恒在），最多七条
  */
 export function buildKeGe(ke: KeResult): KeGeItem[] {
@@ -975,19 +1036,35 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   const dayGan = ke.dateInfo.dayGan;
   const iOf = (x: string) => DI_ZHI_ORDER.indexOf(x);
   const gap = (a: string, b: string) => ((iOf(b) - iOf(a)) % 12 + 12) % 12;
+  const dir = (x: string) => ZHI_DIRECTION[x] || '';
+  const qin = (x: string) => QIN_SHORT[liuQinOf(dayGan, x)] || liuQinOf(dayGan, x);
+
+  // 三传旺衰：哪一步最有劲、哪一步最使不上力（成局、连茹、得令三处共用）
+  const levels = ke.sanChuan.map((s) => wangShuaiOf(s.zhi, monthZhi).level);
+  const scores = levels.map((l) => LV_SCORE[l] ?? 0);
+  let hi = 0;
+  let lo = 0;
+  scores.forEach((v, i) => {
+    if (v > scores[hi]) hi = i;
+    if (v < scores[lo]) lo = i;
+  });
+  const flat = levels.every((l) => l === levels[0]);
+  const juTail = flat
+    ? `三支在${monthZhi}月同为「${levels[0]}」，整局一起快或一起慢，没有哪一步能抄近路。`
+    : `三支里${zhis[hi]}在「${levels[hi]}」、${zhis[lo]}在「${levels[lo]}」——力气往${zhis[hi]}那一步放，${zhis[lo]}那一步别硬推。`;
 
   /* ① 三传成局 */
   const ju = SAN_HE_JU.find((j) => j.branches.every((b) => zhis.includes(b)));
   if (ju) {
     out.push({
       name: JU_GE[ju.wx].name,
-      plain: JU_GE[ju.wx].plain,
+      plain: `${JU_GE[ju.wx].plain}${juTail}`,
       basis: `三传${zhiText}恰成${ju.name}——三合全见，才论成局。`,
     });
   } else if (zhis.every((x) => TU_ZHI.includes(x))) {
     out.push({
       name: JU_GE.土.name,
-      plain: JU_GE.土.plain,
+      plain: `${JU_GE.土.plain}${juTail}`,
       basis: `三传${zhiText}皆土（辰戌丑未），无木火金水相杂。`,
     });
   }
@@ -995,16 +1072,26 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   /* ② 三传连茹：三支在十二支上依次相连（顺为进、逆为退） */
   const d1 = gap(c.zhi, z.zhi);
   const d2 = gap(z.zhi, m.zhi);
+  const rising = scores[0] < scores[1] && scores[1] < scores[2];
+  const falling = scores[0] > scores[1] && scores[1] > scores[2];
   if (d1 === 1 && d2 === 1) {
     out.push({
       name: '进连茹',
-      plain: '事情是一格一格往前挪的：慢，但每一步都算数，别想跳过中间那一步。',
+      plain: `事情一格一格往前挪：${c.zhi}→${z.zhi}→${m.zhi}，慢，但每一步都算数。${
+        rising ? '而且一步比一步有劲，后段才是你的发力点。'
+          : falling ? '只是三步一步比一步薄，头一段最该抓紧。'
+            : `三步的劲分别在${levels.join('/')}，快慢差不多，稳着走就行。`
+      }`,
       basis: `三传${zhiText}在十二支上依次顺连（${c.zhi}→${z.zhi}→${m.zhi}）。`,
     });
   } else if (d1 === 11 && d2 === 11) {
     out.push({
       name: '退连茹',
-      plain: '事情是一格一格往回退的：先收再谈，硬往前顶只会退得更多。',
+      plain: `事情一格一格往回退：${c.zhi}→${z.zhi}→${m.zhi}，先收再谈，硬往前顶只会退得更多。${
+        rising ? '好在越往回退越有劲，退到后面反而站得住。'
+          : falling ? '而且一步比一步薄，越拖越没有本钱，早收手早省。'
+            : `三步的劲分别在${levels.join('/')}，退得平，不必慌。`
+      }`,
       basis: `三传${zhiText}在十二支上依次逆连（${c.zhi}→${z.zhi}→${m.zhi}）。`,
     });
   }
@@ -1015,13 +1102,13 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   if (shape.diSheng) {
     out.push({
       name: '递生',
-      plain: '气是顺的：前一环推着后一环走，中间不用你硬推，顺着势推一把就够。',
+      plain: `起点${c.zhi}（${qin(c.zhi)}）→ 落点${m.zhi}（${qin(m.zhi)}）：前面花的功夫不会白费，它会在后面变成助力，你只管把第一段做扎实。`,
       basis: `三传${zhiText}的五行依次为${wxText}，一环生一环，贯到底。`,
     });
   } else if (shape.diKe) {
     out.push({
       name: '递克',
-      plain: '气是耗的：每一环都在啃下一环，越往后越薄——别把力气全押在最后一步。',
+      plain: `起点${c.zhi}（${qin(c.zhi)}）→ 落点${m.zhi}（${qin(m.zhi)}）：每一段都在消耗上一段的成果，别指望滚雪球，收一段就落袋一段。`,
       basis: `三传${zhiText}的五行依次为${wxText}，一环克一环，越往后越薄。`,
     });
   }
@@ -1030,19 +1117,22 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
      ⚠️ 阈值不能定成「休囚死 ≥2」——十二支里旺相恒只占四支，那条判据几乎**每张盘都成立**，
         于是每盘都写「眼下只使得出一半」，把常态说成不利。这里取两端：
         旺相 ≥2 才算得令；三支**全部**休囚死才算失令；中间态（1 旺 2 衰）是常态，不出。 */
-  const levels = ke.sanChuan.map((s) => wangShuaiOf(s.zhi, monthZhi).level);
-  const strong = levels.filter((l) => l === '旺' || l === '相').length;
+  const uniqZhi = (arr: string[]) => Array.from(new Set(arr));
+  // ⚠️ 三传可能有重复支（伏吟/返吟），不去重会写出「寅、寅在亥月正当令」
+  const strongZhis = uniqZhi(zhis.filter((_, i) => levels[i] === '旺' || levels[i] === '相'));
+  const weakZhis = uniqZhi(zhis.filter((_, i) => levels[i] !== '旺' && levels[i] !== '相'));
+  const strong = strongZhis.length;
   const weak = levels.filter((l) => l === '休' || l === '囚' || l === '死').length;
   if (strong >= 2) {
     out.push({
       name: '三传得令',
-      plain: '赶上了当令的时候：现在动，力气不白花；过了这个月，同样的劲要打折。',
+      plain: `${strongZhis.join('、')}在${monthZhi}月正当令——动这几步，力气不白花。${weakZhis.length > 0 ? `${weakZhis.join('、')}还没到时候，先放着。` : '三步都在令上，是少见的顺风。'}`,
       basis: `月建${monthZhi}，三传${zhiText}的旺衰为${levels.join('/')}，${strong} 支旺相。`,
     });
   } else if (weak === 3) {
     out.push({
       name: '三传失令',
-      plain: '三传全都不当令：不是事情不对，是时候不对——先备料、别硬推，等月令走到再动。',
+      plain: `${zhiText}这三步在${monthZhi}月都是休囚死：不是事情不对，是月份还没轮到它们——先备料、别硬推，等月令走到再动。`,
       basis: `月建${monthZhi}，三传${zhiText}的旺衰为${levels.join('/')}，三支皆休囚死。`,
     });
   }
@@ -1053,13 +1143,13 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   if (DZ_HE[woZhi] === shiZhi) {
     out.push({
       name: '干支上神相合',
-      plain: '你这一头和事情那一头是「合」的：对得上、谈得拢，缺的只是把它落到纸上。',
+      plain: `你这一头是${woZhi}（${qin(woZhi)}），对面是${shiZhi}（${qin(shiZhi)}）——两边合得上，现在缺的只是一句明话。`,
       basis: `日干上神${woZhi}与日支上神${shiZhi}为六合（${woZhi}${shiZhi}合）。`,
     });
   } else if (DZ_CHONG[woZhi] === shiZhi) {
     out.push({
       name: '干支上神相冲',
-      plain: '你这一头和事情那一头是「顶」着的：不是谁不好，是方向相反——先对齐方向再谈别的。',
+      plain: `你这一头是${woZhi}（${qin(woZhi)}），对面是${shiZhi}（${qin(shiZhi)}）——两边是顶着的，先别急着定调，给自己留半天再回话。`,
       basis: `日干上神${woZhi}与日支上神${shiZhi}相冲（${woZhi}${shiZhi}冲）。`,
     });
   }
@@ -1072,9 +1162,13 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   const kins = ke.sanChuan.map((s) => s.liuQin);
   const uniqKins = Array.from(new Set(kins));
   if (uniqKins.length === 3 && ['妻财', '官鬼', '父母'].every((k) => uniqKins.includes(k))) {
+    const at = (q: string) => {
+      const i = kins.indexOf(q);
+      return `${zhis[i]}（${ke.sanChuan[i].stage}）`;
+    };
     out.push({
       name: '三传财官印全',
-      plain: '钱、事、文书三样同时在盘上：抓手是齐的，缺的只是把它们串起来的那一步。',
+      plain: `钱看${at('妻财')}、位子看${at('官鬼')}、文书看${at('父母')}——三样各占一步，缺哪一步就先补哪一步。`,
       basis: `三传${zhiText}的六亲依次为${kins.join('/')}，财、官、印三类俱全。`,
     });
   }
@@ -1085,13 +1179,13 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   if (luIdx >= 0) {
     out.push({
       name: '禄入三传',
-      plain: '手上的本钱是「实」的：本事、岗位、人脉都有真落点，不是空想，只是时候未到。',
+      plain: `${luZhi}是你吃饭的本事，它落在${ke.sanChuan[luIdx].stage}——说明这件事本身就是你的本钱，不是额外捡来的好处。`,
       basis: `日干${dayGan}的禄在${luZhi}，正是${ke.sanChuan[luIdx].stage}。`,
     });
   } else if (luZhi && (ke.siKe[0].upper === luZhi || ke.siKe[2].upper === luZhi)) {
     out.push({
       name: '禄临日辰',
-      plain: '能用的东西已经在你手边：先把手头这些用足，比另开一条路省力。',
+      plain: `${luZhi}正好压在${ke.siKe[0].upper === luZhi ? '你这一头' : '对方那一头'}上：能用的东西已经在手边，先把手头这些用足，比另开一条路快。`,
       basis: `日干${dayGan}的禄在${luZhi}，正好是${ke.siKe[0].upper === luZhi ? '日干上神' : '日支上神'}。`,
     });
   }
@@ -1101,13 +1195,13 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   if (allZhi.every((x) => isYangZhi(x))) {
     out.push({
       name: '六纯·纯阳',
-      plain: '整盘都是阳：事情摆在明处、推得动；但也硬——谁也不肯先软，容易僵在那儿。',
+      plain: `七支全阳（${allZhi.join('/')}），连${woZhi}和${shiZhi}都是阳支：事情摆在明处、推得动，两边也都硬，谁先软一步谁先得。`,
       basis: `四课上神与三传（${allZhi.join('/')}）全为阳支。`,
     });
   } else if (allZhi.every((x) => !isYangZhi(x))) {
     out.push({
       name: '六纯·纯阴',
-      plain: '整盘都是阴：事情在暗处酝酿，慢；一旦成形也不容易改，别指望临时翻盘。',
+      plain: `七支全阴（${allZhi.join('/')}），连${woZhi}和${shiZhi}都是阴支：在暗处酝酿，慢，但一旦成形就不好改，别指望临时翻盘。`,
       basis: `四课上神与三传（${allZhi.join('/')}）全为阴支。`,
     });
   }
@@ -1116,8 +1210,8 @@ export function buildKeGe(ke: KeResult): KeGeItem[] {
   out.push({
     name: ke.tianDiPan.forward ? '贵人顺布' : '贵人逆布',
     plain: ke.tianDiPan.forward
-      ? '帮你的人是从前面来的：往上问、往新关系上找，别人牵线比自己去撞有效。'
-      : '气是逆着排的：能帮上忙的人常在旧关系里——往回找，老同事、老上级、老客户。',
+      ? `贵人落${ke.tianDiPan.guiRenZhi}、临${ke.tianDiPan.guiRenOnDi}，天将顺排：帮你的人在前面——往${dir(ke.tianDiPan.guiRenOnDi)}这一头、往新关系上找，别人牵线比自己去撞有效。`
+      : `贵人落${ke.tianDiPan.guiRenZhi}、临${ke.tianDiPan.guiRenOnDi}，天将逆排：帮忙的人在后头——往${dir(ke.tianDiPan.guiRenOnDi)}这一头的旧关系里找，老同事、老上级比新面孔管用。`,
     basis: `贵人${ke.tianDiPan.guiRenZhi}临地盘${ke.tianDiPan.guiRenOnDi}，十二天将${ke.tianDiPan.forward ? '顺' : '逆'}布。`,
   });
 
