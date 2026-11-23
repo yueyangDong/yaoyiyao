@@ -108,7 +108,7 @@ export default function Daliuren() {
       </Text>
 
       <Alert
-        message="起课不靠随机数：月将按中气定、天盘按「月将加时」排、三传按九宗门取——盘面是算出来的，只有「随机起课」这一种玩法的将时是抽的。"
+        message="起课不靠随机数：月将按中气定、天盘按「月将加时」排、三传按九宗门取——盘面是算出来的。「随机起课」只抽占时，月将仍按当天的中气取。"
         type="info"
         showIcon
         style={{ marginBottom: 16, background: 'var(--bg-card-solid)' }}
@@ -212,7 +212,7 @@ export default function Daliuren() {
                 随机起课
               </Button>
               <Text style={{ color: 'var(--text-secondary)', display: 'block', marginTop: 8 }}>
-                将、时都随机抽——适合「心里没底、想换个角度看看」的时候。同一件事别反复抽，抽到第三次就不是问了。
+                只随机抽占时——适合「心里没底、想换个角度看看」的时候。月将仍按今天的中气取，所以盘面自洽（不存在「夏天的日子配冬天的月将」）。同一件事别反复抽，抽到第三次就不是问了。
               </Text>
             </div>
           )}

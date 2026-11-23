@@ -49,12 +49,12 @@ pages/      页面：组织交互与状态，调用判据层，交给排版层
 
 | 项 | 体积 |
 |---|---|
-| `index-*.js`（业务 + 首屏用到的 antd） | ~240 KB |
+| `index-*.js`（业务 + 首屏用到的 antd） | ~223 KB |
 | `react-vendor`（react/router/framer-motion） | ~94 KB |
 | `index-*.css` | ~5 KB |
-| **合计** | **~340 KB** |
+| **合计** | **~315 KB** |
 
-历史：728 KB（index 104 + antd 299 + calendar 234 + react 92 + css 5）→ 340 KB。
+历史：728 KB（index 104 + antd 299 + calendar 234 + react 92 + css 5）→ 315 KB。
 
 ### 为什么这些包必须在首屏之外
 
@@ -84,7 +84,10 @@ chunk**，不管它有没有被首屏引用。而这个 chunk 被首屏静态依
 {mounted && <Suspense fallback={null}><X open={open} /></Suspense>}
 ```
 
-`ProfileDrawer` / `UserModal` 就是这么处理的（它们内部引了 `cn-division`）。
+`ProfileDrawer` / `UserModal` 原本就是这么处理的（它们内部引了 `cn-division`）。
+**后来查清这两块 UI 根本打不开**（Layout 里没有任何入口置 `open=true`），
+功能已由 `pages/Profile.tsx` 覆盖，于是连组件一起删了——首屏再省 17.4 KB
+（`Layout` 为它们调的 `Form.useForm()` 把 antd Form 与 rc-field-form 也钉在了首屏）。
 
 ## 四、判据的唯一出口
 

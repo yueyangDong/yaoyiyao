@@ -564,11 +564,24 @@ function bound(a: number, b: number): boolean {
   return Math.abs(a - b) < 10;
 }
 
-/** 随机起课：不按时间，随机取月将与占时（「心中有疑、随时起课」用） */
+/**
+ * 随机起课：不按当下时间，随机取**占时**（「心中有疑、随时起课」用）。
+ *
+ * ⚠️ **只随机占时，不随机月将**。月将不是可选项，是由中气定的天文事实
+ *    （太阳所在星次），它决定四课的旺衰、也决定应期落在哪个季。
+ *    把月将一起抽，等于拿冬天的旺衰去断夏天的事；而应期层又用 `seedDate`
+ *    的日干支推日子——同一个盘里两套时间基准，互相打架，
+ *    且这种矛盾**不会报任何错**，只会让断语失去依据。
+ *
+ *    想复现「同一课不同人抽」的随机感，随机时支已经够用（12 种），
+ *    且每个时支都对应当天真实存在的时辰。
+ *
+ * @param seedDate 起课的日期基准（日干支、月将、年支都取自它），默认今天
+ */
 export function buildRandomKe(seedDate: Date = new Date()): KeResult {
-  const jiang = DZ_ORDER[Math.floor(Math.random() * 12)];
   const hour = DZ_ORDER[Math.floor(Math.random() * 12)];
-  return buildKe(seedDate, { jiangZhi: jiang, hourZhi: hour, mode: 'random' });
+  // 不传 jiangZhi：交给 buildKe 按该日期的中气取月将
+  return buildKe(seedDate, { hourZhi: hour, mode: 'random' });
 }
 
 /* ------------------------------------------------------------------ *

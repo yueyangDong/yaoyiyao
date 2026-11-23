@@ -71,31 +71,32 @@
 
 3. **`PillarData` 层次倒置**（见 `architecture.md`，commit `8aded115`）。
 
-### 待决策（不擅自改，需产品口径）
+### 已按「全部整改」处理（2026-11-23）
 
-1. **`ProfileDrawer` / `UserModal` 不可达**
-   `Layout` 里没有任何入口把 `drawerOpen` 置 true（全仓只有 `setDrawerOpen(false)`），
-   `openUserModal` 也只被 `UserModal` 自己的 `onEdit` 调用；
-   两块 UI 的功能已由 `pages/Profile.tsx` 的编辑/创建档案表单覆盖。
-   现状：已改 lazy + 首次打开才挂载，首屏不再为它们付 `cn-division` 的 54 KB。
-   **建议**：二选一——补一个头部入口（一行 `setDrawerOpen(true)`），
-   或者删掉这两个组件。删掉还能顺带把 antd `Form`/`rc-field-form` 推出首屏
-   （`Layout` 里的 `Form.useForm()` 目前只为这两个不可达组件服务，估算 ~30 KB gzip，**未实测**）。
+1. **`ProfileDrawer` / `UserModal` 不可达 → 已删除**
+   `Layout` 里没有入口能打开它们（全仓只有 `setDrawerOpen(false)`），
+   功能由 `pages/Profile.tsx` 的编辑/创建档案表单承担。
+   连带收益：`Layout` 不再需要为它们调 `Form.useForm()`，
+   antd `Form` + `rc-field-form` 随页面走 → 首屏 index **240 → 223 KB gzip**（实测 −17.4 KB）。
 
-2. **大六壬「随机起课」把月将也抽了**
-   `buildRandomKe` 随机取月将与占时，再交给 `buildKe(date, { jiangZhi })`。
-   但月将是由**中气**定的天文事实，不是可选项：抽到与当日节气不符的月将，
-   等于拿冬天的旺衰去断夏天的事，而应期层又用当日日干支推日子——
-   两套时间基准在同一个盘里打架。
-   页面文案（`Daliuren.tsx:111/215`）已明示「将、时都随机抽」，属既有玩法，
-   故未改。**建议**：只随机占时（12 种），月将随节气——这样"随机"仍然成立，
-   且盘面自洽；若坚持保留，至少标注「月将为虚拟值，旺衰参考无效」。
+2. **大六壬「随机起课」月将随机 → 已改为只抽占时**
+   `buildRandomKe` 不再传 `jiangZhi`，月将由 `buildKe` 按该日期的中气取。
+   理由：月将是太阳所在星次，是天文事实，不是可选项；它决定四课旺衰与应期落季，
+   抽错等于拿冬天的旺衰断夏天的事，而应期层又用当日日干推日子——同一盘里两套时间基准打架且不报错。
+   页面文案同步改为「只随机抽占时……月将仍按今天的中气取，所以盘面自洽」。
+   新增 3 条测试：40 次抽取月将恒定、占时确实随机、随机课与正时起课同占时下盘面一致。
 
-3. **`ziweiGe.ts` 总闸**（`docs/ziwei-ge-audit.md` 已记）：
-   三条全局破格一刀切 → 67.8% 无格局，其中 41.7pp 结构上本够格。待拍板。
+3. **`ziweiGe` 总闸 → 复核为「早已修完」，不改代码**
+   原记录把**修复前**的诊断（67.8% 无格局）当成了待办。实测 3024 盘：
+   **有格率 64.3%**（无格 35.7%），25 个格全有命中、无死格。
+   已把分布固化成 `ziweiGeDistribution.test.ts`（有格率 40%~90%、格种 ≥18、
+   高频格不为零、稀有格至少命中一种），并把复核结论写进 `docs/ziwei-ge-audit.md` §九。
+   这一条的正确整改动作不是改判据，而是**把过期的记忆改对，并让分布可测**。
 
-4. **`utils/renderWithTerms.tsx`** 引 `components/TermPopover`：
-   渲染层工具坐在判据层。架构测试里已豁免并注明，迁出后应删豁免。
+### 已知遗留（低优先，未处理）
+
+- **`utils/renderWithTerms.tsx`** 引 `components/TermPopover`：
+  渲染层工具坐在判据层。架构测试里已豁免并注明，迁出后应删豁免。
 
 ## 四、可复跑
 

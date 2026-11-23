@@ -1,22 +1,20 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Layout, Button, Typography, Space, Form, Tag, message,
+  Layout, Button, Typography, Space, Tag,
 } from 'antd';
 import { ChevronLeft } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-// ⚠️ getCityLng 走动态 import（首屏组件不静态引 cn-division，省 ~200 KB gzip）
 import { useAuth } from '../context/AuthContext';
 import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import type { StoredUser } from '../context/UserContext';
 import ErrorBoundary from '../components/ErrorBoundary';
-// ⚠️ 这两个抽屉/弹窗内部 import 了 `cn-division`（全国区划表 ~52 KB gzip）。
-//    它们原本是静态引入，于是区划表被绑进首屏——而用户可能整场都不打开档案。
-//    改 lazy + 「首次打开才挂载」：首屏不请求，打开过一次后常驻（保留关闭动画）。
-// ⚠️ 只写 lazy() 不够：`<X open={false} />` 仍然会被渲染 → chunk 照样在首屏请求。
-//    所以下面还有 `profileMounted` / `userModalMounted` 两道闸，首屏一字节都不拉。
-const ProfileDrawer = lazy(() => import('./ProfileDrawer'));
-const UserModal = lazy(() => import('./UserModal'));
+// ⚠️ 这里原来挂着一个「档案设置 Drawer」和一个「用户管理 Modal」。两者都由
+//    Layout 的局部 state 控制，但全仓没有任何入口把它们打开（只有 set...false），
+//    功能实际由 pages/Profile.tsx 的编辑/创建档案表单承担 → 已连同组件文件一起删除。
+//    收益不只是少两个文件：它们内部 import 了 cn-division（区划表 54 KB gzip），
+//    而且 Layout 为了给它们供表单调用了 Form.useForm()，把 antd Form 与
+//    rc-field-form 也钉在了首屏。现在这两样都随页面走了。
 import { motion, AnimatePresence } from 'framer-motion';
 import ScrollTop from './ScrollTop';
 
@@ -30,125 +28,12 @@ export default function AppLayout() {
   // 窄屏判据收口在 utils/viewport（⚠️ 是 `< 768`，必须与 antd md 互补，别改回 `<= 768`）
   const isMobile = useNarrowViewport();
   const { user: authUser } = useAuth();
+  // ⚠️ 这里曾经还解构了 profile/setProfile/hasProfile/users/addUser/updateUser/
+  //    deleteUser/switchUser —— 它们只服务于下方那两个已经删掉的抽屉/弹窗。
   const {
-    profile, setProfile, hasProfile, currentUser,
-    users, addUser, updateUser, deleteUser, switchUser,
+    currentUser,
     age, zodiacAnimal, zodiacSign, syncing, synced,
   } = useUser();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [form] = Form.useForm();
-  const [userModalOpen, setUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<StoredUser | null>(null);
-  const [userForm] = Form.useForm();
-  // 首次打开才挂载（挂载后不卸载，保留 antd 的关闭动画）
-  const [profileMounted, setProfileMounted] = useState(false);
-  const [userModalMounted, setUserModalMounted] = useState(false);
-
-  const handleSaveProfile = async () => {
-    const values = form.getFieldsValue();
-    const { gender, birthYear, birthMonth, birthDay, birthHour, birthMinute, birthplace } = values;
-
-    if (!gender || !birthYear) {
-      message.warning('请至少填写性别和出生年份');
-      return;
-    }
-
-    let lng = 120;
-    let birthplaceStr: string | null = null;
-    if (birthplace && birthplace.length >= 2) {
-      const province = birthplace[0];
-      const city = birthplace[1];
-      const district = birthplace[2] || '';
-      birthplaceStr = `${province},${city},${district}`;
-      // 动态 import：cn-division 的全国区划表 ~200 KB gzip，只有真正保存档案时才需要。
-      // 静态引入会把它变成首屏依赖（用户可能整场都不填出生地）。
-      const { getCityLng } = await import('../utils/solarTime');
-      lng = getCityLng(province, city);
-    }
-
-    setProfile({
-      gender,
-      birthYear,
-      birthMonth: birthMonth || null,
-      birthDay: birthDay || null,
-      birthHour: birthHour ?? null,
-      birthMinute: birthMinute ?? null,
-      birthplace: birthplaceStr,
-      birthplaceLng: lng,
-    });
-
-    message.success('用户档案已保存');
-    setDrawerOpen(false);
-  };
-
-  const openUserModal = (user?: StoredUser) => {
-    setUserModalMounted(true);
-    if (user) {
-      setEditingUser(user);
-      userForm.setFieldsValue({
-        name: user.name,
-        gender: user.gender,
-        birthYear: user.birthYear,
-        birthMonth: user.birthMonth,
-        birthDay: user.birthDay,
-        birthHour: user.birthHour,
-        birthMinute: user.birthMinute,
-        birthCalendar: user.birthCalendar,
-        birthplace: [user.birthplace.province, user.birthplace.city, user.birthplace.district].filter(Boolean),
-      });
-    } else {
-      setEditingUser(null);
-      userForm.resetFields();
-    }
-    setUserModalOpen(true);
-  };
-
-  const handleSaveUser = async () => {
-    const values = userForm.getFieldsValue();
-    const { name, gender, birthYear, birthMonth, birthDay, birthHour, birthMinute, birthCalendar, birthplace } = values;
-
-    if (!name || !gender || !birthYear || !birthMonth || !birthDay || birthHour === undefined) {
-      message.warning('请填写完整的用户信息');
-      return;
-    }
-
-    let lng = 120;
-    let province = '', city = '', district = '';
-    if (birthplace && birthplace.length >= 2) {
-      province = birthplace[0];
-      city = birthplace[1];
-      district = birthplace[2] || '';
-      const { getCityLng } = await import('../utils/solarTime');
-      lng = getCityLng(province, city);
-    }
-
-    if (editingUser) {
-      updateUser(editingUser.id, {
-        name, gender, birthYear, birthMonth, birthDay,
-        birthHour, birthMinute: birthMinute || 0,
-        birthCalendar: birthCalendar || 'solar',
-        isLeapMonth: false,
-        birthplace: { province, city, district, longitude: lng },
-      });
-      message.success('用户信息已更新');
-    } else {
-      addUser({
-        name, gender, birthYear, birthMonth, birthDay,
-        birthHour, birthMinute: birthMinute || 0,
-        birthCalendar: birthCalendar || 'solar',
-        isLeapMonth: false,
-        birthplace: { province, city, district, longitude: lng },
-      });
-      message.success('用户已创建');
-    }
-    setUserModalOpen(false);
-    setEditingUser(null);
-  };
-
-  const handleDeleteUser = (id: string) => {
-    deleteUser(id);
-    message.success('用户已删除');
-  };
 
   const formatBirth = (u: StoredUser) => {
     return `${u.birthYear}/${String(u.birthMonth).padStart(2, '0')}/${String(u.birthDay).padStart(2, '0')}`;
@@ -258,43 +143,6 @@ export default function AppLayout() {
         仅供娱乐 · 不具科学依据
       </Footer>
       <ScrollTop />
-
-      {/* 档案设置 Drawer
-          ⚠️ 现状：Layout 里没有任何入口把 drawerOpen 置 true（全仓只有 setDrawerOpen(false)），
-             用户管理的 openUserModal 也只被本 Modal 自己的 onEdit 调用 → 两块都「不可达」，
-             其功能已由 pages/Profile.tsx 的编辑/创建档案表单覆盖。
-             暂时保留代码而不删除，等产品侧决定「补入口」还是「下线」；
-             无论哪种，首屏都不该为一个打不开的抽屉付出 52 KB 区划表。 */}
-      {profileMounted && (
-        <Suspense fallback={null}>
-          <ProfileDrawer
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            form={form}
-            birthplaceLng={profile.birthplaceLng}
-            onSave={handleSaveProfile}
-          />
-        </Suspense>
-      )}
-
-      {/* 用户管理 Modal —— 同上，仅 openUserModal 能打开，而它只被本 Modal 的 onEdit 调用 */}
-      {userModalMounted && (
-        <Suspense fallback={null}>
-          <UserModal
-            open={userModalOpen}
-            editingUser={editingUser}
-            form={userForm}
-            users={users}
-            currentUser={currentUser}
-            onClose={() => { setUserModalOpen(false); setEditingUser(null); }}
-            onSave={handleSaveUser}
-            onEdit={openUserModal}
-            onDelete={handleDeleteUser}
-            onSwitch={switchUser}
-            formatBirth={formatBirth}
-          />
-        </Suspense>
-      )}
     </Layout>
   );
 }

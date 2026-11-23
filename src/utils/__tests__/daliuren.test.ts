@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildKe, monthJiangOf, liuQinOf, JI_GONG, DI_ZHI_ORDER, ZHONG_QI_JIANG,
+  buildKe, buildRandomKe, monthJiangOf, liuQinOf, JI_GONG, DI_ZHI_ORDER, ZHONG_QI_JIANG,
   benMingOf,
   type KeResult,
 } from '../daliurenCore';
@@ -831,5 +831,40 @@ describe('年命（本命）', () => {
     const lines = BIRTHS.map((b) => nmOf(k, '事业', b)?.action || '');
     const uniq = new Set(lines.filter(Boolean));
     expect(uniq.size).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 随机起课：随机的是占时，不是月将
+ * ------------------------------------------------------------------ */
+
+describe('随机起课', () => {
+  it('月将必须随该日期的中气，不能是抽出来的', () => {
+    // 月将是天文事实（太阳所在星次），决定四课旺衰与应期落在哪个季。
+    // 若把月将一起随机，就会出现「夏天的日子配冬天的月将」——
+    // 断语失去依据且不报任何错。这里把口径钉死。
+    const mj = monthJiangOf(ANCHOR);
+    const draws = Array.from({ length: 40 }, () => buildRandomKe(ANCHOR));
+
+    for (const k of draws) {
+      expect(k.dateInfo.jiangZhi, '随机课的月将被抽掉了').toBe(mj.jiang);
+      expect(k.dateInfo.zhongQi).toBe(mj.qi);
+      expect(k.mode).toBe('random');
+    }
+  });
+
+  it('占时确实随机（12 支里至少出现 3 种）', () => {
+    const draws = Array.from({ length: 60 }, () => buildRandomKe(ANCHOR));
+    const hours = new Set(draws.map((k) => k.dateInfo.hourZhi));
+    expect(hours.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('随机课与正时起课同源：同占时下盘面完全一致', () => {
+    const k = buildRandomKe(ANCHOR);
+    const same = buildKe(ANCHOR, { hourZhi: k.dateInfo.hourZhi, mode: 'time' });
+    expect(same.dateInfo.jiangZhi).toBe(k.dateInfo.jiangZhi);
+    expect(same.dateInfo.dayGz).toBe(k.dateInfo.dayGz);
+    expect(same.sanChuan.map((c) => `${c.stage} ${c.zhi}${c.dunGan}`))
+      .toEqual(k.sanChuan.map((c) => `${c.stage} ${c.zhi}${c.dunGan}`));
   });
 });
