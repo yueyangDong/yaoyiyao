@@ -45,16 +45,20 @@ pages/      页面：组织交互与状态，调用判据层，交给排版层
 
 ## 三、首屏预算
 
-首屏 = `index.html` 实际预加载的那几个 chunk。当前基线（gzip，**本地与线上一致**）：
+首屏 = `index.html` 实际预加载的那几个 chunk。当前基线（gzip，**本地与线上逐字节一致**，
+2026-11-23 实测）：
 
-| 项 | 体积 |
-|---|---|
-| `index-*.js`（业务 + 首屏用到的 antd + supabase） | ~217 KB |
-| `react-vendor`（react/router/framer-motion） | ~92 KB |
-| `index-*.css` | ~5 KB |
-| **合计** | **~315 KB** |
+| 项 | gzip 字节 | ≈KB(1000) | ≈KiB(1024) |
+|---|---|---|---|
+| `index-*.js`（业务 + 首屏用到的 antd + supabase） | 217,305 | 217 | 212 |
+| `react-vendor`（react/router/framer-motion） | 94,515 | 95 | 92 |
+| `index-*.css` | 5,150 | 5 | 5 |
+| **合计** | **316,970** | **317** | **310** |
 
-历史：728 KB（index 104 + antd 299 + calendar 234 + react 92 + css 5）→ 315 KB。
+> 之前这里写「~315 KB」而 react-vendor 记 92——那个 92 是 KiB、217 是 KB，两种单位混在一张表里。
+> 报体积前先 `gzip -c` 数一遍字节，别照抄。
+
+历史：728 KB（index 104 + antd 299 + calendar 234 + react 92 + css 5）→ 317 KB。
 
 ### ⚠️ 环境变量必须本地与线上同源，否则「首屏体积」和「功能」都会悄悄不同
 
