@@ -1,0 +1,13 @@
+# 行尾统一 LF，且**检出时就转**（eol=lf），而不是只在提交时归一化。
+#
+# 为什么必须写死：public/ 下的文件是**原样拷进 dist** 的，没有任何转译环节。
+# Windows 上 core.autocrlf=true 会把它们检出成 CRLF，于是：
+#   · public/yao-sync.js 本地 4283 B（148 处 CRLF） vs 仓库 blob 4135 B
+#   · vite-plugin-pwa 用文件 md5 当 precache revision → 本地 sw.js 与 CI 不同
+#     （实测 1064b01a… vs 7ab1f167…）
+# 结果就是「同一份代码，本地构建产物和线上产物对不上」——排查成本极高，
+# 因为 JS/CSS 全部一致，只有 sw.js 一个文件不同。
+#
+# 注意：本文件生效后需要重新检出一遍受影响的文件才会转换，例如
+#   rm public/yao-sync.js && git checkout -- public/yao-sync.js
+* text=auto eol=lf

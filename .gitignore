@@ -19,4 +19,7 @@ outputs/
 .workbuddy/
 
 爻一爻-debug.apk
-dist_old_bak*/
+# 本地产物比对用的临时目录（docs/architecture.md §六 的验收流程）、
+# 旧 dist 备份、npm ci 之前被移开的旧依赖
+dist_*/
+node_modules_drift/

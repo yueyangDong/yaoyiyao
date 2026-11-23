@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:gh": "tsc && vite build --base=/yaoyiyao/",
-    "build:cf": "tsc && vite build --base=/",
+    "build": "tsc && vite build && node scripts/sort-sw.mjs",
+    "build:gh": "tsc && vite build && node scripts/sort-sw.mjs",
+    "build:cf": "tsc && vite build --base=/ && node scripts/sort-sw.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "deploy": "gh-pages -d dist",

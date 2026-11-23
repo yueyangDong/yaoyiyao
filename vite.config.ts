@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'url';
@@ -6,7 +7,56 @@ import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * 构建 base 的合法取值。三种部署形态各一个：GitHub Pages 子路径 / 根域 / Capacitor 本地。
+ */
+const ALLOWED_BUILD_BASES = ['/yaoyiyao/', '/', './'];
+
+/**
+ * 构建 base 闸门。
+ *
+ * ⚠️ 为什么需要它：Windows 的 Git Bash（MSYS2）会把**以 `/` 开头的命令行参数**
+ *    当成 POSIX 路径，在交给 vite 之前自动改写成 Windows 路径。
+ *    `npx vite build --base=/yaoyiyao/` 到 vite 手里就变成了
+ *    `/workbuddy/resources/vendor/PortableGit/yaoyiyao/`（本机实测；标准安装下是
+ *    `C:/Program Files/Git/yaoyiyao/`）。后果是 index.html 里**每一条**资源引用、
+ *    `import.meta.env.BASE_URL`、PWA manifest 全部指向不存在的位置：
+ *    图片 404、所有 chunk 名字集体变化，而构建过程**一句错都不报**，
+ *    只能靠逐字节比对产物才发现（本地与线上 69 个 chunk 里 43 个 hash 不同）。
+ *
+ *    CI 在 Linux 上跑，不会触发；`npm run` 在 Windows 上走 cmd.exe，也不触发。
+ *    只有「在本机用 Git Bash 直接敲 vite」才会踩——而那恰好是排查线上问题时最常做的事。
+ *
+ *    所以这里的选择是：**宁可构建失败**，也不要产出一个「本地能跑、线上 404」的包。
+ *    真要在 Git Bash 里传 `--base`，加 `MSYS_NO_PATHCONV=1` 前缀即可。
+ */
+function assertBuildBase(): Plugin {
+  return {
+    name: 'assert-build-base',
+    configResolved(cfg) {
+      if (cfg.command !== 'build') return;
+      if (!ALLOWED_BUILD_BASES.includes(cfg.base)) {
+        throw new Error(
+          `[base] 构建 base 异常：${cfg.base}\n`
+          + `  合法值只有 ${ALLOWED_BUILD_BASES.join(' / ')}。\n`
+          + '  若你在 Windows 的 Git Bash 里传了 --base=/…，那是 MSYS 把参数改写成路径了：\n'
+          + '    改用 MSYS_NO_PATHCONV=1 前缀，或直接依赖 vite.config.ts 里的默认值。',
+        );
+      }
+    },
+  };
+}
+
+/**
+ * PWA 的 precache 列表排序**不在这里做**。原因见 scripts/sort-sw.mjs 头部注释：
+ * vite-plugin-pwa 在它自己注入的末端插件里写 sw.js，任何写在本配置里的
+ * closeBundle 都会先于它执行（实测 sw.js 尚不存在）。所以排序是 `npm run build:*`
+ * 里 `vite build` 之后的一步。
+ */
+
 export default defineConfig(({ command, mode }) => ({
+  // ⚠️ 不要再给命令加 `--base=/…`：构建默认值已经在这里，且加参数会在 Windows
+  //    Git Bash 里被 MSYS 改写（见 assertBuildBase 注释）。要换部署目标就改这里。
   base: command === 'build' ? '/yaoyiyao/' : '/',
   root: __dirname,
   // @ziweijs/core 厂内化：node_modules 原版五行局（纳音）计算有误（丙寅误判土五局），
@@ -64,6 +114,7 @@ export default defineConfig(({ command, mode }) => ({
     },
   },
   plugins: [
+    assertBuildBase(),
     react(),
     // APK 构建（--mode android）禁用 PWA/SW：Capacitor 内 Service Worker 是白屏隐患（陈旧缓存）
     ...(mode === 'android' ? [] : [VitePWA({

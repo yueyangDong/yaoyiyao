@@ -135,3 +135,91 @@ chunk**，不管它有没有被首屏引用。而这个 chunk 被首屏静态依
 - 页面组件**只排版**：不做 `if (score > x)` 这种二次判断，也不写解读句子。
 - 神煞是**修饰**不是主判：领域解读里神煞段必须排在该领域末段、`role: 'modifier'`、
   标题带「不单独定吉凶」，页面默认折叠。出口兜底在 `baziDomainDeep.normalizeSections`。
+
+## 六、构建必须可复现（本地产物 = 线上产物，逐字节）
+
+排查「线上和本地不一样」时，唯一可信的判据是**逐字节比对**——因为一次坏的 base
+就能让 43 个 chunk 的 hash 集体变化，靠肉眼看体积、看 hash「差不多」是排不出来的。
+所以这条链路上的每个不确定性都必须压掉，压到 `diff -r` 无输出为止。
+
+### 验收命令（改完构建配置后必跑）
+
+```bash
+# 1) 本机构建（务必用脚本，别手敲 vite，原因见下）
+npm run build:gh
+
+# 2) 拉一份线上镜像，逐个 cmp
+for f in $(find dist -type f | sed 's|^dist/||'); do
+  mkdir -p "/tmp/mirror/$(dirname "$f")"
+  curl -sfL -o "/tmp/mirror/$f" "https://yueyangdong.github.io/yaoyiyao/$f"
+  cmp -s "dist/$f" "/tmp/mirror/$f" || echo "不同: $f"
+done
+```
+
+期望输出：**只有 `不同: sw.js` 且仅当上次部署还没带 `sort-sw` 那一步**。其余任何一行都是真问题。
+（2026-11-23 实测：84 个文件全部一致，0 缺失。）
+
+### 三个必须压掉的不确定性
+
+**1. 依赖装的是 lock 里的版本，不是 `package.json` 的浮动范围**
+
+`npm ci` 按 lock 装；日常 `npm install` 会把 `^` 拉满。两者不一致时，**本地构建产物
+和 CI 产物不是同一份代码的产物**。2026-11-23 实测漂移 182 个顶层/传递包
+（supabase-js 2.119.0 vs lock 2.110.2、Babel 全家、@ant-design/icons-svg…），
+光是把 supabase-js 对齐就消掉 14.5 KB 体积差。
+
+> 本机 `npm ci` 会被安全守卫拦（要删 `node_modules/.bin` 下的 161 项）。绕法是先把
+> `node_modules` 整个移开再 `npm ci`：目录不存在，它就没有要删的东西。
+> 对齐后的自检（应输出 `非可选包漂移 0`）：
+
+```bash
+node -e "const fs=require('fs');const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));let bad=[];for(const [k,v] of Object.entries(lock.packages)){if(!k.startsWith('node_modules/')||v.version===undefined||v.optional)continue;let iv=null;try{iv=JSON.parse(fs.readFileSync(k+'/package.json','utf8')).version}catch(e){}if(v.version!==iv)bad.push(k)}console.log('非可选包漂移',bad.length)"
+```
+
+剩下的「缺失」只应该是别的平台的 `@esbuild/*` 二进制、`@rollup/rollup-*` 这类可选包——正常。
+
+**2. 行尾：`.gitattributes` 强制 LF，且是**检出时**转**
+
+`core.autocrlf=true`（Windows 默认）会把检出文件改成 CRLF。绝大多数源码无所谓（编译后
+不体现），但 `public/` 下的文件是**原样拷进 dist** 的，`index.html` 也是直接被 PWA 算 md5：
+
+| 文件 | CRLF 时 | LF 时 |
+|---|---|---|
+| `index.html` | 2754 B（58 处 CRLF） | 2696 B |
+| `public/yao-sync.js` | 4283 B（148 处） | 4135 B |
+| 后果 | sw.js 里两条 revision 都对不上（`c23b528a…` / `1064b01a…`） | 与线上一致（`c58389f1…` / `7ab1f167…`） |
+
+`.gitattributes` 只在**下次检出**时生效。已有的工作区要重新检出一次：
+
+```bash
+git rm -q --cached -r . && git reset --hard     # 会丢弃未提交改动，先备份
+```
+
+**3. `sw.js` 的 precache 顺序：`scripts/sort-sw.mjs`**
+
+workbox 扫 dist 用的是文件系统 `readdir` 顺序，Linux（CI）与 Windows（本机）不同。
+实测两边都是 82 条、80 个唯一 URL、revision 逐条相同，只有排列不同 → sw.js 字节不同。
+功能无影响（precache 是待抓取 URL 列表），但它会污染逐字节比对。
+`npm run build:*` 在 `vite build` 之后串了这个脚本，按 URL 代码点排序。
+
+> 为什么不写在 `vite.config.ts` 的 `closeBundle` 里：vite-plugin-pwa 把 sw.js 的生成放在
+> **它自己注入的末端插件**里，配置里的 `closeBundle` 一定会先执行——实测那一刻
+> `dist/sw.js` 还不存在，于是静默什么都不做。
+
+### ⚠️ 不要在 Windows 的 Git Bash 里给 vite 传 `--base=/…`
+
+MSYS2 会把**以 `/` 开头的命令行参数**当成 POSIX 路径自动改写。`npx vite build --base=/yaoyiyao/`
+到 vite 手里会变成 `/workbuddy/resources/vendor/PortableGit/yaoyiyao/`
+（标准安装下是 `C:/Program Files/Git/yaoyiyao/`）。后果：
+
+- `index.html` 里**每一条**资源引用、`import.meta.env.BASE_URL`、PWA manifest 全部指向不存在的位置；
+- 所有 chunk 的名字集体变化（43/69 个 hash 不同），线上图片 404；
+- 构建过程**一句错都不报**。
+
+CI 在 Linux 上、`npm run` 在 Windows 上走 cmd.exe，都不触发；只有「在本机用 Git Bash
+直接敲 vite」才会踩——而那恰好是排查线上问题时最常做的事。
+
+`vite.config.ts` 里的 `assertBuildBase()` 把这条堵成了构建失败：base 只允许
+`/yaoyiyao/`、`/`、`./` 三种，其余直接抛错。真要在 Git Bash 里传，加 `MSYS_NO_PATHCONV=1`。
+`build:gh` 里那个冗余的 `--base=/yaoyiyao/` 已经删掉（`base` 的默认值本来就是它）。
+
