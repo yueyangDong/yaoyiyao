@@ -6,6 +6,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
 import { useUser } from '../context/UserContext';
+import { palaceScoreOf } from '../utils/ziweiPalaceScore';
 import { getCityLng, correctSolarTime } from '../utils/solarTime';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
@@ -63,9 +64,8 @@ const SIHUA_COLORS: Record<string, string> = {
   '禄': 'var(--wx-wood)', '权': 'var(--wx-water)', '科': 'var(--wx-earth)', '忌': 'var(--wx-fire)',
 };
 
-// 星曜吉凶分类
-const JI_STARS = new Set(['紫微','天府','天相','天梁','天同','太阴','太阳','文昌','文曲','天魁','天钺','左辅','右弼','禄存','天马']);
-const XIONG_STARS = new Set(['七杀','破军','廉贞','贪狼','巨门','擎羊','陀罗','火星','铃星','地空','地劫']);
+// 星曜吉凶归类与宫位分档已下沉到 utils/ziweiPalaceScore（判据不进页面）；
+// 这里保留的只有排版用的配色。
 
 // 哲理名言
 const PHILOSOPHY_QUOTES = [
@@ -78,23 +78,6 @@ const PHILOSOPHY_QUOTES = [
 
 function getRandomQuote(): string {
   return PHILOSOPHY_QUOTES[Math.floor(Math.random() * PHILOSOPHY_QUOTES.length)];
-}
-
-function getPalaceScore(gong: any): { level: '吉' | '中' | '凶'; jiCount: number; xiongCount: number; sihuaGood: number; sihuaBad: number } {
-  let jiCount = 0, xiongCount = 0, sihuaGood = 0, sihuaBad = 0;
-  // 辅星优先使用带四化的完整信息（minorStarDetails），退回纯名称列表
-  const minors = gong.minorStarDetails || (gong.minorStars || []).map((s: string) => ({ name: s, sihua: null }));
-  const stars = [...(gong.majorStars || []), ...minors];
-  for (const s of stars) {
-    if (JI_STARS.has(s.name)) jiCount++;
-    if (XIONG_STARS.has(s.name)) xiongCount++;
-    if (s.sihua === '禄' || s.sihua === '权' || s.sihua === '科') sihuaGood++;
-    if (s.sihua === '忌') sihuaBad++;
-  }
-  const score = (jiCount + sihuaGood * 2) - (xiongCount + sihuaBad * 2);
-  if (score >= 2) return { level: '吉', jiCount, xiongCount, sihuaGood, sihuaBad };
-  if (score <= -1) return { level: '凶', jiCount, xiongCount, sihuaGood, sihuaBad };
-  return { level: '中', jiCount, xiongCount, sihuaGood, sihuaBad };
 }
 
 const PALACE_LEVEL_STYLE: Record<string, { border: string; bg: string; tag: string }> = {
@@ -652,7 +635,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
 
   // 每宫开头判语（吉/中/凶分池；哈希输入含宫名+主星，同宫名不同盘措辞不同，降重合度）
   const getGongVerdict = (gong: any): string => {
-    const score = getPalaceScore(gong);
+    const score = palaceScoreOf(gong);
     const starKey = (gong.majorStars || []).map((s: any) => s.name).join('') || '空宫';
     // '命宫'自带宫字，其余宫名需补宫字
     const gongLabel = String(gong.name).endsWith('宫') ? gong.name : `${gong.name}宫`;
@@ -938,7 +921,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
 
           {/* 命盘总评 — 一句话看懂好坏 */}
           {(() => {
-            const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...getPalaceScore(g) }));
+            const results = ziweiData.gongData.map((g: any) => ({ name: g.name, ...palaceScoreOf(g) }));
             const jiCount = results.filter((r: { level: string }) => r.level === '吉').length;
             const xiongCount = results.filter((r: { level: string }) => r.level === '凶').length;
             const zhongCount = results.filter((r: { level: string }) => r.level === '中').length;
@@ -1086,7 +1069,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
           <CollapsibleCard title="各宫白话解读" summary="十二宫位详解，点击展开查看各宫详情" accordionGroup="ziwei-analysis">
           <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             {ziweiData.gongData.map((gong: any, idx: number) => {
-              const score = getPalaceScore(gong);
+              const score = palaceScoreOf(gong);
               const style = PALACE_LEVEL_STYLE[score.level];
               return (
                 <div key={idx} style={{

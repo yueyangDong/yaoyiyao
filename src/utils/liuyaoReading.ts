@@ -342,6 +342,88 @@ interface AnalyzedProbe {
   flags: { yuePo?: boolean; riPo?: boolean; kong?: boolean; mu?: boolean; hua?: string; fu?: boolean };
 }
 
+/**
+ * 世应生克（世 = 你，应 = 对方/外部环境）。
+ *
+ * ⚠️ **唯一出口**。此前 `pages/Liuyao.tsx` 自带一份 `WX_SHENG`/`WX_KE` 就地判断，
+ * 既违反「五行关系只走 wuXingRelations」，又与判据层的权重分属两条路——
+ * 页面可能写着「环境在滋养你」，而计分把这条算成了扣分，两处都"有道理"，用户无法察觉。
+ * 现在页面只取本函数的 `rel` / `plain`，计分只取 `weight`。
+ *
+ * `weight` 是**乘 polarity 之前**的基础分，与既有权重表逐字一致：
+ * 应生世 +1、应克世 −2、世生应 −1；世克应与比和不计分（改动会让整条分数分布漂移，
+ * 见 docs/shensha-power-model.md 的阈值锚点纪律）。
+ */
+export interface ShiYingRelation {
+  kind: '应生世' | '应克世' | '世生应' | '世克应' | '比和';
+  /** 基础分（未乘 polarity） */
+  weight: number;
+  shiWx: string;
+  yingWx: string;
+  /** 判据措辞（进 evidence） */
+  detail: string;
+  /** 「应爻（木）生世爻（火）」 */
+  rel: string;
+  /** 白话（页面展示） */
+  plain: string;
+  /** 「世爻在第3爻（…）；应爻在第6爻（…）」 */
+  layout: string;
+}
+
+export function shiYingRelationOf(chart: LiuyaoChartLike): ShiYingRelation | null {
+  const list = chart?.benGua?.yaoList;
+  if (!Array.isArray(list)) return null;
+  const shi = list.find((y) => y.shiYing === '世');
+  const ying = list.find((y) => y.shiYing === '应');
+  if (!shi || !ying) return null;
+  // ⚠️ 五行一律取爻自带的 wuXing，不要从纳甲末字反推——
+  //    反推等于又养一份「地支→五行」映射，和引擎那份迟早不一致。
+  const shiWx = shi.wuXing;
+  const yingWx = ying.wuXing;
+  if (!shiWx || !yingWx) return null;
+
+  const layout = `世爻在第${shi.position}爻（${shi.naJia}，${shiWx}，${shi.liuQin}）；应爻在第${ying.position}爻（${ying.naJia}，${yingWx}，${ying.liuQin}）。`;
+
+  if (WX_SHENG[yingWx] === shiWx) {
+    return {
+      kind: '应生世', weight: 1, shiWx, yingWx, layout,
+      rel: `应爻（${yingWx}）生世爻（${shiWx}）`,
+      detail: `应爻（${ying.naJia}，${yingWx}）生世爻（${shi.naJia}，${shiWx}）——外部条件是帮你的，别单打独斗。`,
+      plain: '对方/外部环境在滋养你——你问的这件事，外界对你有善意，多借力、多合作，别单打独斗。',
+    };
+  }
+  if (WX_KE[yingWx] === shiWx) {
+    return {
+      kind: '应克世', weight: -2, shiWx, yingWx, layout,
+      rel: `应爻（${yingWx}）克世爻（${shiWx}）`,
+      detail: `应爻（${ying.naJia}，${yingWx}）克世爻（${shi.naJia}，${shiWx}）——外部环境压着你，硬顶不如换路或等时机。`,
+      plain: '环境压制你——外部条件暂时不利，硬顶不如智取：要么换路径，要么等时机。',
+    };
+  }
+  if (WX_SHENG[shiWx] === yingWx) {
+    return {
+      kind: '世生应', weight: -1, shiWx, yingWx, layout,
+      rel: `世爻（${shiWx}）生应爻（${yingWx}）`,
+      detail: '世爻生应爻——你在往外付出，成败取决于你愿不愿意继续投。',
+      plain: '你在对外付出——事情的成败取决于你的投入度和坚持，主动权在你，但要防过度消耗。',
+    };
+  }
+  if (WX_KE[shiWx] === yingWx) {
+    return {
+      kind: '世克应', weight: 0, shiWx, yingWx, layout,
+      rel: `世爻（${shiWx}）克应爻（${yingWx}）`,
+      detail: '世爻克应爻——主动权在你，事情能推得动，注意别用力过猛。',
+      plain: '你克制对方/环境——主动权握在你手里，事情能按你的意图推进，注意方式温和些，赢了事别输了关系。',
+    };
+  }
+  return {
+    kind: '比和', weight: 0, shiWx, yingWx, layout,
+    rel: `世应同为${shiWx}（比和）`,
+    detail: '世应比和——不冲不克，按部就班推进即可。',
+    plain: '你与对方/环境同频——不冲不克，按部就班推进即可，属于平顺的格局。',
+  };
+}
+
 function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
   const ev: Evidence[] = [];
   const flags: AnalyzedProbe['flags'] = {};
@@ -633,8 +715,6 @@ function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
   }
 
   /* ---------- 5. 世应：主动权在谁手里 ---------- */
-  const shi = benYaoList.find((y) => y.shiYing === '世');
-  const ying = benYaoList.find((y) => y.shiYing === '应');
   if (yao.shiYing === '世') {
     strength += 2;
     ev.push({
@@ -650,31 +730,15 @@ function analyzeProbe(spec: ProbeSpec, chart: LiuyaoChartLike): AnalyzedProbe {
       weight: -1 * spec.polarity,
     });
   }
-  if (shi && ying) {
-    const shiWx = shi.wuXing;
-    const yingWx = ying.wuXing;
-    if (WX_SHENG[yingWx] === shiWx) {
-      strength += 1;
-      ev.push({
-        label: '世应·应生世',
-        detail: `应爻（${ying.naJia}，${yingWx}）生世爻（${shi.naJia}，${shiWx}）——外部条件是帮你的，别单打独斗。`,
-        weight: 1 * spec.polarity,
-      });
-    } else if (WX_KE[yingWx] === shiWx) {
-      strength -= 2;
-      ev.push({
-        label: '世应·应克世',
-        detail: `应爻（${ying.naJia}，${yingWx}）克世爻（${shi.naJia}，${shiWx}）——外部环境压着你，硬顶不如换路或等时机。`,
-        weight: -2 * spec.polarity,
-      });
-    } else if (WX_SHENG[shiWx] === yingWx) {
-      strength -= 1;
-      ev.push({
-        label: '世应·世生应',
-        detail: `世爻生应爻——你在往外付出，成败取决于你愿不愿意继续投。`,
-        weight: -1 * spec.polarity,
-      });
-    }
+  // 世应生克走唯一出口；比和与世克应不计分（与既有权重表一致，勿动）
+  const sy = shiYingRelationOf(chart);
+  if (sy && sy.weight !== 0) {
+    strength += sy.weight;
+    ev.push({
+      label: `世应·${sy.kind}`,
+      detail: sy.detail,
+      weight: sy.weight * spec.polarity,
+    });
   }
 
   return {

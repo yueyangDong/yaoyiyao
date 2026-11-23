@@ -9,7 +9,7 @@ import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 import { useUser } from '../context/UserContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 import { guaShortToFull } from '../utils/liuyaoTexts';
-import { buildAllLiuyaoReadings } from '../utils/liuyaoReading';
+import { buildAllLiuyaoReadings, shiYingRelationOf } from '../utils/liuyaoReading';
 import type { Theme, ThemeReading } from '../utils/divinationCore';
 import { THEME_WORD } from '../utils/divinationCore';
 import ThemeReadingCard from '../components/ThemeReadingCard';
@@ -260,41 +260,16 @@ export default function Liuyao() {
     };
   }, [pan, theme]);
 
-  // 世应生克关系自动分析（白话：世=你，应=对方/环境）
+  // 世应生克（白话：世=你，应=对方/环境）
+  // ⚠️ 判据与计分都在 utils/liuyaoReading.shiYingRelationOf 里，页面**只取措辞**。
+  //    这里原来自带一份 WX_SHENG/WX_KE 就地判断——既违反「五行关系只走 wuXingRelations」，
+  //    又可能与同一张盘的计分打起来（页面说"环境在帮你"、权重却在扣分），且两处都不报错。
   const shiYingAnalysis = useMemo(() => {
     if (!pan) return null;
-    const shi = pan.benGua.yaoList.find((y: any) => y.shiYing === '世');
-    const ying = pan.benGua.yaoList.find((y: any) => y.shiYing === '应');
-    if (!shi || !ying) return null;
     try {
-      // ⚠️ 五行一律取爻自带的 wuXing，不要从纳甲末字反推——
-      // 反推等于在页面里又养了一份「地支→五行」映射，和引擎那份迟早不一致。
-      const shiWx = shi.wuXing;
-      const yingWx = ying.wuXing;
-      const WX_SHENG: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
-      const WX_KE: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
-      let rel: string; let plain: string;
-      if (WX_SHENG[yingWx] === shiWx) {
-        rel = `应爻（${yingWx}）生世爻（${shiWx}）`;
-        plain = '对方/外部环境在滋养你——你问的这件事，外界对你有善意，多借力、多合作，别单打独斗。';
-      } else if (WX_SHENG[shiWx] === yingWx) {
-        rel = `世爻（${shiWx}）生应爻（${yingWx}）`;
-        plain = '你在对外付出——事情的成败取决于你的投入度和坚持，主动权在你，但要防过度消耗。';
-      } else if (WX_KE[shiWx] === yingWx) {
-        rel = `世爻（${shiWx}）克应爻（${yingWx}）`;
-        plain = '你克制对方/环境——主动权握在你手里，事情能按你的意图推进，注意方式温和些，赢了事别输了关系。';
-      } else if (WX_KE[yingWx] === shiWx) {
-        rel = `应爻（${yingWx}）克世爻（${shiWx}）`;
-        plain = '环境压制你——外部条件暂时不利，硬顶不如智取：要么换路径，要么等时机（应爻受冲受克的日期）。';
-      } else {
-        rel = `世应同为${shiWx}（比和）`;
-        plain = '你与对方/环境同频——不冲不克，按部就班推进即可，属于平顺的格局。';
-      }
-      return {
-        rel,
-        plain,
-        detail: `世爻在第${shi.position}爻（${shi.naJia}，${shiWx}，${shi.liuQin}）；应爻在第${ying.position}爻（${ying.naJia}，${yingWx}，${ying.liuQin}）。`,
-      };
+      const rel = shiYingRelationOf(pan);
+      if (!rel) return null;
+      return { rel: rel.rel, plain: rel.plain, detail: rel.layout };
     } catch {
       return null;
     }
