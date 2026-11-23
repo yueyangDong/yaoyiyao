@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // UserContext 依赖 supabase（import.meta.env 在 vitest 下无注入），mock 掉以隔离被测纯函数
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
 
-import { getCityLng } from '../UserContext';
+import { getCityLng } from '../../utils/solarTime';
 
 describe('getCityLng', () => {
   it('编码三级匹配：河北省石家庄市长安区', () => {

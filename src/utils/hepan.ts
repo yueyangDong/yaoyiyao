@@ -10,7 +10,7 @@
 //   2. 方向性差异不抹平，而是输出到 result.perspectives（"我视角/对方视角"双维度），
 //      交换输入后 mine/partner 内容随"人"走、分数不变；
 //   3. 交换不变性由单元测试保证（hepan.test.ts 交换输入用例）。
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
 import { DAY_MASTER_ESSENCE, getDayMasterTitle } from './baziPersonality';
 import { calcShenSha } from './shenSha';

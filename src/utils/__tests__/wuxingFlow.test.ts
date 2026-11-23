@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../wuxingFlow';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, cangGan: string[] = []): PillarData => ({
   pillar, ganZhi: tianGan + diZhi, tianGan, diZhi,

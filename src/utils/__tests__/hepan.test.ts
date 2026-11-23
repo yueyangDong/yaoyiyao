@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeHePan, type HePanInput } from '../hepan';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 // ⚠️ 本文件是**手工构造盘**，只用来验证「给定这些输入，判定与打分是否正确」。
 //    `nayin` 等字段是直接写死的合成值，**不对应真实排盘结果**（例如这里 年柱=壬子 却写 '剑锋金'、

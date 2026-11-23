@@ -22,6 +22,11 @@ export default defineConfig(({ command, mode }) => ({
     alias: {
       '@ziweijs/core': fileURLToPath(new URL('./src/vendor/ziweijs-core/index.js', import.meta.url)),
       '@ziweijs/i18n': fileURLToPath(new URL('./src/vendor/ziweijs-i18n/index.js', import.meta.url)),
+      // iching-shifa 厂内化：上游把《高岛易断》64 卦 ~620 KB 占例与排盘代码打进同一个
+      // ESM 文件，且顶层 for 循环建索引（副作用），rollup 摇不掉——只 import 4 个排盘
+      // 函数也会带出 1.5 MB。vendored 副本已剥离那段数据（六爻页 2.23 MB → 0.74 MB），
+      // 等价性验证见 src/vendor/iching-shifa/index.js 头部注释。
+      'iching-shifa': fileURLToPath(new URL('./src/vendor/iching-shifa/index.js', import.meta.url)),
     },
   },
   build: {
@@ -29,11 +34,31 @@ export default defineConfig(({ command, mode }) => ({
     target: 'es2018',
     rollupOptions: {
       output: {
-        // 拆 vendor：框架/UI/日历数据分离，浏览器并行下载 + 长期缓存
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
-          'antd-vendor': ['antd', '@ant-design/icons'],
-          'calendar-vendor': ['lunar-typescript', '@ziweijs/core', 'cn-division'],
+        // 拆 vendor：框架/UI/日历数据分离，浏览器并行下载 + 长期缓存。
+        //
+        // ⚠️ 日历这块必须**按用途拆开**，不能合成一个 calendar-vendor：
+        //    合成后只要首屏碰到其中任何一个（比如只为显示一行农历），
+        //    全国行政区划表（cn-division ~200 KB gzip）会跟着一起进首屏。
+        //    拆开之后各自的加载时机才独立：
+        //      lunar  → 首页那行农历 / 排盘页
+        //      cn     → 只在保存档案、选定出生地时（Layout 里是动态 import）
+        //      tyme   → 排盘底层（iching-shifa 与 @ziweijs/core 共用）
+        //      ziwei  → 紫微页
+        // ⚠️ manualChunks 用**对象式**（包名数组）会把该包**整个模块图**强行塞进一个 chunk，
+        //    不管它有没有被首屏引用。写成 `'antd-vendor': ['antd']` 的后果是：
+        //    懒加载页面才用到的 antd 组件（Table/DatePicker/Upload…）全被提前进首屏，
+        //    antd-vendor 984 KB 里有一大半首屏根本用不上。
+        //    改成函数式，只锁 react 一层（它必然首屏），其余交给 rollup 按**引用关系**拆：
+        //    首屏实际用到的部分进 index/共享 chunk，页面独用的跟着页面 chunk 走。
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          const p = id.replace(/\\/g, '/');
+          // react 全家 + 动画库：首屏必经，单独立组最利于长期缓存
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|framer-motion|motion-dom|motion-utils)\//.test(p)) {
+            return 'react-vendor';
+          }
+          // 其余（antd / rc-* / lunar-typescript / tyme4ts / cn-division …）不归组
+          return undefined;
         },
       },
     },

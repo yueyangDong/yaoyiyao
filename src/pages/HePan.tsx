@@ -3,7 +3,8 @@ import {
   Card, Form, InputNumber, Button, Radio, Row, Col, Typography, Tag, Progress, Alert, message, Space, Cascader, Checkbox,
 } from 'antd';
 import { pcaCode } from 'cn-division';
-import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
+import { getCityLng, correctSolarTime } from '../utils/solarTime';
 import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';

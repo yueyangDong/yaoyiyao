@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeMingGeDetailed, analyzeTouGan } from '../mingGe';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (tianGan: string, diZhi: string, cangGan: string[], shiShen: string): PillarData => ({
   pillar: '年柱', ganZhi: tianGan + diZhi, tianGan, diZhi, cangGan, shiShen,

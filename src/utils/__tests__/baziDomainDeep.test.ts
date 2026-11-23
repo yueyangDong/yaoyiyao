@@ -3,7 +3,7 @@ import {
   generateDomainDeepReadings, shaHeading, normalizeSections,
   isShaSectionHeading, normalizeShaHeading,
 } from '../baziDomainDeep';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 // 命例 mock：甲日主，年柱戊辰、月柱丁丑、日柱甲子（日支正印）、时柱甲戌
 const pillars: PillarData[] = [

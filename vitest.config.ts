@@ -9,6 +9,9 @@ import { fileURLToPath } from 'url';
 const ziweiAlias = {
   '@ziweijs/core': fileURLToPath(new URL('./src/vendor/ziweijs-core/index.js', import.meta.url)),
   '@ziweijs/i18n': fileURLToPath(new URL('./src/vendor/ziweijs-i18n/index.js', import.meta.url)),
+  // 与 vite.config.ts 同源：iching-shifa 走厂内剥离版，否则测试跑的是另一份代码，
+  // 护栏就成了「测一套、发一套」。
+  'iching-shifa': fileURLToPath(new URL('./src/vendor/iching-shifa/index.js', import.meta.url)),
 };
 
 export default defineConfig({
@@ -16,7 +19,7 @@ export default defineConfig({
   test: {
     server: {
       deps: {
-        inline: ['@ziweijs/core', '@ziweijs/i18n'],
+        inline: ['@ziweijs/core', '@ziweijs/i18n', 'iching-shifa'],
       },
     },
     // environmentMatchGlobs 已弃用，改用 test.projects 按文件后缀拆分环境

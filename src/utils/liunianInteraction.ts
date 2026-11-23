@@ -19,7 +19,7 @@
 // ⚠️ 大运与流年用**同一个函数**（analyzeGanZhiInteraction）：二者对命局的作用机制相同，
 //   区别只在时间跨度（十年 vs 一年）与是否"当令"。不要为大运另写一套。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import {
   DZ_WANG,
   DZ_WX,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 import { analyzeGanZhiInteraction, analyzeDayunFlow, PEACH_TABLES, type InteractionKind } from '../liunianInteraction';
 import { DZ_ORDER, DZ_CHONG, DZ_HE, DZ_HAI, DZ_XING } from '../diZhiRelations';
 import { ganZhiOfYear } from '../liunianReading';

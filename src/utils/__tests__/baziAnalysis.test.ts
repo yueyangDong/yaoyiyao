@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeSocial, recommendYongShen } from '../baziAnalysis';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, shiShen: string): PillarData => ({
   pillar, ganZhi: tianGan + diZhi, tianGan, diZhi,

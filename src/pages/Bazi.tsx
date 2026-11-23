@@ -5,7 +5,9 @@ import {
   Typography, Space, Tag, message, Radio, Row, Col,
   Progress, Alert, Divider, Cascader, Tooltip, Popover, Select, Checkbox, Tabs, Modal,
 } from 'antd';
-import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
+import type { PillarData } from '../types/chart';
+import { getCityLng, correctSolarTime } from '../utils/solarTime';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import { generateDomainDeepReadings, type DomainDeepReading } from '../utils/baziDomainDeep';
@@ -362,22 +364,9 @@ function analyzeRelations(pillars: any[]): RelationItem[] {
 // 流年（单年/十年）计算已抽到 src/utils/liunianReading.ts：
 // 页面「流年（十年）」卡片与结论卡共用同一份口径（见该文件头部说明）。
 
-export interface PillarData {
-  pillar: string;
-  ganZhi: string;
-  tianGan: string;
-  diZhi: string;
-  cangGan: string[];
-  shiShen: string;
-  shiShenZhi: string;  // 地支十神 = 自坐X
-  nayin: string;
-  /**
-   * 时柱为推定值（用户不知出生时辰，按午时 12:00 排盘）。
-   * 注意：pillar 字段的值必须保持 '时柱' 不变——baziAnalysis 的 PILLAR_INDEX、
-   * shenShaByPillar 等大量以 pillar 名做等值比较，改值会静默失效。
-   */
-  unknown?: boolean;
-}
+// PillarData 已下沉到 src/types/chart.ts（判据层 14 个模块都要用它，
+// 留在页面里会让 utils 反向依赖 pages）。这里 re-export 只为兼容既有引用。
+export type { PillarData } from '../types/chart';
 
 /**
  * 某一年的「影响哪些方面」详情（流年卡弹窗内容）。

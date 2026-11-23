@@ -8,7 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
 
 import { validatePersonForm, formToChart, comparePersons, type PersonForm } from '../chartCompare';
-import { correctSolarTime } from '../../context/UserContext';
+import { correctSolarTime } from '../solarTime';
 import { SHENSHA_SIMILARITY_BANDS } from '../shenShaSimilarity';
 
 const base = (over: Partial<PersonForm> = {}): PersonForm => ({

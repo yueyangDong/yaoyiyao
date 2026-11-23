@@ -3,7 +3,7 @@
 //    命宫有主星，漏掉 16% 的空宫盘）。这里的采样口径与 2026-10-04 审计一致：
 //    1935–2005 年、随机月/日/时、固定种子，可复现。
 import { Solar } from 'lunar-typescript';
-import type { PillarData } from '../../../pages/Bazi';
+import type { PillarData } from '../../../types/chart';
 import { calcShenSha } from '../../shenSha';
 import { analyzeDayMasterStrength, recommendYongShen } from '../../baziAnalysis';
 

@@ -22,7 +22,7 @@
 //      不是替换。原因是这批文案带着 60 岁后的措辞黑名单与"同阶段不重复"两条约束，
 //      混进去会让两套逻辑互相污染。页面上两者分块展示。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { analyzeGanZhiInteraction, type FlowInteraction } from './liunianInteraction';
 
 export type LifeStage = 'student' | 'young' | 'prime' | 'mature' | 'retire' | 'elder';

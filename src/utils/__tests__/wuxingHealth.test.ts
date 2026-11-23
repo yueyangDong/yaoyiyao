@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { analyzeHealth } from '../baziAnalysis';
 import { generateDomainDeepReadings, type DomainDeepInput } from '../baziDomainDeep';
 import { wxHealthAdvice } from '../wuxingHealth';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, shiShen: string): PillarData => ({
   pillar,

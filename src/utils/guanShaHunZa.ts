@@ -21,7 +21,7 @@
 // ⚠️ 身强弱不设硬门槛是刻意的折中：A 派（三命通会）不设豁免、B 派（天机排盘）身旺论集结——
 //    用「官杀集结」这一档承接身强盘，两边都不丢。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { GAN_WX, WX_KE, YANG_GAN } from './wuXingRelations';
 
 /** 天干五合：键与值相合（双向都已收录，任意一边做键都行） */

@@ -6,7 +6,7 @@
 // 排盘口径复用 utils/personChart.ts（与合盘同一入口），真太阳时复用 UserContext 的统一入口，
 // 禁止在本文件内另写四柱构造 —— 项目曾因此出现"合盘与八字页结论不一致"。
 
-import { getCityLng, correctSolarTime } from '../context/UserContext';
+import { getCityLng, correctSolarTime } from './solarTime';
 import { buildPerson, normalizeWanZi, type PersonChart, type WanZiSect } from './personChart';
 import { compareShenShaCharts, type ShaSimilarityResult } from './shenShaSimilarity';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from './dateValidation';

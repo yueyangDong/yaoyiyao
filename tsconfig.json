@@ -18,7 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@ziweijs/core": ["src/vendor/ziweijs-core/index.d.ts"],
-      "@ziweijs/i18n": ["src/vendor/ziweijs-i18n/index.d.ts"]
+      "@ziweijs/i18n": ["src/vendor/ziweijs-i18n/index.d.ts"],
+      "iching-shifa": ["src/vendor/iching-shifa/index.d.ts"]
     }
   },
   "include": ["src"],

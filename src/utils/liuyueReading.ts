@@ -21,7 +21,7 @@
 
 import { Solar } from 'lunar-typescript';
 import { SHENG, KE } from './wuxingFlow';
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { analyzeGanZhiInteraction, type FlowInteraction } from './liunianInteraction';
 // 干支五行表走 utils 唯一出口（本文件原先自留一份 TG_WX / DZ_WX）
 import { GAN_WX as TG_WX } from './wuXingRelations';

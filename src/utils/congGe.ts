@@ -22,7 +22,7 @@
 //    「地支本气十神是比肩/劫财」等价于「该支本气与日主同五行」，且天然兼容阴干阳干。
 // ⚠️ 「有本气根即不从」是硬门槛——正是旧实现漏掉的那一条。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { SAN_HUI_FANG, isChong } from './diZhiRelations';
 import { GAN_WX, WX_KE, WX_KE_ME, WX_SHENG } from './wuXingRelations';
 

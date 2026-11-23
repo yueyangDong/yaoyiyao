@@ -10,7 +10,8 @@ import {
 } from '@ant-design/icons';
 import { UserCircle, Plus, Bug } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, getCityLng } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
+import { getCityLng } from '../utils/solarTime';
 import type { StoredUser } from '../context/UserContext';
 import ModuleCompare from '../components/ModuleCompare';
 import EntitlementCard from '../components/EntitlementCard';

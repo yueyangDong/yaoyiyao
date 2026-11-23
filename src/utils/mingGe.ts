@@ -1,6 +1,6 @@
 // ========== 八字命格详细判定 ==========
 // 判定顺序：特殊外格 → 禄刃格 → 普通八格 → 衍生格 → 层次
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { analyzeCongGe, congGeName } from './congGe';
 import { analyzeGuanShaHunZa } from './guanShaHunZa';
 

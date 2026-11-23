@@ -14,7 +14,7 @@
 
 import { Lunar, Solar, type EightChar } from 'lunar-typescript';
 import { ziwei } from '@ziweijs/core';
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { calcShenSha, type ShenShaItem } from './shenSha';
 import { analyzeDayMasterStrength, recommendYongShen } from './baziAnalysis';
 import { calcWuxingStats } from './wuxingFlow';

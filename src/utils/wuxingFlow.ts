@@ -18,7 +18,7 @@
 //   通关行有力 → 贪生忘克（战局化生）；缺或太薄 → 克性直接落地。
 // - 归聚点：最旺一行占比 ≥45% 才成立，并与日主（生/克/被克）给关系结论。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 
 const TG_WX: Record<string, string> = {
   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',

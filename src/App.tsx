@@ -6,9 +6,12 @@ import { ToastProvider } from './components/Toast';
 import IosInstallHint from './components/IosInstallHint';
 import AppLayout from './components/Layout';
 import Home from './pages/Home';
-import Auth from './pages/Auth';
 import PageSkeleton from './components/Skeleton';
 
+// ⚠️ 只有 Home 可以静态引入——它是落地页，同步渲染才不会白屏。
+//    Auth 以前也是静态引入，于是登录页的 Card/Input/Divider/Alert 与 4 个图标
+//    被绑进首屏，而绝大多数用户整场都不会进 /auth。
+const Auth = React.lazy(() => import('./pages/Auth'));
 const Bazi = React.lazy(() => import('./pages/Bazi'));
 const Ziwei = React.lazy(() => import('./pages/Ziwei'));
 const Nayin = React.lazy(() => import('./pages/Nayin'));
@@ -79,7 +82,9 @@ export default function App() {
             <Route path="/profile" element={
               <Suspense fallback={<PageSkeleton />}><Profile /></Suspense>
             } />
-            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth" element={
+              <Suspense fallback={<PageSkeleton />}><Auth /></Suspense>
+            } />
           </Route>
         </Routes>
       </ToastProvider>

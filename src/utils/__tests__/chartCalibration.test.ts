@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { Solar, Lunar } from 'lunar-typescript';
 import { ziwei } from '@ziweijs/core';
-import { getTrueSolarHour, correctSolarTime } from '../../context/UserContext';
+import { getTrueSolarHour, correctSolarTime } from '../solarTime';
 import { analyzeDayMasterStrength, recommendYongShen } from '../../utils/baziAnalysis';
 import { enrichGongData, getMingShenGongBranch } from '../../utils/ziweiPalaceData';
 

@@ -1,4 +1,4 @@
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 // 五行→脏腑/养护建议的唯一真源（与 baziAnalysis.analyzeHealth 共用）
 import { WX_BODY_BASE, WX_ORGAN_CHECK, wxHealthAdvice } from './wuxingHealth';
 import { normGender } from './kinStars';

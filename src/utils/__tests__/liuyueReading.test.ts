@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 import { buildLiuYueList, buildLiuRiList, LIUYUE_TEMPLATES, YUN_YUE_SUFFIX } from '../liuyueReading';
 
 const NOW = new Date(2026, 9, 5); // 2026-10-05，固定时钟防跨年边界漂移

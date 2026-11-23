@@ -10,7 +10,8 @@
 import { useMemo } from 'react';
 import { Row, Col } from 'antd';
 import CollapsibleCard from './CollapsibleCard';
-import { useUser, correctSolarTime } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
+import { correctSolarTime } from '../utils/solarTime';
 import { buildMingPanAside } from '../utils/mingPanAside';
 
 export default function MingPanAside() {

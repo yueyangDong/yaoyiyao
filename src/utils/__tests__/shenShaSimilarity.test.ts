@@ -26,7 +26,7 @@ import {
 import {
   fingerprintSimilarity, compareShenShaCharts, shaSimilarityLevel, SHENSHA_SIMILARITY_BANDS,
 } from '../shenShaSimilarity';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const P = (pillar: string, gz: string): PillarData => ({
   pillar, ganZhi: gz, tianGan: gz[0], diZhi: gz[1],

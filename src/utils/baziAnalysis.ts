@@ -1,4 +1,4 @@
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { WX_ORGAN_FULL, WX_SYMPTOM, WX_FOOD, WX_SPORT, wxMainOrgan } from './wuxingHealth';
 import { kinStarsOf, normGender } from './kinStars';
 import { analyzeCongGe } from './congGe';

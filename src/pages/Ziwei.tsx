@@ -5,7 +5,8 @@ import {
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
-import { useUser, getCityLng, correctSolarTime } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
+import { getCityLng, correctSolarTime } from '../utils/solarTime';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
 import {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeGuanShaHunZa } from '../guanShaHunZa';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 /** 造一柱：pillar 名、天干、地支、藏干、天干十神 */
 const mk = (

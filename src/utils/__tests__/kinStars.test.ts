@@ -5,7 +5,7 @@ import { kinStarsOf, normGender } from '../kinStars';
 import { analyzeFamily, analyzeLove } from '../baziAnalysis';
 import { generatePalaceReading } from '../ziweiAnalysis';
 import { generateDomainDeepReadings, type DomainDeepInput } from '../baziDomainDeep';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (
   pillar: string,

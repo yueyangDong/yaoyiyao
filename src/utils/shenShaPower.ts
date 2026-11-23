@@ -33,7 +33,7 @@
 // 阈值 SHENSHA_POWER_BANDS 由 3000 张真实命盘（1935–2005，lunar-typescript 排盘）
 // 的 power 分布分位数标定，见 __tests__/shenShaSimilarity.test.ts。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { getKongWang } from './shenSha';
 import { DZ_SELF_XING, isChong, isHai, isLiuHe, isXing } from './diZhiRelations';
 

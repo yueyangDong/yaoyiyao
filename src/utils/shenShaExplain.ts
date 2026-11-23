@@ -13,7 +13,7 @@
 //
 // 与 shenShaPower 的分工不变：power 只出数字与档位，本模块只出人话，两者同源同参。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { calcShenShaPower, type ShaPowerItem } from './shenShaPower';
 import { SHENSHA_PLAIN } from './shenSha';
 

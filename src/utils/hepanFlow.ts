@@ -20,7 +20,7 @@
 //   3. 双方当前大运对各自命局是顺是逆（外部环境是否配合）；
 //   4. 流年桃花（红鸾 / 天喜 / 咸池）是否正落在**对方**命局上。
 
-import type { PillarData } from '../pages/Bazi';
+import type { PillarData } from '../types/chart';
 import { ganZhiOfYear } from './liunianReading';
 import {
   PEACH_TABLES,

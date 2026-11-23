@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 import { analyzeHePanFlow, type HePanFlowPartyInput } from '../hepanFlow';
 import { analyzeHePan, HEPAN_MAX_SCORE, type HePanInput } from '../hepan';
 

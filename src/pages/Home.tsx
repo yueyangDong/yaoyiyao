@@ -5,7 +5,6 @@ import qrDonation from '../assets/qr-donation.png';
 import { motion } from 'framer-motion';
 import { useUser } from '../context/UserContext';
 import { useNarrowViewport } from '../hooks/useNarrowViewport';
-import { Lunar } from 'lunar-typescript';
 import {
   Binary, Star, Sparkles, Flower2, Waves, Compass,
   Moon, ScrollText, UserCircle, History, ArrowRight, BookOpen,
@@ -31,8 +30,16 @@ const MODULES = [
   { key: 'profile', path: '/profile', title: '个人档案', subtitle: '存好生辰八字，走到哪算到哪', color: 'var(--module-gray)', icon: <UserCircle size={22} strokeWidth={1.5} /> },
 ];
 
-function getTodayLunar(): string {
+/**
+ * 首页顶部那一行「农历X年X月X日」。
+ *
+ * ⚠️ 这里刻意用动态 import：`lunar-typescript` 连农历数据一起约 200 KB gzip，
+ *    而首页只需要一行字。静态引入会让它变成**首屏同步依赖**（实测首屏因此多 234 KB）。
+ *    改为挂载后加载：首屏先不显示这一行，加载完再填；失败就静默留空（`lunarDate &&` 已有兜底）。
+ */
+async function getTodayLunar(): Promise<string> {
   try {
+    const { Lunar } = await import('lunar-typescript');
     const l = Lunar.fromDate(new Date());
     return `农历${l.getYearInChinese()}年 ${l.getMonthInChinese()}月 ${l.getDayInChinese()}日`;
   } catch {
@@ -63,7 +70,12 @@ export default function Home() {
   };
 
   useEffect(() => {
-    setLunarDate(getTodayLunar());
+    // 卸载后不要再 setState（首页可能在农历 chunk 到货前就跳走了）
+    let alive = true;
+    getTodayLunar().then((text) => {
+      if (alive && text) setLunarDate(text);
+    });
+    return () => { alive = false; };
   }, []);
 
   const lastQueryMap: Record<string, string> = {};

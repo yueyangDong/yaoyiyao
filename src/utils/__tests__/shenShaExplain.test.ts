@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { explainShenSha, explainShenShaMap, SHA_TRAIT } from '../shenShaExplain';
 import { SHENSHA_PLAIN } from '../shenSha';
-import type { PillarData } from '../../pages/Bazi';
+import type { PillarData } from '../../types/chart';
 
 const mk = (pillar: string, tianGan: string, diZhi: string, shiShen: string): PillarData => ({
   pillar, ganZhi: tianGan + diZhi, tianGan, diZhi,
