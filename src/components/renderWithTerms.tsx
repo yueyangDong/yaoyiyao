@@ -1,10 +1,15 @@
 import React from 'react';
-import { findTermsInText } from './termDictionary';
-import TermPopover from '../components/TermPopover';
+import { findTermsInText } from '../utils/termDictionary';
+import TermPopover from './TermPopover';
 
 /**
  * 将文本中的命理术语替换为带「人话解释」气泡的高亮标签。
  * 匹配逻辑：按术语长度降序（长词优先），命中处跳过避免重复匹配。
+ *
+ * ⚠️ 这个文件在 `components/` 而不在 `utils/`：它产出的是 ReactNode，
+ * 依赖 `TermPopover`，属于渲染层。原先放在 `utils/` 让判据层反向依赖组件层，
+ * `architecture.test.ts` 为此开了一条豁免；2026-11-23 迁到这里后豁免已删。
+ * 判据侧的纯函数（术语表、匹配）留在 `utils/termDictionary.ts`。
  */
 export function renderWithTerms(text: string): React.ReactNode {
   if (!text) return text;

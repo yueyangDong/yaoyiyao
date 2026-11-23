@@ -93,10 +93,13 @@
    高频格不为零、稀有格至少命中一种），并把复核结论写进 `docs/ziwei-ge-audit.md` §九。
    这一条的正确整改动作不是改判据，而是**把过期的记忆改对，并让分布可测**。
 
-### 已知遗留（低优先，未处理）
+### 已知遗留
 
-- **`utils/renderWithTerms.tsx`** 引 `components/TermPopover`：
-  渲染层工具坐在判据层。架构测试里已豁免并注明，迁出后应删豁免。
+- ~~**`utils/renderWithTerms.tsx`** 引 `components/TermPopover`：渲染层工具坐在判据层。~~
+  **已处理（2026-11-23）**：整体迁到 `components/renderWithTerms.tsx`（测试同步迁到
+  `components/__tests__/renderWithTerms.test.tsx`），三个页面改引用路径，
+  `architecture.test.ts` 里的 `ALLOW` 豁免**连机制一起删掉**。
+  纯函数（术语表与匹配）仍留在 `utils/termDictionary.ts`，判据层依旧不碰 React。
 
 ## 四、可复跑
 

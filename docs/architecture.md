@@ -32,8 +32,9 @@ pages/      页面：组织交互与状态，调用判据层，交给排版层
 
 1. **`utils/` 不得依赖 `pages/` 与 `components/`。**
    判据层要能脱离 React 单独跑（现在的一致性扫描、标定脚本都靠这一点）。
-   *已知例外*：`utils/renderWithTerms.tsx` 是「把术语渲染成 ReactNode」的黏合层，
-   本质属渲染层，但被判据层多处调用；它迁出去之前先豁免，不要新增第二例。
+   **没有例外**。`utils/renderWithTerms.tsx` 曾经是唯一开口的那个（它产出 ReactNode、
+   依赖 `TermPopover`，本质属渲染层），2026-11-23 已整体迁到 `components/renderWithTerms.tsx`，
+   豁免一并删掉——留个空数组等于给下次开口子留后门。
 
 2. **`data/` 不得依赖任何上层。** 数据是死的，不能反过来 import 判据。
 

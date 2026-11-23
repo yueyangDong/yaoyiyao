@@ -63,15 +63,13 @@ function resolveSpec(fromFile: string, spec: string): string | null {
 
 describe('架构分层', () => {
   it('utils(判据层) 不得依赖 pages / components', () => {
-    // 唯一豁免：renderWithTerms.tsx 是"把术语渲染成 ReactNode"的黏合层，
-    // 本质属渲染层，但被判据层多处调用。待它迁出 utils 后应删掉这条豁免。
-    const ALLOW: string[] = ['utils/renderWithTerms.tsx'];
-
+    // 这里**不留豁免**。原先为 renderWithTerms.tsx 开过一条（它产出 ReactNode、
+    // 依赖 TermPopover，本质属渲染层），2026-11-23 已整体迁到 components/。
+    // 留个空数组等于给下次开口子留后门：真要豁免，改这条规则并写清理由。
     const bad: string[] = [];
     for (const f of ALL_FILES) {
       const r = rel(f);
       if (!r.startsWith('utils/') || r.includes('__tests__')) continue;
-      if (ALLOW.includes(r)) continue;
       for (const spec of staticSpecs(readFileSync(f, 'utf8'))) {
         if (/^\.\.\/(pages|components)\//.test(spec)) bad.push(`${r} → ${spec}`);
       }

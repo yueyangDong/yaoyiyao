@@ -13,7 +13,7 @@ import {
 import { guanyinLots } from '../data/guanyinLots';
 import { useToast } from '../components/Toast';
 import { generateDailyPlainConclusion } from '../utils/plainConclusion';
-import { renderWithTerms } from '../utils/renderWithTerms';
+import { renderWithTerms } from '../components/renderWithTerms';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 
 const { Title, Text, Paragraph } = Typography;

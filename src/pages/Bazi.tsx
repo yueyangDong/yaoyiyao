@@ -20,7 +20,7 @@ import { ChevronDown } from 'lucide-react';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import { generateBaziPlainConclusion } from '../utils/plainConclusion';
-import { renderWithTerms } from '../utils/renderWithTerms';
+import { renderWithTerms } from '../components/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture, birthdayBounds, clampBirthday } from '../utils/dateValidation';
 import { MiniNumber, MINI_NUMBER_MIN_WIDTH } from '../components/MiniNumber';
 import { useNarrowViewport } from '../hooks/useNarrowViewport';

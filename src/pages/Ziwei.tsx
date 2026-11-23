@@ -21,7 +21,7 @@ import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PayWall from '../components/PayWall';
 import { generateZiweiPlainConclusion } from '../utils/plainConclusion';
-import { renderWithTerms } from '../utils/renderWithTerms';
+import { renderWithTerms } from '../components/renderWithTerms';
 import { isValidSolarDate, isValidLunarDate, getLunarLeapMonth, isSolarFuture, isLunarFuture } from '../utils/dateValidation';
 import { normalizeWanZi } from '../utils/personChart';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
