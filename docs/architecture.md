@@ -45,16 +45,35 @@ pages/      页面：组织交互与状态，调用判据层，交给排版层
 
 ## 三、首屏预算
 
-首屏 = `index.html` 实际预加载的那几个 chunk。当前基线（gzip）：
+首屏 = `index.html` 实际预加载的那几个 chunk。当前基线（gzip，**本地与线上一致**）：
 
 | 项 | 体积 |
 |---|---|
-| `index-*.js`（业务 + 首屏用到的 antd） | ~223 KB |
-| `react-vendor`（react/router/framer-motion） | ~94 KB |
+| `index-*.js`（业务 + 首屏用到的 antd + supabase） | ~217 KB |
+| `react-vendor`（react/router/framer-motion） | ~92 KB |
 | `index-*.css` | ~5 KB |
 | **合计** | **~315 KB** |
 
 历史：728 KB（index 104 + antd 299 + calendar 234 + react 92 + css 5）→ 315 KB。
+
+### ⚠️ 环境变量必须本地与线上同源，否则「首屏体积」和「功能」都会悄悄不同
+
+`.env` 被 `.gitignore` 忽略。曾经因此出过一次事故：CI 检出时没有
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`，而 `lib/supabase.ts` 写的是
+
+```ts
+export const supabase = url && key ? createClient(url, key) : null;
+```
+
+构建期这两个值是 `undefined` → 条件恒假 → `createClient` 连同 **supabase-js 整包被
+tree-shake 掉**。结果是：
+
+- 线上 entry 502 KB、本地 738 KB，差 236 KB——看起来像"优化成果"，其实是功能没了；
+- 线上 `supabase === null`，**登录与云同步一直跑在本地降级模式**，且不报任何错。
+
+修法是把**公开**变量放进会被提交的 `.env.production`（anon key 本来就会打进浏览器包）；
+`service_role` 只留在本地 `.env.local`，永不进仓库。
+`docs/architecture.md` 里的首屏数字因此才可能本地、线上一致。
 
 ### 为什么这些包必须在首屏之外
 
