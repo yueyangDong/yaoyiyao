@@ -1061,6 +1061,9 @@ export default function Bazi() {
       currentDaYun: currentDayunStep
         ? { ganZhi: currentDayunStep.ganZhi, startAge: currentDayunStep.startAge, endAge: currentDayunStep.endAge }
         : null,
+      // 结论卡的措辞按 60 岁分档（晚年换成"往回收"那套动作），必须给虚岁——
+      // 不传就只能按大运中点推定，58~67 岁这类跨 60 的运会被整体当晚年
+      nominalAge,
       // 流年白话同样吃喜忌：基调由"年干五行 ∈ 用神 / 忌神"决定（忌神走完整口径）
       liuNian: calcLiuNianItem(currentYear, baziData.dayGan, {
         yongShen: yongShenRec.yongShen,

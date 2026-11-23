@@ -41,6 +41,12 @@ export interface BaziConclusionInput {
   wxWeakest: string;      // 命局最弱五行
   /** 当前所处大运（未起运传 null） */
   currentDaYun: { ganZhi: string; startAge: number; endAge: number } | null;
+  /**
+   * 当前**虚岁**（与 dayunReading.toNominalAge 同口径）。
+   * ⚠️ 必传：part3 的措辞按 60 岁分档——不传就只能按大运区间中点推定，
+   * 而「一步运 10 年跨过 60」的盘（例：58~67 岁）会被判成晚年，49 岁的人会被判成中年后段。
+   */
+  nominalAge?: number;
   /** 今年流年（与 utils/liunianReading 的 LiuNianItem 同构） */
   liuNian: { year: number; ganZhi: string; wx: string; desc: string } | null;
 }
@@ -65,6 +71,28 @@ const YUN_RELATION_ACTION: Record<RelationKind, string> = {
   guansha: '责任与外部要求变重：扛过去就上一个段位',
   cai: '资源与进账是主线，重点在会管而非多赚',
 };
+
+/**
+ * 60 岁以后的同一张小表——把"往上冲"换成"往回收"。
+ *
+ * ⚠️ 为什么必须有这一版：结论卡是用户打开八字页**第一眼**看到的那句话。
+ *   同一份盘，`dayunReading` 已经按 60 岁切成「退休生活期／换节奏」，
+ *   结论卡却还说「同辈是杠杆、结伴做事效率最高」「这十年宜主动出手」——
+ *   同屏两种声音，而且**两边都不会报错**（各自的单测都过，因为都只看自己那段）。
+ *   守卫在 `__tests__/lateStageWording.test.ts`：同一大运干支、只改年龄，正文必须变。
+ *
+ * 长度对齐原表（±2 字），因为整句有 240 字上限（见 plainConclusion.test.ts）。
+ */
+const YUN_RELATION_ACTION_LATE: Record<RelationKind, string> = {
+  bijie: '老友常来往最养人，攀比与面子应酬最耗神',
+  yin: '适合往回收：读书养身、含饴弄孙',
+  shishang: '把爱好做成作品：写字、画画、拍摄都算',
+  guansha: '身体的事要当真：体检、作息、小病别拖',
+  cai: '重点在守不在攻，大额支出多跟家人商量',
+};
+
+/** 晚年判定线：与 dayunReading.LIFE_STAGES 的 retire 起点一致 */
+const LATE_AGE = 60;
 
 export function generateBaziPlainConclusion(input: BaziConclusionInput): string {
   const {
@@ -98,10 +126,16 @@ export function generateBaziPlainConclusion(input: BaziConclusionInput): string 
     const ganWx = TG_WX[gan] || '';
     const relation = resolveRelation(dayGan, gan);
     const onYong = !!ganWx && yongAll.includes(ganWx);
-    const action = relation ? YUN_RELATION_ACTION[relation] : '';
+    // 年龄：优先用调用方给的虚岁；没给就退化为"这步运的中点"
+    // （与大运解读判阶段同一把尺子：一步 10 年，中点最能代表这段的主要课题）
+    const age = input.nominalAge ?? Math.floor((currentDaYun.startAge + currentDaYun.endAge) / 2);
+    const late = age >= LATE_AGE;
+    const action = relation
+      ? (late ? YUN_RELATION_ACTION_LATE[relation] : YUN_RELATION_ACTION[relation])
+      : '';
     const tianShi = onYong
-      ? '正落在用神上，这十年宜主动出手'
-      : `不在用神（${yongText}）内，这十年宜守成积累`;
+      ? (late ? '正落在用神上，这十年宜顺势而为' : '正落在用神上，这十年宜主动出手')
+      : `不在用神（${yongText}）内，这十年宜${late ? '守成养身' : '守成积累'}`;
     part3 =
       `你正走「${currentDaYun.ganZhi}」大运（${currentDaYun.startAge}~${currentDaYun.endAge}岁）：` +
       `${gan}属${ganWx}，${tianShi}${action ? `——${action}` : ''}。`;

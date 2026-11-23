@@ -259,7 +259,10 @@ function gongOf(key: DomainDeepReading['domainKey'], pillars: PillarData[]): { n
 function ageClause(key: DomainDeepReading['domainKey'], age?: number): string {
   if (!age) return '';
   if (key === 'career') {
-    if (age >= 60) return '这个年纪谈「往上走」不实在——这十年的正题是把手里的事交出去、把经验变成别人离不开的东西（带人、做顾问、留作品），名声比职位值钱。';
+    // ⚠️ 60+ 这句里**不要出现「往上走」这类词**：`__tests__/lateStageWording.test.ts`
+    //    用统一词表扫三个文案出口，它分不清"否定式引用"和"鼓励式使用"。
+    //    与其为一句开例外，不如换个说法——守卫保持单一判据才守得住。
+    if (age >= 60) return '这个年纪不必再争位置——这十年的正题是把手里的事交出去、把经验变成别人离不开的东西（带人、做顾问、留作品），名声比职位值钱。';
     if (age >= 50) return '这个阶段的机会多半来自你已经有的东西——资历、口碑、老关系，而不是从头去闯一个新赛道。';
     if (age < 23) return '这个年纪真正的大事是长本事、不是找位置——把一项硬技能练到能换钱，比任何机会都值。';
   }
