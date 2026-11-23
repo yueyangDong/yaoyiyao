@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import {
   Card, Typography, Space, Tag, Input, Row, Col,
-  Tabs, Empty, Button, Divider, Breadcrumb,
+  Tabs, Empty, Button,
 } from 'antd';
-import { SearchOutlined, BookOutlined } from '@ant-design/icons';
+import { BookOutlined } from '@ant-design/icons';
 import { BookOpen, ArrowLeft, Search } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { ANCIENT_BOOKS, YIJING_VERNACULAR, searchAncientBooks, type AncientBook, type BookChapter } from '../data/ancientBooks';
+import { ANCIENT_BOOKS, YIJING_VERNACULAR, searchAncientBooks, type BookChapter } from '../data/ancientBooks';
 import gua64 from '@freizl/yijing/zh-CN/64gua.json';
 
 const { Title, Text, Paragraph } = Typography;

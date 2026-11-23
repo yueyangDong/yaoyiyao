@@ -300,7 +300,6 @@ export function analyzeDayMasterStrength(
   pillars: PillarData[]
 ): DayMasterStrengthResult {
   const dayWx = TG_WX[dayGan];
-  const dayYY = TG_YIN_YANG[dayGan]; // 阴阳
 
   // 生我者（印星）的五行
   const shengWoWx = WX_SHENG[dayWx];
@@ -861,15 +860,6 @@ function getPillarAgeRange(pillarLabel: string): [number, number] {
   return PILLAR_AGE_RANGE[pillarLabel] || [0, 99];
 }
 
-/** 神煞是否出现在指定柱 */
-function hasShenShaOnPillar(
-  shenSha: { name: string; pillar: string }[],
-  name: string,
-  pillar: string
-): boolean {
-  return shenSha.some(s => s.name === name && s.pillar === pillar);
-}
-
 /** 获取同类型的神煞 */
 function getShenShaByName(shenSha: { name: string; pillar: string }[], names: string[]): { name: string; pillar: string }[] {
   return shenSha.filter(s => names.includes(s.name));
@@ -894,13 +884,6 @@ function getPillarRelations(relations: { type: string; desc: string; pillars?: n
   const hasPillars = relations.some(r => Array.isArray(r.pillars));
   if (hasPillars && idx !== undefined) return relations.filter(r => r.pillars?.includes(idx));
   return relations.filter(r => r.desc.includes(pillarLabel));
-}
-
-/** 列出某个柱的具体冲合刑害详情 */
-function describePillarRelations(relations: { type: string; desc: string; pillars?: number[] }[], pillarLabel: string): string {
-  const rels = getPillarRelations(relations, pillarLabel);
-  if (rels.length === 0) return '';
-  return rels.map(r => r.desc).join('；');
 }
 
 // ========== 1. 爱情婚姻分析 ==========
@@ -1174,7 +1157,6 @@ export function analyzeCareer(
   const biJianPillars = findShiShenPillars(pillars, '比肩');
   const jieCaiPillars = findShiShenPillars(pillars, '劫财');
 
-  const allShiShen = pillars.map(p => p.shiShen).filter(Boolean);
   const hasGuan = zhengGuanPillars.length > 0;
   const hasSha = qiShaPillars.length > 0;
   const hasYin = zhengYinPillars.length > 0 || pianYinPillars.length > 0;
@@ -1596,7 +1578,6 @@ export function analyzeFamily(
   /** 'male' | 'female' | '男' | '女'。缺省时父母星无法判定，只出不分星的通用解。 */
   gender?: string
 ): FamilyAnalysis {
-  const dayWx = TG_WX[dayGan];
   // ⚠️ 父母星必须按性别取（男命偏财/正印，女命正财/偏印），唯一真源在 kinStars。
   //    曾按男命口径写死，导致女命盘与 baziDomainDeep 的家庭段自相矛盾。
   const kin = kinStarsOf(gender);
@@ -1604,14 +1585,9 @@ export function analyzeFamily(
   const monthPillar = pillars[1];
 
   const yearRelations = getPillarRelations(relations, '年柱');
-  const monthRelations = getPillarRelations(relations, '月柱');
 
   // 年干代表父亲（偏财），年支代表母亲（正印）
   // 或：年干正印=母亲，偏财=父亲
-  const yearGan = yearPillar.tianGan;
-  const yearZhi = yearPillar.diZhi;
-  const yearGanWx = TG_WX[yearGan];
-  const yearZhiWx = DZ_WX[yearZhi];
 
   // ===== 父母关系 =====
   const hasYearChong = yearRelations.some(r => r.type === '冲');
@@ -2144,7 +2120,6 @@ export function analyzeFortuneOverview(
     '中和': '可塑性强，能在不同环境切换角色，是"全能选手"的底子。',
   };
   const fullSignature = signature + (signatureHints[strengthLevel] || '是独特的一张命盘。');
-
 
   // ===== 幸运元素 =====
   const mainYong = yongShen[0] || dayWx;

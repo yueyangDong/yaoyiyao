@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Form, Button, Typography, Row, Col,
-  Tag, Space, message, Radio, Alert, Divider, Select, Checkbox, Cascader,
+  Tag, Space, message, Radio, Alert, Select, Checkbox, Cascader,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
@@ -11,12 +11,11 @@ import { getCityLng, correctSolarTime } from '../utils/solarTime';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
 import {
-  Star, Sun, Moon, Calendar, BookOpen, Sparkles,
-  AlertTriangle, Lightbulb, ClipboardList, BarChart3, Home,
+  Star, Sun, Moon, Calendar, BookOpen,
+  AlertTriangle, Lightbulb, ClipboardList,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
-import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PayWall from '../components/PayWall';
@@ -239,7 +238,6 @@ export default function Ziwei() {
   const navigate = useNavigate();
   const { profile, currentUser, addHistory } = useUser();
   // 窄屏判据收口在 utils/viewport（⚠️ `< 768`，与 antd md 互补）
-  const isMobile = useNarrowViewport();
   const [form] = Form.useForm();
   const [ziweiData, setZiweiData] = useState<any>(null);
   const [loading, setLoading] = useState(false);

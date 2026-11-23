@@ -15,7 +15,6 @@
 
 import type { PillarData } from '../types/chart';
 import { calcShenShaPower, type ShaPowerItem } from './shenShaPower';
-import { SHENSHA_PLAIN } from './shenSha';
 
 export interface ShaExplainInput {
   pillars: PillarData[];

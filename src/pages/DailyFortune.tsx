@@ -3,10 +3,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, Typography, Space, Tag, Row, Col, Button, Spin, message,
 } from 'antd';
-import { MapPin, Sun, Wind, Sunrise, Sunset, RefreshCw } from 'lucide-react';
+import { MapPin, Wind, Sunrise, Sunset, RefreshCw } from 'lucide-react';
 import { Lunar } from 'lunar-typescript';
 import { motion } from 'framer-motion';
-import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, formatCountyName, type WeatherData, type GeoPosition } from '../utils/weatherApi';
+import { getWeather, getWeatherIcon, getWeatherDesc, getPositionWithCity, formatCountyName, type WeatherData } from '../utils/weatherApi';
 import {
   getLuckyGuide, getDailyLotIndex, getTravelAdvice, getJiShiZhiList, type LuckyGuide, type TravelAdvice,
 } from '../utils/dailyFortuneUtils';

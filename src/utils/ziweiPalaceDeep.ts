@@ -17,24 +17,9 @@
 import { generateSihuaDeepReading, GONG_DOMAIN, STAR_NATURE, type SihuaDeepReading } from './ziweiSihuaDeep';
 import { getStarPalaceTrait, getPairTrait, getStarTraitCore, getGongAdvice } from './ziweiAnalysis';
 import { getStarBrightness } from './ziweiPalaceData';
+import { GONG_ORDER, OPPOSITE_OF as OPPOSITE, TRIANGLE_OF as TRIANGLE } from './ziweiPalaceRelations';
 
-/** 十二宫标准顺序（命宫起，逆时针） */
-const GONG_ORDER = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'];
-
-/** 对宫（六冲） */
-const OPPOSITE: Record<string, string> = {
-  命宫: '迁移', 兄弟: '交友', 夫妻: '官禄', 子女: '田宅',
-  财帛: '福德', 疾厄: '父母', 迁移: '命宫', 交友: '兄弟',
-  官禄: '夫妻', 田宅: '子女', 福德: '财帛', 父母: '疾厄',
-};
-
-/** 三合宫（本宫之外每隔四位取一） */
-const TRIANGLE: Record<string, string[]> = {
-  命宫: ['官禄', '财帛'], 兄弟: ['田宅', '疾厄'], 夫妻: ['迁移', '福德'],
-  子女: ['交友', '父母'], 财帛: ['命宫', '官禄'], 疾厄: ['兄弟', '田宅'],
-  迁移: ['夫妻', '福德'], 交友: ['子女', '父母'], 官禄: ['财帛', '命宫'],
-  田宅: ['疾厄', '兄弟'], 福德: ['迁移', '夫妻'], 父母: ['子女', '交友'],
-};
+/** 十二宫标准顺序、对宫（六冲）、三合宫：均在 `ziweiPalaceRelations` 里只维护一份 */
 
 const XIUNG_STARS = ['擎羊', '陀罗', '火星', '铃星', '地空', '地劫'];
 const JI_STARS = ['文昌', '文曲', '左辅', '右弼', '天魁', '天钺', '禄存', '天马'];
@@ -75,7 +60,8 @@ export function generatePalaceDeepReading(gong: any, allGongs: any[]): SihuaDeep
   if (withSihua) return withSihua;
 
   const name = norm(gong?.name);
-  if (!GONG_ORDER.includes(name)) return null;
+  // GONG_ORDER 是 as const 元组；这里的 name 是外部数据归一后的 string，放宽成 string[] 再查
+  if (!(GONG_ORDER as readonly string[]).includes(name)) return null;
 
   const stars = mainStarsOf(gong);
   const minors = minorStarsOf(gong);

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, Tag, Typography, Segmented, Collapse } from 'antd';
 import { THEMES, JUDGE_RULE, THEME_WORD, verdictTone, verdictIcon, bandOf } from '../utils/divinationCore';
 import type { Theme, ThemeReading } from '../utils/divinationCore';

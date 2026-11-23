@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Card, Form, InputNumber, Input, Button, Radio, Row, Col, Typography, Tag, Alert, Space, Cascader, Checkbox, Divider, Empty,
+  Card, Form, Input, Button, Radio, Row, Col, Typography, Tag, Alert, Space, Cascader, Checkbox, Divider, Empty,
 } from 'antd';
 import { MiniNumber } from '../components/MiniNumber';
 import { pcaCode } from 'cn-division';

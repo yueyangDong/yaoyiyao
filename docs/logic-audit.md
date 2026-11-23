@@ -160,9 +160,66 @@
   `architecture.test.ts` 里的 `ALLOW` 豁免**连机制一起删掉**。
   纯函数（术语表与匹配）仍留在 `utils/termDictionary.ts`，判据层依旧不碰 React。
 
-- **空宫借宫有两套独立实现**：`ziweiPalaceDeep.OPPOSITE` 与 `ziweiAnalysis` 的借宫逻辑
-  各维护一张对宫表。目前一致，但没有测试守住「两表必须同源」。
-  真要动的话，收敛到一个出口比加断言更划算（`hepan.ts` 的 `zwPalaceStarsBorrow` 是第三份）。
+- ~~**空宫借宫有两套独立实现**：`ziweiPalaceDeep.OPPOSITE` 与 `ziweiAnalysis` 的借宫逻辑
+  各维护一张对宫表。目前一致，但没有测试守住「两表必须同源」。~~
+  **已处理（2026-11-23）**，见下节。
+
+### 第三轮：把「三份抄本」收敛成一份（2026-11-23）
+
+用户要求「修全部 bug」后做的一次系统性排查。当时 `tsc`、874 条测试全绿，所以问题只能是
+**测试看不见的那类**。查下来有两类，都不是运行时错误：
+
+#### 3.1 紫微十二宫的空间关系被抄了 4 份
+
+| 表 | 副本数 | 位置 |
+|---|---|---|
+| 对宫（六冲） | **3** | `hepan.ZW_OPPOSITE_PALACE` / `ziweiAnalysis.OPPOSITE_MAP` / `ziweiPalaceDeep.OPPOSITE` |
+| 十二宫顺序 | **4** | `ziweiAnalysis`（还是死代码）/ `ziweiPalaceDeep` / `ziweiSihuaDeep` / `ziweiSihuaPalaceContent.PALACE_NAMES` |
+| 三合 | **2** | `ziweiAnalysis.TRIANGLE_MAP` / `ziweiPalaceDeep.TRIANGLE` |
+
+三份表在 240 盘上恰好一致，所以**没有任何断言会红**——改错一处，空宫借宫（`hepan` 合盘）、
+命无正曜解读（`ziweiAnalysis`）、宫位深度解读（`ziweiPalaceDeep`）会各说各话，页面照常渲染。
+
+收敛到 `utils/ziweiPalaceRelations.ts`：
+- `GONG_ORDER` = 唯一一份布局；`OPPOSITE_OF` **由布局推导**（相隔 6 位），单值映射没有顺序问题；
+- `TRIANGLE_OF` **刻意保留字面量**：两个元素的先后由历史文案决定且各宫不统一
+  （命宫是 `[官禄,财帛]`、夫妻是 `[迁移,福德]`），推导会静默改变三个宫的正文顺序。
+
+守卫 `ziweiPalaceRelations.test.ts`（6 条）不拿表比表，而是用布局反推：
+对宫 `index+6`、三合集合 `{+4,+8}`、对宫的对宫是自己、三合互指、对宫不在三合里、
+三合顺序钉值（文案契约）、内容库覆盖全十二宫。另钉死 `GONG_ORDER` 的**顺序**——
+它是一切推导的根，只钉「12 个且以命宫开头」的话，把布局改逆时针会全绿而全站借宫全错。
+
+**反向验证**：故意把「命宫」的三合改错一个 → 2 条红；把对宫偏移改成 +5 →
+「对宫应是迁移，实际是疾厄」红。守卫有效。
+
+#### 3.2 页面层藏着一份重复的十二长生（且从未被渲染）
+
+`Bazi.tsx` 自带 `DZ_ORDER + YANG_START/YIN_START + getChangSheng12`，与判据层的真源
+`shenShaPower.changShengOf` 逐字等价；`useMemo` 算出来挂到 `changShengMap` 后，
+**从 v1.0 起没有任何渲染入口引用它**（`git log -S` 只有一个初始提交，说明是出生即死）。
+
+删除，并留注释指向真源。同类问题一并处理：页面层的 `SHISHEN_PLAIN`（十神白话，
+`termDictionary` 已有覆盖）、`ziweiAnalysis` 的 `MINOR_STAR_DESC`（辅星描述库，无引用）。
+
+#### 3.3 打开 `noUnusedLocals`：死代码不该靠人眼发现
+
+上面的复制品之所以能活几个月，是因为 `tsconfig` 里 `noUnusedLocals: false`——
+**没有任何机制会指出「这份表没人读」**。打开后一次暴露 **59 处**未使用声明，
+逐类处理：无用导入 ~30、算完就丢的变量 ~12（如 `analyzeFamily` 里四个已废弃的五行量）、
+无人调用的函数 5（`hasShenShaOnPillar` / `describePillarRelations` / `hasSpecificSihua` /
+`extractSihua` / 测试里的 `themeOf`）、内容表 2。
+
+`noUnusedParameters` 保持关闭：不少签名是为可读性保留的占位（如 `analyzeFamily` 的
+`gender` 缺省时用不到），开它只会逼人写 `_x` 噪声。
+
+**产物验证**：删完重构建，逐个 chunk 比对中文串多重集——**0 个新增句子**，
+只有被删的表消失（`新独有 0`）。首屏 317,099 → **317,101 B**（+2 B），
+说明这些死代码本来就被 tree-shake 掉了：删的是源码噪音，不是运行时负担。
+
+> ⚠️ 比对脚本本身踩过一个坑：产物里有 3 个 `index-*.js`（24/288/717 kB），
+> 按「去 hash 名」建 Map 会互相覆盖，比出来的「1748 条新独有」全是假的。
+> 正确做法是分组后再按体积配对。
 
 ## 四、可复跑
 
@@ -173,6 +230,7 @@ npx vitest run src/utils/__tests__/pageJudgement.test.ts
 npx vitest run src/__tests__/architecture.test.ts
 npx vitest run src/utils/__tests__/lateStageWording.test.ts
 npx vitest run src/utils/__tests__/ziweiPalaceDistribution.test.ts
+npx vitest run src/utils/__tests__/ziweiPalaceRelations.test.ts
 ```
 
 这六组是"结构性"测试：它们不检查具体某张盘的结论，而是检查

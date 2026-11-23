@@ -4,7 +4,7 @@ import {
   Row, Col, Divider, Input, Progress,
 } from 'antd';
 import {
-  RedoOutlined, FireOutlined,
+  RedoOutlined,
 } from '@ant-design/icons';
 import { ScrollText, Shuffle } from 'lucide-react';
 import { guanyinLots, type LotData as GuanyinLot } from '../data/guanyinLots';

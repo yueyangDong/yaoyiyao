@@ -5,9 +5,7 @@ import { Binary, Star } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 
-const { Text, Title } = Typography;
-
-const WUXING_LABELS: Record<string, string> = { '木': '木', '火': '火', '土': '土', '金': '金', '水': '水' };
+const { Text } = Typography;
 
 export default function ModuleCompare() {
   const { history, currentUser } = useUser();

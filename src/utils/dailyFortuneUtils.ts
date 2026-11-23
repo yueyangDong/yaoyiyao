@@ -58,7 +58,6 @@ export function getLuckyGuide(): LuckyGuide {
   const lunar = Lunar.fromDate(new Date());
 
   const dayGan = lunar.getDayGan();
-  const naYin = lunar.getDayNaYin();
 
   // 纳音取五行 → 颜色 → 数字
   let wxType = '木';

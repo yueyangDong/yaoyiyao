@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { decodePan } from 'iching-shifa';
 import {
   verdictOf, adviceOf, VERDICT_BANDS, THEMES, JUDGE_RULE,
-  type Theme, type Verdict, type ThemeReading,
+  type Verdict, type ThemeReading,
 } from '../divinationCore';
 import {
   buildLiuyaoReading, buildAllLiuyaoReadings, probesOf,
@@ -57,12 +57,6 @@ function strongGuanGuiChart(dayKong = '子丑'): LiuyaoChartLike {
     },
   };
 }
-
-const themeOf = (list: ThemeReading[], t: Theme) => {
-  const r = list.find((x) => x.theme === t);
-  if (!r) throw new Error(`缺少主题 ${t}`);
-  return r;
-};
 
 /* ------------------------------------------------------------------ *
  * 1. 统一刻度

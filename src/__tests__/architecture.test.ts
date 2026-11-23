@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
-import { dirname, resolve, relative, join, sep } from 'path';
+import { dirname, resolve, relative, join } from 'path';
 import { fileURLToPath } from 'url';
 
 /**

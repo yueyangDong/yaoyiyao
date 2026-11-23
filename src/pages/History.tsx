@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Typography, List, Tag, Button, Space, Popconfirm, Empty, Select } from 'antd';
+import { Card, Typography, List, Button, Space, Popconfirm, Empty, Select } from 'antd';
 import { DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import {
   Binary, Star, Sparkles, Flower2, Compass, Moon,
-  ScrollText, Waves, History as HistoryIcon,
+  ScrollText, Waves,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 

@@ -79,7 +79,6 @@ export function analyzeGuanShaHunZa(
   const guan = guanStems[0];
   const sha = shaStems[0];
   const isYang = YANG_GAN.includes(dayGan);
-  const stemGans = stems.map((s) => s.gan);
   const basis: string[] = [
     `天干${guan.pillar}${guan.gan}（正官）与${sha.pillar}${sha.gan}（七杀）齐透——齐透天干是官杀混杂的硬门槛（地支藏干不计，一藏一透以透者论）`,
   ];

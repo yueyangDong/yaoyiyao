@@ -12,7 +12,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": false,
+    // noUnusedLocals 已开：死代码会静默堆积成「第二份表/算完就丢的变量」——
+    // 2026-11-23 清掉 59 处时，其中就有页面层重复的十二长生实现与三份对宫表。
+    // 未使用**参数**仍关：不少函数签名是为可读性保留的占位（如 analyzeFamily 的 gender 缺省时不用），
+    // 开它只会逼人写 `_x` 噪声。
+    "noUnusedLocals": true,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",

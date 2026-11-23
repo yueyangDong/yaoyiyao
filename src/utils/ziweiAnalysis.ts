@@ -2,6 +2,7 @@
 // 兼容 @ziweijs/core v0.3.0 的排盘结果
 
 import { Solar } from 'lunar-typescript';
+import { OPPOSITE_OF, TRIANGLE_OF } from './ziweiPalaceRelations';
 
 // ========== 类型定义 ==========
 
@@ -518,51 +519,6 @@ const MAIN_STAR_TRAITS: Record<string, {
 };
 
 /**
- * 辅星描述库
- */
-const MINOR_STAR_DESC: Record<string, string> = {
-  '文昌': '代表文采学识，对考试和学术特别有利',
-  '文曲': '口才好、有才艺，艺术天赋突出',
-  '天魁': '天乙贵人，得男性贵人相助，考试运好',
-  '天钺': '玉堂贵人，得女性贵人相助，有文化缘',
-  '左辅': '左膀右臂，团队协作能力强，有人帮衬',
-  '右弼': '得力助手在侧，执行力和协助力强',
-  '禄存': '财库加持，能存住钱，财富积累稳定',
-  '擎羊': '刚烈冲动，行动力强但容易树敌',
-  '陀罗': '慢工出细活，持久力强但容易拖延',
-  '火星': '脾气急躁爆发力强，来得快去得也快',
-  '铃星': '内心急躁不外露，暗中较劲',
-  '地空': '想法天马行空不切实际，但创意出众',
-  '地劫': '波折历练型，需经历风雨才能见彩虹',
-  '天马': '奔波劳碌命，适合动态和出差类工作',
-  '天姚': '桃花缘分多，但也容易为情所困',
-  '天刑': '个性严谨有原则，适合需要纪律的工作',
-  '天哭': '感性多愁，同理心强但容易情绪波动',
-  '天虚': '内心空虚感强，需要找到精神寄托',
-  '红鸾': '正桃花星，主婚恋喜庆之事',
-  '天喜': '喜事多多，利于人缘和社交',
-  '龙池': '有贵气和才气，适合追求精神层面',
-  '凤阁': '文采斐然，有艺术和文化天赋',
-  '三台': '阶梯式上升，运势逐步提升',
-  '八座': '地位尊崇，有社会地位和声望',
-  '恩光': '有贵人提携和特殊机遇',
-  '天贵': '贵气加身，受人尊重',
-  '台辅': '辅助型人才，适合在团队中发挥作用',
-  '封诰': '有名誉地位，适合考取资格证书',
-  '天官': '适合仕途和体制内发展',
-  '天福': '自带福气，困难中总有转机',
-  '蜚廉': '容易有小人是非，需防小人',
-  '解神': '化解灾难之星，遇事有转机',
-  '天巫': '对神秘学、宗教有感应和天赋',
-  '阴煞': '直觉灵敏但容易招惹阴气',
-  '华盖': '孤独感强但有艺术和哲学天赋',
-  '咸池': '桃花泛滥，需注意烂桃花',
-  '天空': '空想主义，理想远大但落地困难',
-  '孤辰': '孤独感重，不太合群',
-  '寡宿': '独处能力强但不擅长社交',
-};
-
-/**
  * 主星正面评价（用于拼凑命盘亮点）
  */
 const MAIN_STAR_HIGHLIGHT: Record<string, string> = {
@@ -668,33 +624,16 @@ const PAIR_TRAITS: Record<string, string> = {
  *
  * 对宫（六冲）：相隔6个宫位
  * 三合宫：本宫之外，每隔4个宫位取一个
+ *
+ * ⚠️ 两张表都来自 `ziweiPalaceRelations`（全站唯一真源），本文件不再各存一份。
+ * 这里保留别名只为不改动下方调用点的措辞。
  */
 
-/** 十二宫标准顺序 */
-const GONG_ORDER = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'];
+/** 对宫映射（来自唯一真源） */
+const OPPOSITE_MAP: Record<string, string> = OPPOSITE_OF;
 
-/** 对宫映射 */
-const OPPOSITE_MAP: Record<string, string> = {
-  '命宫': '迁移', '兄弟': '交友', '夫妻': '官禄', '子女': '田宅',
-  '财帛': '福德', '疾厄': '父母', '迁移': '命宫', '交友': '兄弟',
-  '官禄': '夫妻', '田宅': '子女', '福德': '财帛', '父母': '疾厄',
-};
-
-/** 三合宫映射 */
-const TRIANGLE_MAP: Record<string, string[]> = {
-  '命宫': ['官禄', '财帛'],
-  '兄弟': ['田宅', '疾厄'],
-  '夫妻': ['迁移', '福德'],
-  '子女': ['交友', '父母'],
-  '财帛': ['命宫', '官禄'],
-  '疾厄': ['兄弟', '田宅'],
-  '迁移': ['夫妻', '福德'],
-  '交友': ['子女', '父母'],
-  '官禄': ['财帛', '命宫'],
-  '田宅': ['疾厄', '兄弟'],
-  '福德': ['迁移', '夫妻'],
-  '父母': ['子女', '交友'],
-};
+/** 三合宫映射（来自唯一真源） */
+const TRIANGLE_MAP: Record<string, string[]> = TRIANGLE_OF;
 
 // ========== 工具函数 ==========
 
@@ -703,23 +642,6 @@ const TRIANGLE_MAP: Record<string, string[]> = {
  */
 function fmtPalaceName(name: string): string {
   return String(name || '').endsWith('宫') ? name : `${name}宫`;
-}
-
-/**
- * 从星曜对象中提取四化标记（兼容多种数据格式）
- * 注意：此函数为生年优先的合并视图，仅用于快速判断；
- * 需要区分"体（生年）/用（自化）"时请用 extractSihuaEntries
- */
-function extractSihua(star: StarInfo): string | null {
-  // 优先使用已提取的 sihua 字段
-  if (star.sihua) return star.sihua;
-  // @ziweijs/core 原始格式：YT（生年四化）
-  if (star.YT?.name) return star.YT.name;
-  // @ziweijs/core 原始格式：ST（自化）- CF（离心自化）
-  if (star.ST?.CF?.name) return star.ST.CF.name;
-  // @ziweijs/core 原始格式：ST - CP（向心自化）
-  if (star.ST?.CP?.name) return star.ST.CP.name;
-  return null;
 }
 
 /**
@@ -791,17 +713,6 @@ function getPalaceSihua(stars: (StarInfo | string)[]): SihuaEntry[] {
     result.push(...extractSihuaEntries(star));
   }
   return result;
-}
-
-/**
- * 检测某宫是否为特定四化
- */
-function hasSpecificSihua(stars: (StarInfo | string)[], sihuaType: string): boolean {
-  for (const star of stars) {
-    if (typeof star === 'string') continue;
-    if (extractSihua(star) === sihuaType) return true;
-  }
-  return false;
 }
 
 // ========== 核心解读函数 ==========
@@ -1257,8 +1168,6 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
   }
 
   // 4. 财帛宫、田宅宫有财星
-  const caiBoGong = palaceMap['财帛'];
-  const tianZhaiGong = palaceMap['田宅'];
   for (const [gong, label] of [['财帛', '财帛宫'], ['田宅', '田宅宫']] as const) {
     const p = palaceMap[gong];
     if (p) {
@@ -1353,7 +1262,6 @@ export function generateSummarizedReport(allPalacesData: PalaceData[]): Summariz
       ...(jiEGong.majorStars || []),
       ...(jiEGong.minorStars || []).map((s) => (typeof s === 'string' ? s : s)),
     ];
-    const jeMainStars = getMainStarNames(jeStars);
     const jeAllNames = jeStars.map((s) => getStarName(s));
     // 中州派定性：廉贞为正曜（官禄主、次桃花）而非六煞，不与羊陀火铃空劫并列
     const dangerStars = ['七杀', '破军', '擎羊', '火星', '铃星', '陀罗', '地空', '地劫'];

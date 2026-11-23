@@ -12,15 +12,16 @@
 //   3. 交换不变性由单元测试保证（hepan.test.ts 交换输入用例）。
 import type { PillarData } from '../types/chart';
 import { STEM_SIHUA_TABLE } from './ziweiAnalysis';
+import { OPPOSITE_OF as ZW_OPPOSITE_PALACE } from './ziweiPalaceRelations';
 import { DAY_MASTER_ESSENCE, getDayMasterTitle } from './baziPersonality';
 import { calcShenSha } from './shenSha';
 import { compareShenShaCharts, resonanceScoreFrom } from './shenShaSimilarity';
 // 地支关系走唯一出口（六合/三合/六冲三张表曾在本文件内各存一份，
 // 与 shenShaPower / 流年互动引擎的表重复；见 diZhiRelations.ts 头部说明）。
-import { DZ_CHONG as DZ_LIU_CHONG, DZ_HE as DZ_LIU_HE, DZ_SAN_HE, DZ_WX } from './diZhiRelations';
+import { DZ_CHONG as DZ_LIU_CHONG, DZ_HE as DZ_LIU_HE, DZ_SAN_HE } from './diZhiRelations';
 // 五行生克与忌神判据走唯一出口（本文件原先自留四张 WX_* 表，与 dayunReading / 流年引擎重复）。
 // deriveJiShen 仍从本模块对外导出（下方 re-export），保持既有调用方与测试不受影响。
-import { WX_KE, WX_KE_ME, WX_SHENG, WX_SHENG_ME, deriveJiShen } from './wuXingRelations';
+import { WX_KE, WX_SHENG, deriveJiShen } from './wuXingRelations';
 export { deriveJiShen };
 
 /**
@@ -64,15 +65,8 @@ function zwPalaceOf(chart: any[], palace: string): any | undefined {
   return (chart || []).find((x: any) => x?.name === palace);
 }
 
-/** 十二宫对宫（借星论用）：命无正曜时借对宫主星安星论 */
-const ZW_OPPOSITE_PALACE: Record<string, string> = {
-  '命宫': '迁移', '迁移': '命宫',
-  '兄弟': '交友', '交友': '兄弟',
-  '夫妻': '官禄', '官禄': '夫妻',
-  '子女': '田宅', '田宅': '子女',
-  '财帛': '福德', '福德': '财帛',
-  '疾厄': '父母', '父母': '疾厄',
-};
+/** 十二宫对宫（借星论用）：命无正曜时借对宫主星安星论。
+ *  ⚠️ 表本身来自 `ziweiPalaceRelations.OPPOSITE_OF`（全站唯一真源），本文件不再存副本。 */
 
 /**
  * 取宫位主星；空宫按紫微斗数惯例借对宫主星论（与 ziweiAnalysis.ts / Ziwei 页同一口径）。
@@ -199,7 +193,6 @@ const NAYIN_WX: Record<string, string> = {
   '炉中火': '火', '山头火': '火', '霹雳火': '火', '山下火': '火', '覆灯火': '火', '天上火': '火',
   '壁上土': '土', '城头土': '土', '沙中土': '土', '路旁土': '土', '大驿土': '土', '屋上土': '土',
 };
-const ZODIAC = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
 const LIU_HE: Record<string, string> = { '鼠': '牛', '牛': '鼠', '虎': '猪', '猪': '虎', '兔': '狗', '狗': '兔', '龙': '鸡', '鸡': '龙', '蛇': '猴', '猴': '蛇', '马': '羊', '羊': '马' };
 const SAN_HE: Record<string, string[]> = {
   '鼠': ['龙', '猴'], '牛': ['蛇', '鸡'], '虎': ['马', '狗'], '兔': ['羊', '猪'],
@@ -418,7 +411,6 @@ function genLoveAdviceForParty(
   }
 
   // 日支（夫妻宫）提示
-  const dayZhiWx = DZ_WX[dayZhi] || '';
   const dayZhiDescMap: Record<string, string> = {
     '子': '你骨子里喜欢聪慧、灵活、能跟你聊到一块的人。',
     '丑': '你喜欢踏实稳重、能把日子过出滋味的人。',

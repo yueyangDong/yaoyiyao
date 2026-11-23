@@ -66,52 +66,11 @@ const DOMAIN_LEVEL_STYLE: Record<string, { bg: string; color: string }> = {
 const WX_BG: Record<string, string> = { '木': 'rgba(107,154,122,0.08)', '火': 'rgba(194,59,43,0.08)', '土': 'rgba(184,123,74,0.08)', '金': 'rgba(201,169,110,0.08)', '水': 'rgba(42,51,64,0.08)' };
 const WX_ICON: Record<string, string> = { '木': '', '火': '', '土': '', '金': '', '水': '' };
 
-// 十神白话解释
-const SHISHEN_PLAIN: Record<string, string> = {
-  '比肩': '你的兄弟姐妹、朋友同事、竞争者，与你平起平坐的人',
-  '劫财': '你的铁哥们/闺蜜、合伙人，会帮你但也可能分你的钱',
-  '食神': '你的才华、口才、创造力，代表你轻松愉快的一面',
-  '伤官': '你的聪明才智、叛逆精神，不按常理出牌的一面',
-  '正财': '你的正经收入、工资、老婆（对男命），稳稳当当的钱',
-  '偏财': '你的外快、投资收入、意外之财、父亲，不稳定的钱',
-  '正官': '你的上司、规则制度、丈夫（对女命），管着你的人和事',
-  '七杀': '你的压力、竞争对手、挑战、魄力，让你紧张但也能成就你',
-  '正印': '你的母亲、长辈、学历文凭、贵人，默默守护你的人',
-  '偏印': '你的特殊技能、偏门学问、继母、干妈，不走寻常路的知识',
-};
-
-// ========== 十二长生计算 ==========
-const DZ_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-const CHANG_SHENG_NAMES = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养'];
-
-const YANG_START: Record<string, string> = {
-  '甲': '亥', '丙': '寅', '戊': '寅', '庚': '巳', '壬': '申',
-};
-const YIN_START: Record<string, string> = {
-  '乙': '午', '丁': '酉', '己': '酉', '辛': '子', '癸': '卯',
-};
-
-function getChangSheng12(dayGan: string, pillars: PillarData[]): Record<string, string> {
-  const isYang = ['甲', '丙', '戊', '庚', '壬'].includes(dayGan);
-  const startZhi = isYang ? YANG_START[dayGan] : YIN_START[dayGan];
-  if (!startZhi) return {};
-
-  const startIdx = DZ_ORDER.indexOf(startZhi);
-  const result: Record<string, string> = {};
-  for (const p of pillars) {
-    const zhiIdx = DZ_ORDER.indexOf(p.diZhi);
-    if (zhiIdx === -1) { result[p.pillar] = ''; continue; }
-    let offset = zhiIdx - startIdx;
-    if (isYang) {
-      if (offset < 0) offset += 12;
-    } else {
-      offset = -offset;
-      if (offset < 0) offset += 12;
-    }
-    result[p.pillar] = CHANG_SHENG_NAMES[offset % 12];
-  }
-  return result;
-}
+// 十二长生：真源是 utils/shenShaPower.changShengOf(gan, zhi)。
+// 本页曾自带一份本地实现（DZ_ORDER + YANG_START/YIN_START + getChangSheng12），
+// 与真源逐字等价，但**从 v1.0 起就没有任何渲染入口引用它**——算了一遍直接丢掉。
+// 2026-11-23 删除：判据类表不该躺在页面层，重复实现迟早漂移。
+// 若以后要在盘面上显示十二长生，调 changShengOf，别再抄一份表。
 
 // 命格分析：统一使用 utils/mingGe.ts 的 analyzeMingGeDetailed（含判定依据链/要素对应/成败关键）。
 // 校准说明：本文件曾另有一份本地简化实现（只判建禄/羊刃/正官等基础格，且不看专旺/化气/从格），
@@ -1073,7 +1032,6 @@ export default function Bazi() {
     });
   }, [baziData, strengthAnalysis, yongShenRec, wxStats, currentDayunStep, currentYear]);
 
-
   // 按柱分组的神煞
   const shenShaByPillar = useMemo(() => {
     const empty: Record<string, ShenShaItem[]> = { '年柱': [], '月柱': [], '日柱': [], '时柱': [] };
@@ -1111,13 +1069,6 @@ export default function Bazi() {
       yongShen: yongShenRec?.yongShen,
     });
   }, [baziData, strengthAnalysis, yongShenRec]);
-
-  // 十二长生
-  const changShengMap = useMemo(() => {
-    if (!baziData) return {} as Record<string, string>;
-    return getChangSheng12(baziData.dayGan, baziData.pillars);
-  }, [baziData]);
-
 
   // 六大领域分析
   const loveAnalysis = useMemo(() => {
@@ -1737,7 +1688,6 @@ export default function Bazi() {
                     );
 
                     // ---- 行10: 神煞 ----
-                    const emoji: Record<string, string> = {};
                     const row10 = (
                       <tr key="shensha" style={{ background: activeRow === 'shensha' ? 'rgba(196,164,90,0.04)' : 'transparent', transition: 'background 0.2s' }}>
                         <td style={{ padding: '8px 6px', textAlign: 'center', background: activeRow === 'shensha' ? 'rgba(196,164,90,0.08)' : 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', fontSize: 12, color: 'var(--text-secondary)' }}>神煞</td>

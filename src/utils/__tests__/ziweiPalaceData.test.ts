@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getStarBrightness, getChangsheng12, getBoshi12, getSuiqian12, getJiangqian12,
-  getMingZhu, getShenZhu, getLiuNianAges, getXiaoXianAges, getAuxiliaryStars, enrichGongData,
+  getMingZhu, getShenZhu, getLiuNianAges, getXiaoXianAges, enrichGongData,
 } from '../ziweiPalaceData';
 
 describe('星曜亮度查表（iztro 权威表）', () => {

@@ -6,7 +6,7 @@ import {
 import { ExperimentOutlined } from '@ant-design/icons';
 import { Flower2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, GUA_WUXING, monthZhiOf, MeiHuaResult } from '../utils/meihuaUtils';
+import { calcMeiHua, calcMeiHuaFromDate, GUA_NAMES, GUA_SYMBOLS, monthZhiOf, MeiHuaResult } from '../utils/meihuaUtils';
 import { buildAllMeihuaReadings, buildMeihuaExtras } from '../utils/meihuaReading';
 import type { Theme } from '../utils/divinationCore';
 import ThemeReadingCard from '../components/ThemeReadingCard';

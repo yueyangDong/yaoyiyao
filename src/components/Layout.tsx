@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout, Button, Typography, Space, Tag,
@@ -32,7 +31,7 @@ export default function AppLayout() {
   //    deleteUser/switchUser —— 它们只服务于下方那两个已经删掉的抽屉/弹窗。
   const {
     currentUser,
-    age, zodiacAnimal, zodiacSign, syncing, synced,
+    age, zodiacAnimal, syncing, synced,
   } = useUser();
 
   const formatBirth = (u: StoredUser) => {

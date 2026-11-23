@@ -4,7 +4,7 @@ import {
   Modal, Space, Empty, Divider, AutoComplete,
 } from 'antd';
 import {
-  SearchOutlined, BulbOutlined, TagsOutlined, FireOutlined, HistoryOutlined,
+  TagsOutlined, FireOutlined, HistoryOutlined,
 } from '@ant-design/icons';
 import {
   Moon, Search as SearchIcon,
@@ -16,7 +16,7 @@ import { useUser } from '../context/UserContext';
 import { useDailyQuota } from '../hooks/useDailyQuota';
 import CollapsibleCard from '../components/CollapsibleCard';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const HOT_KEYWORDS = ['蛇', '水', '掉牙', '飞', '考试', '死人', '鱼', '火', '钱', '鬼', '婴儿', '结婚'];
 

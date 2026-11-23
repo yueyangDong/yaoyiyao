@@ -51,12 +51,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     info: 'var(--wx-water)',
   };
 
-  const bgColors: Record<ToastType, string> = {
-    success: 'rgba(107,154,122,0.06)',
-    error: 'rgba(194,59,43,0.06)',
-    info: 'rgba(42,51,64,0.06)',
-  };
-
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}

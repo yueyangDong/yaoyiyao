@@ -2,10 +2,14 @@
 // 生年四化（先天定数，力量最强）：化禄=福分机会 / 化权=能力压力 / 化科=名声贵人 / 化忌=课题执着
 // 自化（本宫干使本宫星化出，能量消散不持久）：同一宫位、同一四化，含义与生年四化不同，单列一库
 // 宫名键与排盘 gongData 的宫名一致：命宫/兄弟/夫妻/子女/财帛/疾厄/迁移/交友/官禄/田宅/福德/父母
+//
+// ⚠️ 宫名清单来自 `ziweiPalaceRelations.GONG_ORDER`（全站唯一真源），不在这里再抄一份。
+
+import { GONG_ORDER } from './ziweiPalaceRelations';
 
 export type SihuaType = '禄' | '权' | '科' | '忌';
 
-export const PALACE_NAMES = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'] as const;
+export const PALACE_NAMES = GONG_ORDER;
 
 /** 生年四化落十二宫详解 */
 export const BIRTH_SIHUA_PALACE: Record<string, Record<SihuaType, string>> = {

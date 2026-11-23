@@ -2,14 +2,13 @@ import { useState, useRef } from 'react';
 import {
   Card, Typography, Button, Form, Input, Radio, InputNumber,
   Select, Cascader, Divider, Space, Tag, message, Popconfirm,
-  Empty, Row, Col, Checkbox, Alert,
+  Row, Col, Checkbox, Alert,
 } from 'antd';
 import {
-  UserAddOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
+  EditOutlined, DeleteOutlined, CheckCircleOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
-import { UserCircle, Plus, Bug } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Bug } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { getCityLng } from '../utils/solarTime';
 import type { StoredUser } from '../context/UserContext';
@@ -43,8 +42,7 @@ const LUNAR_MONTH_OPTIONS = [
 const LUNAR_DAY_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }));
 
 export default function Profile() {
-  const navigate = useNavigate();
-  const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history, syncing, synced } = useUser();
+  const { users, currentUser, addUser, updateUser, deleteUser, switchUser, history } = useUser();
   const [editing, setEditing] = useState(false);
   const compareRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);

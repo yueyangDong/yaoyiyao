@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import { useUser } from '../context/UserContext';
 import { Waves, Search } from 'lucide-react';
-import { NAYIN_MAP, NAYIN_LIST, getNayin, getYearNayin } from '../utils/nayinTexts';
+import { NAYIN_LIST, getNayin, getYearNayin } from '../utils/nayinTexts';
 
 const { Title, Text } = Typography;
 

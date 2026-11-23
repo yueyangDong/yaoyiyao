@@ -1,6 +1,8 @@
 // ========== 紫微四化深度解读（生年四化 + 自化，分层白话） ==========
 // 文案结构对标专业排盘解读：真实处境 → 自化面具 → 核心矛盾 → 健康运势
 
+import { GONG_ORDER } from './ziweiPalaceRelations';
+
 export interface SihuaDeepSection {
   heading: string;
   text: string;
@@ -236,7 +238,6 @@ export function generateSihuaDeepReading(gong: {
 /** 生成全部十二宫中"有四化故事可讲"的深度解读 */
 export function getAllSihuaDeepReadings(gongData: any[]): SihuaDeepReading[] {
   const out: SihuaDeepReading[] = [];
-  const GONG_ORDER = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '交友', '官禄', '田宅', '福德', '父母'];
   for (const name of GONG_ORDER) {
     const g = gongData.find((x) => x.name === name);
     if (!g) continue;
