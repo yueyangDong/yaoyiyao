@@ -4,7 +4,7 @@ import {
 } from 'antd';
 import { pcaCode } from 'cn-division';
 import { useUser } from '../context/UserContext';
-import { getCityLng, correctSolarTime } from '../utils/solarTime';
+import { resolveBirthTime, isTrueSolarPref, setTrueSolarPref } from '../utils/solarTime';
 import DivinationOverlay from '../components/DivinationOverlay';
 import ShareButton from '../components/ShareButton';
 import hepanArt from '../assets/hepan-art.png';
@@ -35,27 +35,27 @@ export default function HePan() {
     const isLunarProfile = u.birthCalendar === 'lunar';
     const isLeapProfile = isLunarProfile && u.isLeapMonth === true;
     const myGender = u.gender === '男' ? 'male' : 'female';
-    // 真太阳时校正（与对方同一口径：档案有出生地即按经度 + 均时差校正，跨午夜同步平移日期）
-    let calcHour = u.birthHour;
-    let calcMinute = u.birthMinute || 0;
-    let tsDayOffset = 0;
-    if (u.birthplace?.province) {
-      const r = correctSolarTime({
+    // 排盘时间口径（全站唯一入口 resolveBirthTime）：我方跟随全局开关（与八字页/紫微页共用），
+    // 默认按钟表时间；只有显式开启真太阳时才按档案里的出生地经度校正，跨午夜同步平移日期。
+    const rt = resolveBirthTime(
+      {
         year: u.birthYear, month: u.birthMonth, day: u.birthDay,
         hour: u.birthHour, minute: u.birthMinute || 0,
-        lng: u.birthplace.longitude || 120,
+        lng: u.birthplace?.longitude,
         calendar: isLunarProfile ? 'lunar' : 'solar',
         isLeap: isLeapProfile,
-      });
-      calcHour = r.hour;
-      calcMinute = r.minute;
-      tsDayOffset = r.dayOffset || 0;
-    }
+      },
+      isTrueSolarPref(),
+    );
+    const calcHour = rt.hour;
+    const calcMinute = rt.minute;
+    const tsDayOffset = rt.dayOffset;
     // 复用 buildPerson：四柱/用神/紫微盘构造与对方完全同构，避免两套口径
     // 晚子时流派：个人档案暂无该字段，缺省按默认档（2=日柱算当天），与八字页默认一致
     const p = buildPerson(u.birthYear, u.birthMonth, u.birthDay, calcHour, calcMinute, myGender, tsDayOffset, isLunarProfile ? 'lunar' : 'solar', isLeapProfile, undefined, normalizeWanZi((u as { ziShiSect?: number }).ziShiSect));
     p.name = u.name;
     p.birthInfo = `${u.birthYear}年${u.birthMonth}月${u.birthDay}日 ${u.birthHour}:${String(u.birthMinute || 0).padStart(2, '0')}${isLunarProfile ? '（农历）' : ''}`;
+    if (rt.note) p.timeNote = rt.note;
     return p;
   })();
 
@@ -83,31 +83,26 @@ export default function HePan() {
       return;
     }
 
-    // 真太阳时校正（对方有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT；跨午夜同步平移日期）
-    let calcHour = hour;
-    let calcMinute = minute || 0;
-    let tsDayOffset = 0;
-    const partnerLng = (birthplace && birthplace.length >= 2)
-      ? getCityLng(birthplace[0], birthplace[1], birthplace[2])
-      : 120;
-    if (birthplace && birthplace.length >= 2) {
-      const trueSolar = correctSolarTime({
-        year, month, day, hour, minute: minute || 0, lng: partnerLng,
-        calendar, isLeap,
-      });
-      calcHour = trueSolar.hour;
-      calcMinute = trueSolar.minute;
-      tsDayOffset = trueSolar.dayOffset || 0;
-    }
+    // 排盘时间口径（全站唯一入口）：对方跟表单开关；我方跟同一开关（下方同步写入全局偏好）。
+    const rt = resolveBirthTime(
+      { year, month, day, hour: hour || 0, minute: minute || 0, birthplace, calendar, isLeap },
+      values.trueSolar === true,
+    );
+    if (rt.missingPlace) message.warning('已开启真太阳时，但没有出生地：本次按北京时间排盘');
+    const calcHour = rt.hour;
+    const calcMinute = rt.minute;
+    const tsDayOffset = rt.dayOffset;
+    const partnerLng = rt.lng;
 
     setLoading(true);
     try {
       await new Promise(r => setTimeout(r, 2500));
       const partner = buildPerson(year, month, day, calcHour, calcMinute || 0, gender || 'female', tsDayOffset, calendar, isLeap, undefined, normalizeWanZi(ziShiSect));
-      // 真太阳时校正后的时间（覆盖 buildPerson 里的 raw 时间）
+      // 出生时间回显：校正过就写明「原始 → 真太阳时」，没校正就只写原始时间
       const calLabel = calendar === 'lunar' ? `（农历${isLeap ? '闰' : ''}）` : '';
-      if (partnerLng !== 120) {
+      if (rt.corrected) {
         partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}${calLabel}（原始）→ ${calcHour}:${String(calcMinute).padStart(2, '0')}（真太阳时${tsDayOffset !== 0 ? `，${tsDayOffset > 0 ? '次日' : '前一日'}` : ''}）`;
+        partner.timeNote = rt.note;
       } else {
         partner.birthInfo = `${year}年${month}月${day}日 ${hour}:${String(minute || 0).padStart(2, '0')}${calLabel}`;
       }
@@ -147,7 +142,7 @@ export default function HePan() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'hepan',
-        queryParams: { year, month, day, hour, minute, gender, birthplace, calendar, isLeap },
+        queryParams: { year, month, day, hour, minute, gender, birthplace, calendar, isLeap, trueSolar: values.trueSolar === true },
         resultSummary: `情侣合盘：${r.totalScore}分（${r.level}）`,
       });
     } catch (e: any) {
@@ -169,6 +164,9 @@ export default function HePan() {
         ) : (
           <Alert message="尚未创建个人档案" description="请先到「个人档案」填写你的出生信息，再回来合盘。" type="warning" showIcon />
         )}
+        {mine?.timeNote && (
+          <Alert type="info" showIcon style={{ marginTop: 8 }} message={mine.timeNote} />
+        )}
       </Card>
 
       {/* 对方 */}
@@ -182,7 +180,15 @@ export default function HePan() {
             nayin={result.partnerDisplay.nayin}
           />
         ) : null}
-        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar', ziShiSect: 2 }}>
+        {result?.partnerDisplay?.timeNote && (
+          <Alert
+            type={result.partnerDisplay.timeNote.includes('两者不同') ? 'warning' : 'info'}
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={result.partnerDisplay.timeNote}
+          />
+        )}
+        <Form form={form} layout="vertical" initialValues={{ gender: 'female', hour: 12, minute: 0, calendar: 'solar', ziShiSect: 2, trueSolar: isTrueSolarPref() }}>
           <Alert
             message="默认按公历（阳历）解析生日"
             description="请确认对方生日的历法：如是农历生日，请把下方「历法」切换为农历后再填写（闰月出生请勾选「闰月」），否则排盘会出错。"
@@ -208,14 +214,20 @@ export default function HePan() {
             tooltip="23 点子时出生者：日柱算当天（默认）或算次日。八字与紫微两侧同取此档，避免同一张盘出现两套「日」。">
             <Radio.Group><Radio.Button value={2}>日柱算当天</Radio.Button><Radio.Button value={1}>日柱算次日</Radio.Button></Radio.Group>
           </Form.Item>
-          <Form.Item name="birthplace" label="出生地（可选，用于真太阳时校正）">
+          <Form.Item name="birthplace" label="出生地（可选，仅开启真太阳时后参与排盘）">
             <Cascader
               options={pcaCode}
               fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
-              placeholder="请选择省/市/区（不填则按北京东八区）"
+              placeholder="请选择省/市/区（不填则按北京时间）"
               changeOnSelect
               style={{ width: '100%' }}
             />
+          </Form.Item>
+          <Form.Item name="trueSolar" valuePropName="checked" style={{ marginBottom: 12 }}
+            tooltip="默认按钟表时间（北京时间）定时辰。开启后双方都按出生地经度换算真太阳时（我方用档案里的出生地）；与八字页共用同一个开关。">
+            <Checkbox onChange={(e) => setTrueSolarPref(e.target.checked)}>
+              按真太阳时排盘（双方生效；默认关闭）
+            </Checkbox>
           </Form.Item>
           <Button type="primary" block size="large" onClick={handleCalc} loading={loading}>开始合盘</Button>
         </Form>

@@ -56,6 +56,11 @@ export interface PersonChart {
    * （见 currentDayunOf）——否则要重新排一次盘，或另抄一份起运逻辑。
    */
   eightChar?: EightChar;
+  /**
+   * 排盘时间口径说明：仅在用户显式开启「真太阳时」并实际校正时非空
+   * （见 solarTime.resolveBirthTime）。页面原样展示，不得省略——静默改时辰是 2026-11-26 修掉的坑。
+   */
+  timeNote?: string;
 }
 
 /**

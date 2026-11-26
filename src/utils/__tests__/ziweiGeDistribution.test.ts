@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ziwei } from '@ziweijs/core';
 import { Solar } from 'lunar-typescript';
-import { enrichGongData, getMingShenGongBranch } from '../ziweiPalaceData';
+import { enrichGongData, effectiveLunarMonth, getMingShenGongBranch } from '../ziweiPalaceData';
 import { recalcSihua } from '../ziweiSihuaFlying';
 import { analyzeZiweiGe, type ZiweiGeResult } from '../ziweiGe';
 
@@ -24,7 +24,8 @@ function analyze(y: number, m: number, d: number, h: number, gender: 'male' | 'f
   const result: any = ziwei.bySolar({
     name: '', gender, date: new Date(y, m - 1, d, h, 0, 0), language: 'zh-CN',
   } as any);
-  const lunarMonthAbs = Math.abs(lu.getMonth());
+  // 与页面同口径：有效农历月（闰月十六以后作下月）
+  const lunarMonthAbs = effectiveLunarMonth(lu.getMonth(), lu.getDay());
   const { shenGongBranch } = getMingShenGongBranch(lunarMonthAbs, lu.getTimeZhi());
   const yearGanZhi = lu.getYearInGanZhi();
 

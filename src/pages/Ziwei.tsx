@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { pcaCode } from 'cn-division';
 import { useUser } from '../context/UserContext';
 import { palaceScoreOf } from '../utils/ziweiPalaceScore';
-import { getCityLng, correctSolarTime } from '../utils/solarTime';
+import { resolveBirthTime, isTrueSolarPref, setTrueSolarPref } from '../utils/solarTime';
 import { ziwei } from '@ziweijs/core';
 import { Solar, Lunar } from 'lunar-typescript';
 import {
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CollapsibleCard from '../components/CollapsibleCard';
+import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import PlainConclusionCard from '../components/PlainConclusionCard';
 import DivinationOverlay from '../components/DivinationOverlay';
 import PayWall from '../components/PayWall';
@@ -26,7 +27,7 @@ import { normalizeWanZi } from '../utils/personChart';
 import { analyzeZiweiGe } from '../utils/ziweiGe';
 import { generateSummarizedReport, analyzeHoroscopeSihua, getAllPalacesReading } from '../utils/ziweiAnalysis';
 import { analyzeZiweiPersonality } from '../utils/ziweiPersonality';
-import { enrichGongData, getMingShenGongBranch } from '../utils/ziweiPalaceData';
+import { enrichGongData, effectiveLunarMonth, getMingShenGongBranch } from '../utils/ziweiPalaceData';
 import { getAllPalaceDeepReadings } from '../utils/ziweiPalaceDeep';
 import { recalcSihua, describeFlyIn, describeFlyOutJi } from '../utils/ziweiSihuaFlying';
 import { BIRTH_SIHUA_PALACE, SELF_SIHUA_PALACE } from '../utils/ziweiSihuaPalaceContent';
@@ -95,6 +96,8 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
   gongData: any[]; mingZhu: string; shenZhu: string;
   fiveElementName: string; genderLabel: string; solarDate: string; lunisolarDate: string;
 }) {
+  // 手机端：方盘不横向滚动，按屏宽整体缩小（4 列等分），字号/最小高度同步收紧
+  const narrow = useNarrowViewport();
   const byBranch: Record<string, any> = {};
   for (const g of gongData) byBranch[g.branch] = g;
 
@@ -127,15 +130,15 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
       <div style={{
         border: isMing ? '2px solid rgba(165,67,58,0.45)' : '1px solid var(--border-light)',
         background: isMing ? 'rgba(165,67,58,0.03)' : 'var(--bg-card-solid)',
-        borderRadius: 4, padding: '5px 6px', minHeight: 150,
+        borderRadius: 4, padding: narrow ? '3px 3px' : '5px 6px', minHeight: narrow ? 106 : 150,
         display: 'flex', flexDirection: 'column', gap: 1,
       }}>
         {/* 主星 */}
         {majors.map((s: any) => (
-          <div key={s.name} style={{ fontSize: 12.5, fontWeight: 700, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: '16px' }}>
+          <div key={s.name} style={{ fontSize: narrow ? 11 : 12.5, fontWeight: 700, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: narrow ? '14px' : '16px' }}>
             <span style={{ color: 'var(--text-primary)' }}>{s.name}</span>
-            {s.brightness && <span style={{ fontSize: 9, fontWeight: 400, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
-            {sihuaTag(s, 12.5)}
+            {s.brightness && <span style={{ fontSize: narrow ? 8 : 9, fontWeight: 400, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
+            {sihuaTag(s, narrow ? 11 : 12.5)}
           </div>
         ))}
         {majors.length === 0 && (
@@ -143,35 +146,35 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
         )}
         {/* 辅星 */}
         {minors.map((s: any) => (
-          <div key={s.name} style={{ fontSize: 11, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: '14px' }}>
+          <div key={s.name} style={{ fontSize: narrow ? 10 : 11, display: 'flex', alignItems: 'center', flexWrap: 'wrap', lineHeight: narrow ? '13px' : '14px' }}>
             <span style={{ color: 'var(--text-body)' }}>{s.name}</span>
-            {s.brightness && <span style={{ fontSize: 8.5, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
-            {sihuaTag(s, 11)}
+            {s.brightness && <span style={{ fontSize: narrow ? 8 : 8.5, color: brightColor(s.brightness), marginLeft: 1 }}>{s.brightness}</span>}
+            {sihuaTag(s, narrow ? 10 : 11)}
           </div>
         ))}
         {/* 流年/小限 */}
-        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', marginTop: 3, whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: narrow ? 8 : 8.5, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap' }}>
           流年: {(g.liunianAges || []).join(',')}
         </div>
-        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: narrow ? 8 : 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
           小限: {(g.xiaoxianAges || []).join(',')}
         </div>
         {/* 十二神小字 */}
-        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: narrow ? 8 : 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
           {[g.changsheng, g.boshi].filter(Boolean).join(' ')}
         </div>
-        <div style={{ fontSize: 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: narrow ? 8 : 8.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
           {[g.suiqian, g.jiangqian].filter(Boolean).join(' ')}
         </div>
         {/* 大限 + 宫名 + 宫干支 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 3, borderTop: '1px dashed var(--border-light)' }}>
-          <span style={{ fontSize: 9.5, color: 'var(--text-body)' }}>{g.horoscopeRanges?.[0]}~{g.horoscopeRanges?.[1]}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 2, borderTop: '1px dashed var(--border-light)' }}>
+          <span style={{ fontSize: narrow ? 8.5 : 9.5, color: 'var(--text-body)' }}>{g.horoscopeRanges?.[0]}~{g.horoscopeRanges?.[1]}</span>
           <span style={{
-            fontSize: 10.5, fontWeight: 700,
+            fontSize: narrow ? 9.5 : 10.5, fontWeight: 700,
             background: isMing ? '#a5433a' : 'var(--text-primary)',
-            color: '#fff', padding: '0 5px', borderRadius: 2, lineHeight: '17px',
+            color: '#fff', padding: '0 4px', borderRadius: 2, lineHeight: narrow ? '15px' : '17px',
           }}>{g.name}{g.isShenGong ? '·身' : ''}</span>
-          <span style={{ fontSize: 10, fontFamily: 'var(--font-display)', color: 'var(--text-body)', fontWeight: 600 }}>{g.stem}{g.branch}</span>
+          <span style={{ fontSize: narrow ? 9 : 10, fontFamily: 'var(--font-display)', color: 'var(--text-body)', fontWeight: 600 }}>{g.stem}{g.branch}</span>
         </div>
       </div>
     );
@@ -186,13 +189,13 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 3, padding: 10, textAlign: 'center',
     }}>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>紫微斗数</div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-body)' }}>
+      <div style={{ fontSize: narrow ? 13 : 15, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>紫微斗数</div>
+      <div style={{ fontSize: narrow ? 10 : 11.5, color: 'var(--text-body)' }}>
         {genderLabel} · {fiveElementName}
       </div>
-      <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{solarDate}</div>
-      <div style={{ fontSize: 10.5, color: 'var(--text-body)' }}>{lunisolarDate}</div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>
+      <div style={{ fontSize: narrow ? 9 : 10.5, color: 'var(--text-body)' }}>{solarDate}</div>
+      <div style={{ fontSize: narrow ? 9 : 10.5, color: 'var(--text-body)' }}>{lunisolarDate}</div>
+      <div style={{ fontSize: narrow ? 10 : 11, fontWeight: 600, color: 'var(--text-primary)' }}>
         命主：{mingZhu}　身主：{shenZhu}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 9.5, color: 'var(--text-secondary)', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -215,18 +218,18 @@ function PalaceGrid({ gongData, mingZhu, shenZhu, fiveElementName, genderLabel, 
   ];
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: 560 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(4, auto)', gap: 4 }}>
+    <div style={{ overflowX: narrow ? 'visible' : 'auto' }}>
+      <div style={{ minWidth: narrow ? 0 : 560 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(4, auto)', gap: narrow ? 2 : 4 }}>
           {CELLS.map(({ branch, col, row }) => (
-            <div key={branch} style={{ gridColumn: col, gridRow: row }}>{renderCell(branch)}</div>
+            <div key={branch} style={{ gridColumn: col, gridRow: row, minWidth: 0 }}>{renderCell(branch)}</div>
           ))}
           {centerCell}
         </div>
         {/* 方位标注（上南下北） */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: 'var(--text-secondary)', marginTop: 4, padding: '0 4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: narrow ? 8.5 : 9.5, color: 'var(--text-secondary)', marginTop: 4, padding: '0 4px' }}>
           <span>左：东</span>
-          <span>上：南（传统盘面方向）</span>
+          <span>上：南{narrow ? '' : '（传统盘面方向）'}</span>
           <span>右：西</span>
         </div>
       </div>
@@ -282,6 +285,17 @@ export default function Ziwei() {
       return;
     }
 
+    // 排盘时间口径（全站唯一入口 resolveBirthTime）：默认按钟表时间；只有显式开启
+    // 「真太阳时」且填了出生地才校正（与八字页同一开关同一口径，避免同一张盘两套时辰）。
+    const calendarTypeResolved: 'solar' | 'lunar' = calendarType === 'lunar' ? 'lunar' : 'solar';
+    const rt = resolveBirthTime(
+      { year, month, day, hour: hour || 0, minute: minute || 0, birthplace, calendar: calendarTypeResolved, isLeap: isLeapMonth },
+      values.trueSolar === true,
+    );
+    if (rt.missingPlace) {
+      message.warning('已开启真太阳时，但没有出生地：本次按北京时间排盘');
+    }
+
     const dateOk = calendarType === 'lunar'
       ? isValidLunarDate(year, month, day, isLeapMonth)
       : isValidSolarDate(year, month, day);
@@ -303,22 +317,9 @@ export default function Ziwei() {
     try {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
-      // 真太阳时校正（有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT；跨午夜同步平移日期）
-      let calcHour = hour;
-      let calcMinute = minute || 0;
-      let lng = 120;
-      let tsDayOffset = 0;
-      if (birthplace && birthplace.length >= 2) {
-        lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
-        const trueSolar = correctSolarTime({
-          year, month, day, hour, minute: minute || 0, lng,
-          calendar: calendarType === 'lunar' ? 'lunar' : 'solar',
-          isLeap: isLeapMonth,
-        });
-        calcHour = trueSolar.hour;
-        calcMinute = trueSolar.minute;
-        tsDayOffset = trueSolar.dayOffset || 0;
-      }
+      const calcHour = rt.hour;
+      const calcMinute = rt.minute;
+      const tsDayOffset = rt.dayOffset;
 
       // 用 lunar-typescript 获取公历/农历对照
       let sol: Solar;
@@ -357,6 +358,8 @@ export default function Ziwei() {
       lunisolarDateStr = `农历${lu.getYearInChinese()}年 ${lu.getMonthInChinese()}月 ${lu.getDayInChinese()}日 ${lu.getTimeZhi()}时`;
 
       // 排盘统一用转换后的公历日期（农历输入也必须先转公历，否则排盘结果错误）
+      // 注：若开启真太阳时，时间已在 resolveBirthTime 校正完（含均时差与跨日平移），
+      //     此处不再传 longitude/useTrueSolarTime，避免 core 内部二次校正。
       const wanZiDayShift = calcHour === 23 && wanZi === 2 ? -1 : 0;
       const solarDate = new Date(sol.getYear(), sol.getMonth() - 1, sol.getDay() + wanZiDayShift, calcHour, calcMinute, 0);
 
@@ -373,7 +376,9 @@ export default function Ziwei() {
       // 身宫推算（@ziweijs/core 0.3.0 的宫位对象没有 isShenGong 字段）：
       // 安命身诀在 getMingShenGongBranch（命宫=月宫逆数生时、身宫=月宫顺数生时），
       // 农历月已通过上方晚子时换日与 core 排盘基准对齐
-      const lunarMonthAbs = Math.abs(lu.getMonth());
+      // ⚠️ 农历月必须用「有效月」（闰月十六以后作下月）：core 的命宫/主星就是按这条安的，
+      //    身宫与天刑/天姚若直接取 |农历月| 会与之差一个月（2026-11-26 修）。
+      const lunarMonthAbs = effectiveLunarMonth(lu.getMonth(), lu.getDay());
       const { shenGongBranch } = getMingShenGongBranch(lunarMonthAbs, lu.getTimeZhi());
 
       const gongData = result.palaces.map((p: any) => ({
@@ -500,6 +505,9 @@ export default function Ziwei() {
         sihuaSummaries,
         solarDate: solarDateStr,
         lunisolarDate: lunisolarDateStr,
+        // 排盘时间口径说明（真太阳时校正时非空；页面必显）
+        timeNote: rt.note,
+        timeZhiChanged: rt.zhiChanged,
         // 命盘指纹：付费权益绑定用（公历归一 + 真太阳时校正后时间，稳定唯一）
         chartKey: `ziwei:${sol.getYear()}-${sol.getMonth()}-${sol.getDay()}-${calcHour}-${calcMinute}-${gender || 'male'}`,
         fiveElementName: result.fiveElementName,
@@ -519,7 +527,7 @@ export default function Ziwei() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'ziwei',
-        queryParams: { year, month, day, hour, minute, gender },
+        queryParams: { year, month, day, hour, minute, gender, birthplace, calendarType, isLeapMonth, ziShiSect, trueSolar: values.trueSolar === true },
         resultSummary: `紫微斗数：命宫${mingGong?.majorStars?.map((s: any) => s.name).join('、') || '—'} 身宫${shenGong?.majorStars?.map((s: any) => s.name).join('、') || '—'}`,
       });
     } catch (e: any) {
@@ -687,6 +695,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
             month: profile.birthMonth, day: profile.birthDay,
             hour: profile.birthHour, minute: profile.birthMinute,
             ziShiSect: 2,
+            trueSolar: isTrueSolarPref(),
           }}>
           {/* 公历/农历切换 */}
           <Form.Item label="时间类型" style={{ marginBottom: 12 }}>
@@ -789,7 +798,7 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
           </Row>
           <Row gutter={16}>
             <Col xs={24} sm={12}>
-              <Form.Item name="birthplace" label="出生地（真太阳时校正）">
+              <Form.Item name="birthplace" label="出生地（仅开启真太阳时后参与排盘）">
                 <Cascader
                   options={pcaCode}
                   fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
@@ -809,6 +818,12 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="trueSolar" valuePropName="checked" initialValue={isTrueSolarPref()} style={{ marginBottom: 8 }}
+            tooltip="默认按钟表时间（北京时间）定时辰。开启后按出生地经度换算真太阳时，时辰可能推前或推后一个时辰；与八字页共用同一个开关。">
+            <Checkbox onChange={(e) => setTrueSolarPref(e.target.checked)}>
+              按真太阳时排盘（需填出生地；默认关闭）
+            </Checkbox>
+          </Form.Item>
           <Button type="primary" onClick={handleCalc} loading={loading} size="large">紫微排盘</Button>
         </Form>
       </Card>
@@ -838,6 +853,14 @@ const GONG_TIPS: Record<string, { eventHint: string; boostHint: string }> = {
               </Space>
             </div>
           </Card>
+          {ziweiData.timeNote && (
+            <Alert
+              type={ziweiData.timeZhiChanged ? 'warning' : 'info'}
+              showIcon
+              style={{ marginBottom: 16, textAlign: 'left' }}
+              message={ziweiData.timeNote}
+            />
+          )}
 
           {/* 哲理引言 */}
           <motion.div

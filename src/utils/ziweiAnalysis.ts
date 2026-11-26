@@ -2,7 +2,16 @@
 // 兼容 @ziweijs/core v0.3.0 的排盘结果
 
 import { Solar } from 'lunar-typescript';
-import { OPPOSITE_OF, TRIANGLE_OF } from './ziweiPalaceRelations';
+import { OPPOSITE_OF, TRIANGLE_OF, GONG_ORDER } from './ziweiPalaceRelations';
+
+/** 同一张盘多宫共用一句会显得雷同：按十二宫标准序轮换同义措辞（相邻宫必然不同） */
+const variantByKey = (key: string, arr: string[]): string => {
+  const idx = (GONG_ORDER as readonly string[]).indexOf(key);
+  if (idx >= 0) return arr[idx % arr.length];
+  let h = 7;
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
+  return arr[h % arr.length];
+};
 
 // ========== 类型定义 ==========
 
@@ -754,7 +763,14 @@ function getPalaceSpecificContext(
       ? oppositeInfo.majorStars.join('、')
       : '';
     if (oppStars) {
-      parts.push(`${gongLabel}为空宫，借对宫${oppStars}论——空宫不是空白，而是弹性大、可塑性高，${oppStars}的特质会透过环境和际遇在你身上显现。`);
+      // 十二宫若都用同一句「空宫不是空白…」会明显雷同——按宫名轮换措辞
+      const emptyVariants = [
+        `${gongLabel}为空宫，借对宫${oppStars}论——空宫不是空白，而是弹性大、可塑性高，${oppStars}的特质会透过环境和际遇在你身上显现。`,
+        `${gongLabel}无主星，借对宫${oppStars}的气质来论：这一宫像一张白纸，遇到什么环境、什么人，就染上什么颜色。`,
+        `${gongLabel}是空宫，代表这一块"没有定死"——${oppStars}的能量会随圈子和处境渗进来，你主动选环境，它就往好的方向长。`,
+        `${gongLabel}借对宫${oppStars}论：空宫的好处是弹性大，坏处是容易被环境带跑，关键在你肯不肯主动挑环境。`,
+      ];
+      parts.push(variantByKey(palaceName, emptyVariants));
     } else {
       parts.push(`${gongLabel}空而无借——此宫能量平和，没有先天定式，全看后天经营。`);
     }
@@ -801,8 +817,24 @@ function getPalaceSpecificContext(
   if (minorStars.length > 0) {
     const ausp = minorStars.filter(isAuspiciousStar).slice(0, 2);
     const malef = minorStars.filter(isMaleficStar).slice(0, 2);
-    if (ausp.length > 0) parts.push(`得${ausp.join('、')}相助——这一宫有现成的助力，遇事不妨开口，别硬扛。`);
-    if (malef.length > 0) parts.push(`逢${malef.join('、')}——这一宫的过程会有反复，慢一步、多确认一次，比抢快划算。`);
+    if (ausp.length > 0) {
+      const auspVariants = [
+        `得${ausp.join('、')}相助——这一宫有现成的助力，遇事不妨开口，别硬扛。`,
+        `得${ausp.join('、')}帮衬——这一宫不必单打独斗，该求助时别客气。`,
+        `${ausp.join('、')}入宫是加分项：遇到卡点，往这几颗星代表的方向找资源。`,
+        `有${ausp.join('、')}托底，这一宫的下限不低，上限看你敢不敢主动争取。`,
+      ];
+      parts.push(variantByKey(palaceName, auspVariants));
+    }
+    if (malef.length > 0) {
+      const malefVariants = [
+        `逢${malef.join('、')}——这一宫的过程会有反复，慢一步、多确认一次，比抢快划算。`,
+        `逢${malef.join('、')}——这一宫的节奏容易被打断，预留缓冲比要求一次到位更稳。`,
+        `${malef.join('、')}在此，这一宫适合"慢工"：快进快出容易返工。`,
+        `带${malef.join('、')}，过程易有反复——把它当打磨，而不是倒霉。`,
+      ];
+      parts.push(variantByKey(palaceName, malefVariants));
+    }
   }
 
   // 5. 对宫冲照（仅有四化互动时输出：禄权科为"照"，化忌为"冲"）

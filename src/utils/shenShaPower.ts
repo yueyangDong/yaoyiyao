@@ -136,6 +136,18 @@ export function changShengOf(gan: string, zhi: string): string {
 }
 
 /**
+ * 四柱「地势」行：**本柱天干 × 本柱地支**的十二长生（通行口径，如 甲子 = 沐浴、丙寅 = 长生）。
+ *
+ * ⚠️ 2026-11-26 修：此前用 `lunar-typescript` 的 `getYearDiShi()` 等四个方法，
+ *    而库的实现**一律拿日干去查四个地支**（源码 `getDiShi` 里取的是 `getDayGan()`），
+ *    于是年/月/时三柱的地势与主流排盘软件全不一致（仅年干 == 日干时才碰巧对）。
+ *    地势只用于盘面展示，不进任何判据，故不影响用神/格局/合盘分布。
+ */
+export function diShiOf(gan: string, zhi: string): string {
+  return changShengOf(gan, zhi);
+}
+
+/**
  * 某柱地支与其他三柱的关系类型集合（不看天干，只看地支之间的作用）。
  *
  * 判据一律取自 diZhiRelations（地支关系**唯一出口**），本文件不再自留一份表。

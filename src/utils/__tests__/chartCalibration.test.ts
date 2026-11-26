@@ -162,7 +162,7 @@ describe('紫微排盘校准（@ziweijs/core）', () => {
   it('命宫/身宫：安命身诀与 core 排盘互验（2000-08-16 寅时）', () => {
     const r = mk(2000, 8, 16, 4);
     const lu = Lunar.fromDate(new Date(2000, 7, 16, 4, 0));
-    const { mingGongBranch, shenGongBranch, monthPalaceBranch } = getMingShenGongBranch(Math.abs(lu.getMonth()), lu.getTimeZhi());
+    const { mingGongBranch, shenGongBranch, monthPalaceBranch } = getMingShenGongBranch(lu.getMonth(), lu.getTimeZhi(), lu.getDay());
     expect(monthPalaceBranch).toBe('申');  // 农历七月 → 月宫申
     expect(shenGongBranch).toBe('戌');     // 月宫申 + 寅(2) = 戌（身宫顺数生时）
     // core 命宫与独立公式命宫互验；身宫落宫存在
@@ -275,7 +275,7 @@ describe('紫微排盘校准（2004-08-10 09:55 女·文墨天机参考盘）', 
     const rl: any = ziwei.bySolar({ name: '', gender: 'male', date: new Date(2004, 0, 21, 23, 0), language: 'zh-CN' });
     const ming = rl.palaces.find((p: any) => p.name === '命宫');
     expect(ming.branch).toBe('寅');
-    expect(ming.branch).toBe(getMingShenGongBranch(Math.abs(lu.next(1).getMonth()), '子').mingGongBranch);
+    expect(ming.branch).toBe(getMingShenGongBranch(lu.next(1).getMonth(), '子', lu.next(1).getDay()).mingGongBranch);
   });
 
   it('纳音五行局全量校验：独立六十甲子表逐例核对（204 例采样）', () => {

@@ -87,12 +87,36 @@ export function getChangsheng12(
   return map;
 }
 
+/**
+ * 「有效农历月」——闰月折算的**全站唯一口径**，必须与排盘 core 一致。
+ *
+ * 规则（通行做法，也是 @ziweijs/core 与 iztro 的默认行为）：
+ *   闰月**初一到十五**作本月，**十六以后**作下月；非闰月原样返回。
+ *
+ * ⚠️ 2026-11-26 修：core 的命宫/主星一直按这条规则安星，但页面自算的**身宫**
+ *    （getMingShenGongBranch）和 **天刑/天姚**（getAuxiliaryStars）却直接取 |农历月|，
+ *    于是「闰月十六以后出生」的人命宫按下月、身宫按本月——同一张盘两套口径
+ *    （与 iztro 交叉校验 1500 盘时暴露）。凡是要用「农历月」的地方一律先过这里。
+ *
+ * @param lunarMonth lunar-typescript 的农历月数，闰月为负（闰五月 = -5）
+ * @param lunarDay 农历日（1~30）
+ */
+export function effectiveLunarMonth(lunarMonth: number, lunarDay: number): number {
+  const abs = Math.abs(lunarMonth);
+  return lunarMonth < 0 && lunarDay > 15 ? abs + 1 : abs;
+}
+
 // ---------- 博士十二神 ----------
 // 禄存起博士，阳男阴女顺行、阴男阳女逆行：博士、力士、青龙、小耗、将军、奏书、飞廉、喜神、病符、大耗、伏兵、官府
 const BOSHI_STEPS = ['博士', '力士', '青龙', '小耗', '将军', '奏书', '飞廉', '喜神', '病符', '大耗', '伏兵', '官府'];
+// 禄存（年干）：甲寅、乙卯、丙戊巳、丁己午、庚申、辛酉、**壬亥、癸子**。
+// ⚠️ 2026-11-26 修：此前壬/癸两行写反（壬子、癸亥）。与 iztro 2.6.5 交叉校验 1500 盘时暴露——
+//    壬/癸年生人（约 1/5 的盘）的禄存、擎羊、陀罗三颗星整体错一位，
+//    连带博士十二神（起于禄存）整圈错两位。口诀：「甲禄在寅乙在卯，丙戊丁己巳午走，
+//    庚申辛酉壬在亥，癸禄在子记心头」。
 const LUCUN_BRANCH: Record<string, string> = {
   '甲': '寅', '乙': '卯', '丙': '巳', '丁': '午', '戊': '巳', '己': '午',
-  '庚': '申', '辛': '酉', '壬': '子', '癸': '亥',
+  '庚': '申', '辛': '酉', '壬': '亥', '癸': '子',
 };
 
 /** 博士十二神：返回 Record<地支, 神煞名> */
@@ -202,7 +226,9 @@ export function getAuxiliaryStars(yearGan: string, yearZhi: string, hourZhi: str
   add(hongluan, '红鸾');
   add(ZHI_ORDER[(idx(hongluan) + 6) % 12], '天喜');
 
-  // 天刑（酉起正月顺数至生月）/ 天姚（丑起正月顺数至生月）；闰月按本月
+  // 天刑（酉起正月顺数至生月）/ 天姚（丑起正月顺数至生月）
+  // ⚠️ monthNum 必须是**有效农历月**（effectiveLunarMonth：闰月十六以后作下月），
+  //    与 core 安命宫同口径；此前按 |农历月| 算，闰月后半月出生者这两颗星错一位。
   const monthOff = ((Math.abs(monthNum) - 1) % 12 + 12) % 12;
   add(ZHI_ORDER[(9 + monthOff) % 12], '天刑');
   add(ZHI_ORDER[(1 + monthOff) % 12], '天姚');
@@ -217,10 +243,14 @@ export function getAuxiliaryStars(yearGan: string, yearZhi: string, hourZhi: str
  * 从生月宫起子时逆数至生时 = 命宫；顺数至生时 = 身宫。
  * 子时生人命身同宫，午时生人命身对冲；命身两宫关于生月宫对称。
  * 注意：农历月必须与排盘（core）同基准——晚子时（23点）core 会换日，调用方需先 next(1)。
+ *
+ * @param lunarMonth 农历月数（闰月传负数；内部按 effectiveLunarMonth 折算，与 core 同口径）
+ * @param lunarDay 农历日；传正数月份时可省略
  */
-export function getMingShenGongBranch(lunarMonthAbs: number, hourZhi: string): { monthPalaceBranch: string; mingGongBranch: string; shenGongBranch: string } {
+export function getMingShenGongBranch(lunarMonth: number, hourZhi: string, lunarDay: number = 30): { monthPalaceBranch: string; mingGongBranch: string; shenGongBranch: string } {
+  const m = effectiveLunarMonth(lunarMonth, lunarDay);
   const hourIdx = Math.max(ZHI_ORDER.indexOf(hourZhi), 0);
-  const monthPalaceIdx = (2 + lunarMonthAbs - 1) % 12;
+  const monthPalaceIdx = (2 + m - 1) % 12;
   return {
     monthPalaceBranch: ZHI_ORDER[monthPalaceIdx],
     mingGongBranch: ZHI_ORDER[(monthPalaceIdx - hourIdx + 24) % 12],
@@ -256,14 +286,16 @@ export function getLiuNianAges(birthZhi: string, palaceBranch: string): number[]
 }
 
 /**
- * 小限虚岁：寅午戌起辰、申子辰起戌、巳酉丑起未、亥卯未起寅。
+ * 小限虚岁：寅午戌起辰、申子辰起戌、巳酉丑起未、亥卯未起**丑**。
  * ⚠️ 顺逆是「男顺女逆」，**只看性别**（《全书》口诀：小限一年一度逢，男顺女逆不相同）。
  *    绝不要套用大限/博士十二神的「阳男阴女顺」——阴男阳女两套规则结论相反，
  *    此前误用该规则，导致阴年生男、阳年生女的小限整圈方向反了。
+ * ⚠️ 2026-11-26 修：亥卯未组起点此前误作**寅**，与 iztro 2.6.5 全量交叉校验
+ *    （3000 盘）时暴露——该组约占 1/4 的盘，小限整圈错一位。口诀原文是「亥卯未人起丑宫」。
  *    yearGan 已不参与判据，仅为兼容既有调用保留。
  */
 export function getXiaoXianAges(birthZhi: string, palaceBranch: string, _yearGan: string, gender: 'male' | 'female'): number[] {
-  const startMap: Record<string, string> = { '寅': '辰', '午': '辰', '戌': '辰', '申': '戌', '子': '戌', '辰': '戌', '巳': '未', '酉': '未', '丑': '未', '亥': '寅', '卯': '寅', '未': '寅' };
+  const startMap: Record<string, string> = { '寅': '辰', '午': '辰', '戌': '辰', '申': '戌', '子': '戌', '辰': '戌', '巳': '未', '酉': '未', '丑': '未', '亥': '丑', '卯': '丑', '未': '丑' };
   const startIdx = ZHI_ORDER.indexOf(startMap[birthZhi] || '辰');
   const p = ZHI_ORDER.indexOf(palaceBranch);
   const forward = gender === 'male'; // 男顺女逆，不分阴阳
@@ -282,7 +314,10 @@ export interface EnrichOptions {
   gender: 'male' | 'female';
   /** 生时地支（'子'~'亥'），用于地空地劫/火星铃星安星 */
   hourZhi: string;
-  /** 农历月数（闰月传正值按本月算），用于天刑天姚安星 */
+  /**
+   * **有效**农历月（effectiveLunarMonth 的返回值：闰月十六以后作下月），用于天刑天姚安星。
+   * ⚠️ 不要直接传 |农历月|——会与 core 的命宫口径差一个月。
+   */
   monthNum: number;
 }
 

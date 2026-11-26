@@ -75,13 +75,24 @@ describe('formToChart', () => {
     expect(shanghai.minute).toBeGreaterThan(0);
   });
 
-  it('真太阳时跨时辰边界时，时柱确实随之改变（校真正生效，不是被忽略）', () => {
+  it('显式开启 trueSolar 后，真太阳时跨时辰边界时时柱随之改变（校真正生效，不是被忽略）', () => {
     // 11:00（午时起点）：西安 −44 分钟 → 10:16 巳时；上海 +6 分钟 → 11:06 仍午时
-    const xian = formToChart(base({ hour: 11, minute: 0, birthplace: ['61', '6101'] }));
-    const shanghai = formToChart(base({ hour: 11, minute: 0, birthplace: ['31', '3101'] }));
+    const xian = formToChart(base({ hour: 11, minute: 0, birthplace: ['61', '6101'], trueSolar: true }));
+    const shanghai = formToChart(base({ hour: 11, minute: 0, birthplace: ['31', '3101'], trueSolar: true }));
     expect(xian.pillars[3].ganZhi).not.toBe(shanghai.pillars[3].ganZhi);
     expect(xian.pillars[3].diZhi).toBe('巳');
     expect(shanghai.pillars[3].diZhi).toBe('午');
+    // 改了时辰必须说清楚：钟表属午时、真太阳时属巳时
+    expect(xian.timeNote).toContain('属午时');
+    expect(xian.timeNote).toContain('属巳时');
+    expect(shanghai.timeNote).toContain('时辰不变');
+  });
+
+  it('默认不做真太阳时：填了出生地也按钟表时间排盘（2026-11-26 修：此前填了出生地就静默换时辰）', () => {
+    // 11:00 属午时；西安 −44 分钟本会落到巳时——但开关没开，就必须还是午时
+    const xian = formToChart(base({ hour: 11, minute: 0, birthplace: ['61', '6101'] }));
+    expect(xian.pillars[3].diZhi).toBe('午');
+    expect(xian.timeNote).toBeUndefined();
   });
 });
 

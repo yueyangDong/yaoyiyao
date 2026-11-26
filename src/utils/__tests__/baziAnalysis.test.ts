@@ -27,8 +27,11 @@ describe('八字五维解读差异化', () => {
   it('爱情解读：不同日主/夫妻宫产出显著不同文本', () => {
     const a = analyzeLove(pillarsJia, [], 'male', '甲', '午', []);
     const b = analyzeLove(pillarsGui, [], 'male', '癸', '酉', []);
-    expect(a.spouseFeature).toContain('甲木日主');
-    expect(b.spouseFeature).toContain('癸水日主');
+    // 日主身份（「你是X日主——像……」）统一收口到「性格画像」卡，爱情段不再复述，
+    // 但日主气质仍通过 love 文案差异化体现。
+    expect(a.spouseFeature).toContain('扛事型');
+    expect(b.spouseFeature).toContain('重感觉、爱得深');
+    expect(a.spouseFeature).not.toContain('甲木日主');
     expect(a.spouseFeature).toContain('夫妻宫坐午火');
     expect(b.spouseFeature).toContain('夫妻宫坐酉金');
     expect(a.spouseFeature).not.toBe(b.spouseFeature);

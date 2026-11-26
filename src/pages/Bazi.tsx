@@ -7,7 +7,7 @@ import {
 } from 'antd';
 import { useUser } from '../context/UserContext';
 import type { PillarData } from '../types/chart';
-import { getCityLng, correctSolarTime } from '../utils/solarTime';
+import { resolveBirthTime, isTrueSolarPref, setTrueSolarPref } from '../utils/solarTime';
 import { pcaCode } from 'cn-division';
 import { analyzeLove, analyzeCareer, analyzeHealth, analyzeFamily, analyzeSocial, analyzeFortuneOverview, analyzeDayMasterStrength, recommendYongShen } from '../utils/baziAnalysis';
 import { generateDomainDeepReadings, type DomainDeepReading } from '../utils/baziDomainDeep';
@@ -27,7 +27,7 @@ import { useNarrowViewport } from '../hooks/useNarrowViewport';
 import { analyzeMingGeDetailed, analyzeTouGan, type MingGeDetailed } from '../utils/mingGe';
 import { calcShenSha } from '../utils/shenSha';
 import type { ShenShaItem } from '../utils/shenSha';
-import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
+import { calcShenShaPower, diShiOf, type ShaPowerItem } from '../utils/shenShaPower';
 import { explainShenShaMap, type ShaExplainItem } from '../utils/shenShaExplain';
 import { calcWuxingStats, analyzeWuxingFlow, annotateDayunFlow } from '../utils/wuxingFlow';
 import { buildLiuYueList, buildLiuRiList, type LiuYueItem, type LiuRiItem } from '../utils/liuyueReading';
@@ -506,6 +506,8 @@ export default function Bazi() {
     dayun: {
       startAge: number;
       startDate: string;
+      /** 起运时刻（毫秒）；判「是否已起运」只认它 */
+      startTimeMs: number;
       direction: string;
       steps: Array<{
         ganZhi: string;
@@ -517,6 +519,10 @@ export default function Bazi() {
       }>;
     };
     lunarInfo: string;
+    /** 排盘时间口径说明（真太阳时校正时必显；空串 = 没校正） */
+    timeNote: string;
+    /** 真太阳时校正把时辰改掉了（提示条升级为警示） */
+    timeZhiChanged?: boolean;
     dayGan: string;
     dayWx: string;
     shenSha: ShenShaItem[];
@@ -646,23 +652,26 @@ export default function Bazi() {
     try {
       // 推演动画（模拟推演过程，营造仪式感）
       await new Promise(r => setTimeout(r, 2500));
-      // 真太阳时校正（有出生地即校正：经度差 + 均时差；农历输入由 helper 先转公历再算 EoT）
-      // 不知时辰时跳过校正——基准值本身是推定的，再校正只是制造虚假精度（午时远离午夜，不影响日柱）
-      let calcHour = effHour;
-      let calcMinute = effMinute;
-      let lng = 120;
-      let tsDayOffset = 0; // 真太阳时校正跨午夜时的日历日偏移（必须同步平移出生日期，否则日柱错一天）
-      if (!hourUnknown && birthplace && birthplace.length >= 2) {
-        lng = getCityLng(birthplace[0], birthplace[1], birthplace[2]);
-        const trueSolar = correctSolarTime({
-          year, month, day, hour, minute: minute || 0, lng,
+      // 排盘时间口径（全站唯一入口 resolveBirthTime）：
+      //   默认按钟表时间排盘；只有用户显式打开「真太阳时」开关、且填了出生地时才校正。
+      //   ⚠️ 此前「填了出生地就静默校正」—— 15:00 出生在北京会被改成 14:51，悄悄排成未时，
+      //      页面上没有任何提示（2026-11-26 修）。校正改了时辰时 timeNote 必须展示。
+      //   不知时辰时同样跳过：基准值本身是推定的，再校正只是制造虚假精度。
+      const trueSolar = values.trueSolar === true && !hourUnknown;
+      const rt = resolveBirthTime(
+        {
+          year, month, day, hour: effHour, minute: effMinute, birthplace,
           calendar: inputMode === 'lunar' ? 'lunar' : 'solar',
           isLeap: leapMonth === month,
-        });
-        calcHour = trueSolar.hour;
-        calcMinute = trueSolar.minute;
-        tsDayOffset = trueSolar.dayOffset || 0;
+        },
+        trueSolar,
+      );
+      if (rt.missingPlace) {
+        message.warning('已开启真太阳时，但没有出生地：本次按北京时间排盘');
       }
+      const calcHour = rt.hour;
+      const calcMinute = rt.minute;
+      const tsDayOffset = rt.dayOffset;
 
       // 四柱构造统一走 personChart.buildRawChart（全站唯一入口，与合盘 / 命盘对比页同一份实现）。
       // 此前这里内联了 Solar/Lunar 两条分支 + eightChar + PillarData 拼装，是「改口径要两处同步」的根源；
@@ -684,8 +693,12 @@ export default function Bazi() {
       yunRef.current = yun;
       // 大运：精确计算起运日期/年龄、识别起运前小运
       const dayunRaw = yun.getDaYun(11);
-      const startAge = yun.getStartYear(); // 起运年数（周岁口径；大运卡片 startAge 为虚岁 = 本值 + 1）
+      const startAge = yun.getStartYear(); // 起运年数（整数；**判「是否已起运」一律用 startTimeMs，别拿它跟周岁比**）
       const startDate = yun.getStartSolar()?.toYmd?.() || ''; // 起运公历日期 YYYY-MM-DD
+      // 起运时刻（毫秒）：判「是否已起运」的唯一依据。
+      // ⚠️ getStartYear() 是「出生到下一节的秒数 ÷ 3 天 ÷ 1 年」向下取整，比真实起运年数小不到 1 年；
+      //    拿它跟周岁比会把「实际还差几个月才起运」的人判成已起运（2026-11-26 修）。
+      const startTimeMs = startDate ? new Date(`${startDate}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
       const isForward = yun.isForward();
       const directionText = isForward ? '顺排' : '逆排';
 
@@ -734,13 +747,9 @@ export default function Bazi() {
         eightChar.getTimeXunKong(),
       ];
 
-      // 地势
-      const diShi = [
-        eightChar.getYearDiShi(),
-        eightChar.getMonthDiShi(),
-        eightChar.getDayDiShi(),
-        eightChar.getTimeDiShi(),
-      ];
+      // 地势：本柱天干落在本柱地支的十二长生（utils/shenShaPower.diShiOf 唯一出口）。
+      // ⚠️ 不能用 eightChar.getYearDiShi()：库实现一律拿**日干**查四支，年/月/时三柱会错。
+      const diShi = pillars.map((p) => diShiOf(p.tianGan, p.diZhi));
 
       // 自坐计算
       const tgWxMap: Record<string, string> = {
@@ -779,8 +788,10 @@ export default function Bazi() {
 
       setBaziData({
         pillars,
-        dayun: { startAge, startDate, direction: directionText, steps: dayunSteps },
+        dayun: { startAge, startDate, startTimeMs, direction: directionText, steps: dayunSteps },
         lunarInfo: `${lunarInfo}（大运${directionText}）`,
+        timeNote: rt.note,
+        timeZhiChanged: rt.zhiChanged,
         dayGan,
         dayWx,
         shenSha,
@@ -805,8 +816,8 @@ export default function Bazi() {
       addHistory({
         userId: currentUser?.id || '',
         module: 'bazi',
-        // 补全回放所需参数：否则农历输入/闰月/真太阳时出生地都无法还原，历史“重新查询”形同虚设
-        queryParams: { year, month, day, hour, minute, gender, inputMode, leapMonth, birthplace: birthplace || null, ziShiSect, hourUnknown },
+        // 补全回放所需参数：否则农历输入/闰月/真太阳时开关与出生地都无法还原，历史“重新查询”形同虚设
+        queryParams: { year, month, day, hour, minute, gender, inputMode, leapMonth, birthplace: birthplace || null, ziShiSect, hourUnknown, trueSolar },
         resultSummary: `八字排盘：${eightChar.getYear()} ${eightChar.getMonth()} ${eightChar.getDay()} ${eightChar.getTime()}`,
       });
     } catch (e: any) {
@@ -833,6 +844,7 @@ export default function Bazi() {
       hourUnknown: hp.hourUnknown === true,
       birthplace: hp.birthplace || undefined,
       ziShiSect: hp.ziShiSect ?? 2,
+      trueSolar: hp.trueSolar === true,
     });
     navigate('.', { replace: true, state: null });
     setPendingReplay(true);
@@ -1322,7 +1334,7 @@ export default function Bazi() {
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
-              <Form.Item name="birthplace" label="出生地（真太阳时校正）">
+              <Form.Item name="birthplace" label="出生地（仅开启真太阳时后参与排盘）">
                 <Cascader options={pcaCode} fieldNames={{ label: 'n', value: 'c', children: 'ch' }} placeholder="请选择省市区（可选）" changeOnSelect style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -1335,8 +1347,14 @@ export default function Bazi() {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="trueSolar" valuePropName="checked" initialValue={isTrueSolarPref()} style={{ marginBottom: 8 }}
+            tooltip="默认按钟表时间（北京时间）定时辰。开启后按出生地经度 + 均时差换算真太阳时，可能把时辰推前或推后一个时辰（如北京 15:00 → 14:51，由申时变未时）。">
+            <Checkbox onChange={(e) => setTrueSolarPref(e.target.checked)}>
+              按真太阳时排盘（需填出生地；默认关闭）
+            </Checkbox>
+          </Form.Item>
           <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-            默认东经120°（北京时间）。选择出生地后将自动做真太阳时校正（每差1°校正4分钟）。
+            默认按北京时间定时辰（15:00 即申时）。只有勾选上方「真太阳时」才按出生地经度换算（每差1°校正4分钟），换算后时辰若有变化，结果区会明确提示。
             晚子时（23:00–24:00）两派对日柱归属不同：「算当天」为通行流派，「算次日」为早子夜子分日派；两派时柱结论一致，仅日柱可能差一天。
           </Text>
 
@@ -1374,6 +1392,15 @@ export default function Bazi() {
             }}
           >
             <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12.5 }}>{baziData.lunarInfo}</Text>
+            {/* 真太阳时改了时辰时必须明说（默认不开；开了也不能悄悄改） */}
+            {baziData.timeNote && (
+              <Alert
+                type={baziData.timeZhiChanged ? 'warning' : 'info'}
+                showIcon
+                style={{ marginBottom: 8 }}
+                message={baziData.timeNote}
+              />
+            )}
             <Row align="middle" gutter={[16, 8]}>
               <Col xs={24} md={8}>
                 <Space size="middle">
@@ -2134,9 +2161,11 @@ export default function Bazi() {
 
           {/* 大运 */}
           <CollapsibleCard title="大运" summary={`${(() => {
-            const beforeStart = currentExactAge < baziData.dayun.startAge;
+            const beforeStart = now.getTime() < baziData.dayun.startTimeMs;
             if (beforeStart) {
-              return `起运前 · 还有${baziData.dayun.startAge - currentExactAge}年开始第一步大运`;
+              // 还差几年：按真实时间差向上取整（至少显示「不足 1 年」时不报 0 年）
+              const yearsLeft = (baziData.dayun.startTimeMs - now.getTime()) / (365.2425 * 86400000);
+              return `起运前 · 还有${yearsLeft < 1 ? '不足 1' : Math.ceil(yearsLeft)}年开始第一步大运`;
             }
             const last = baziData.dayun.steps[baziData.dayun.steps.length - 1];
             return `起运${firstDaYunStartAge}岁 · 十年一运 · 至${last?.endAge ?? 100}岁`;
@@ -2144,7 +2173,7 @@ export default function Bazi() {
             <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent', margin: 0, padding: 0 }}>
             <Alert
               message={`起运年龄：${firstDaYunStartAge}岁（${baziData.dayun.startDate || '日期待推算'}） | 起运方向：${baziData.dayun.direction} | 阳年男/阴年女顺排，阴年男/阳年女逆排 | 十年一大运` +
-                (currentExactAge < baziData.dayun.startAge ? ` | 当前 ${currentExactAge} 岁（未起运）` : ' | 当前 ' + currentExactAge + ' 岁')}
+                (now.getTime() < baziData.dayun.startTimeMs ? ` | 当前 ${currentExactAge} 岁（未起运）` : ' | 当前 ' + currentExactAge + ' 岁')}
               type="info"
               showIcon
               style={{ marginBottom: 12 }}

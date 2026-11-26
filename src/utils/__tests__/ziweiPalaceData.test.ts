@@ -65,12 +65,13 @@ describe('长生十二神', () => {
 });
 
 describe('博士十二神（禄存起，阳男阴女顺、阴男阳女逆）', () => {
-  it('壬年阳男：禄存子起博士顺行', () => {
+  it('壬年阳男：禄存亥起博士顺行', () => {
+    // 禄存口诀「庚申辛酉壬在亥，癸禄在子」——旧用例误作壬子/癸亥，2026-11-26 与 iztro 校准后订正
     const m = getBoshi12('壬', 'male');
-    expect(m['子']).toBe('博士');
-    expect(m['丑']).toBe('力士');
-    expect(m['卯']).toBe('小耗');
-    expect(m['辰']).toBe('将军');
+    expect(m['亥']).toBe('博士');
+    expect(m['子']).toBe('力士');
+    expect(m['寅']).toBe('小耗');
+    expect(m['卯']).toBe('将军');
   });
 
   it('乙年阴男：禄存卯起博士逆行', () => {
@@ -80,10 +81,10 @@ describe('博士十二神（禄存起，阳男阴女顺、阴男阳女逆）', (
     expect(m['丑']).toBe('青龙');
   });
 
-  it('癸年阴女：禄存亥起博士顺行', () => {
+  it('癸年阴女：禄存子起博士顺行', () => {
     const m = getBoshi12('癸', 'female');
-    expect(m['亥']).toBe('博士');
-    expect(m['子']).toBe('力士');
+    expect(m['子']).toBe('博士');
+    expect(m['丑']).toBe('力士');
   });
 
   it('庚年阳女：禄存申起博士逆行', () => {
@@ -138,15 +139,14 @@ describe('流年与小限虚岁（文墨照片案例：壬午年男命宫在寅�
     expect(getXiaoXianAges('午', '辰', '壬', 'male')[0]).toBe(1);
   });
 
-  it('小限：阴男同样顺行（男顺女逆，不分阴阳）', () => {
+  it('小限：阴男同样顺行（男顺女逆，不分阴阳），亥卯未起丑', () => {
     // 《紫微斗数全书》口诀「小限一年一度逢，男顺女逆不相同」——只看性别，不看年干阴阳。
-    // ⚠️ 旧用例钉的是「乙卯阴男逆行」（寅=1、丑=2），那是把大限/博士十二神的
-    //    「阳男阴女顺」误套到小限上，属于通行误记；此处按全书原文改为顺行。
-    expect(getXiaoXianAges('卯', '寅', '乙', 'male')[0]).toBe(1);
-    expect(getXiaoXianAges('卯', '卯', '乙', 'male')[0]).toBe(2);
-    // 同年女命逆行：寅=1、丑=2
-    expect(getXiaoXianAges('卯', '寅', '乙', 'female')[0]).toBe(1);
-    expect(getXiaoXianAges('卯', '丑', '乙', 'female')[0]).toBe(2);
+    // 起宫：「亥卯未人起丑宫」（旧用例误作起寅，2026-11-26 与 iztro 校准后订正）。
+    expect(getXiaoXianAges('卯', '丑', '乙', 'male')[0]).toBe(1);
+    expect(getXiaoXianAges('卯', '寅', '乙', 'male')[0]).toBe(2);
+    // 同年女命逆行：丑=1、子=2
+    expect(getXiaoXianAges('卯', '丑', '乙', 'female')[0]).toBe(1);
+    expect(getXiaoXianAges('卯', '子', '乙', 'female')[0]).toBe(2);
   });
 });
 
@@ -167,7 +167,7 @@ describe('enrichGongData 集成', () => {
     expect(gongData[0].majorStars[0].brightness).toBe('庙'); // 七杀在寅=庙
     expect(gongData[0].minorStarDetails[0].brightness).toBe(''); // 左辅无亮度
     expect(gongData[0].changsheng).toBe('绝'); // 金四局寅=绝（照片吻合）
-    expect(gongData[0].boshi).toBe('青龙'); // 壬男顺行寅=青龙
+    expect(gongData[0].boshi).toBe('小耗'); // 壬禄在亥，顺行：亥博士、子力士、丑青龙、寅小耗
     expect(gongData[0].suiqian).toBe('白虎');
     expect(gongData[0].jiangqian).toBe('指背');
     expect(gongData[0].liunianAges).toEqual([9, 21, 33, 45, 57]);

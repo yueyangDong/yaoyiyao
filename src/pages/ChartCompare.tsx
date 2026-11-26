@@ -9,6 +9,7 @@ import { birthdayBounds, clampBirthday } from '../utils/dateValidation';
 import { SHENSHA_SIMILARITY_BANDS } from '../utils/shenShaSimilarity';
 import { calcShenShaPower, type ShaPowerItem } from '../utils/shenShaPower';
 import type { PersonChart } from '../utils/personChart';
+import { isTrueSolarPref, setTrueSolarPref } from '../utils/solarTime';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -96,9 +97,13 @@ function PersonFormBlock({
         <Form.Item name="name" label="称呼（可选）" style={{ marginBottom: 10 }}>
           <Input placeholder={`如：${prefix === 'a' ? '我 / 朋友' : '对方'}`} maxLength={12} />
         </Form.Item>
-        <Form.Item name="birthplace" label="出生地（可选，用于真太阳时校正）" style={{ marginBottom: 0 }}>
+        <Form.Item name="birthplace" label="出生地（可选，仅开启真太阳时后参与排盘）" style={{ marginBottom: 10 }}>
           <Cascader options={pcaCode} fieldNames={{ label: 'n', value: 'c', children: 'ch' }}
-            placeholder="省/市/区（不填则按东八区 120°E）" changeOnSelect style={{ width: '100%' }} />
+            placeholder="省/市/区（不填则按北京时间）" changeOnSelect style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item name="trueSolar" valuePropName="checked" initialValue={isTrueSolarPref()} style={{ marginBottom: 0 }}
+          tooltip="默认按钟表时间（北京时间）定时辰。开启后按出生地经度换算真太阳时；与八字页共用同一个开关。">
+          <Checkbox onChange={(e) => setTrueSolarPref(e.target.checked)}>按真太阳时排盘（默认关闭）</Checkbox>
         </Form.Item>
       </Form>
     </Card>
@@ -133,6 +138,9 @@ function ChartColumn({ chart, label, color }: { chart: PersonChart; label: strin
   return (
     <Card size="small" title={<Text strong style={{ color }}>{label}｜{chart.name}</Text>} style={{ height: '100%' }}>
       <div style={{ marginBottom: 8 }}>
+        {chart.timeNote && (
+          <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginBottom: 6 }}>{chart.timeNote}</Text>
+        )}
         {chart.pillars.map((p) => (
           <div key={p.pillar} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
             <Text style={{ fontSize: 12, color: 'var(--text-secondary)', width: 32 }}>{p.pillar[0]}</Text>

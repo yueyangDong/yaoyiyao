@@ -147,6 +147,8 @@ export interface HePanInput {
     birthInfo?: string;
     birthplace?: string[];
     longitude?: number;
+    /** 排盘时间口径说明（真太阳时实际校正时非空，见 personChart.PersonChart.timeNote） */
+    timeNote?: string;
   };
 }
 
@@ -183,6 +185,7 @@ export interface HePanResult {
     dayWx: string;
     zodiac: string;
     nayin: string;
+    timeNote?: string;
   };
 }
 
@@ -954,6 +957,8 @@ export function analyzeHePan(input: HePanInput): HePanResult {
     dayWx: partner.dayWx,
     zodiac: partner.zodiac,
     nayin: partner.nayin,
+    // 排盘时间口径说明（仅真太阳时实际校正时非空；页面原样展示）
+    timeNote: partner.timeNote || '',
   };
 
   // 双向视角明细（v2）：分数已对称，此处的"方向性"作为独立信息输出。

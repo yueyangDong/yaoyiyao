@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 import { Row, Col } from 'antd';
 import CollapsibleCard from './CollapsibleCard';
 import { useUser } from '../context/UserContext';
-import { correctSolarTime } from '../utils/solarTime';
+import { resolveBirthTime, isTrueSolarPref } from '../utils/solarTime';
 import { buildMingPanAside } from '../utils/mingPanAside';
 
 export default function MingPanAside() {
@@ -26,16 +26,20 @@ export default function MingPanAside() {
     const hourKnown = Number.isFinite(u.birthHour);
     const lng = u.birthplace?.longitude;
 
-    // 真太阳时校正：有出生时辰、且档案里有出生地经度时才做。
-    // 时辰未知时跳过——基准本身是推定的，再校正只是制造假精确（与八字页同口径）。
-    let trueSolar: { hour: number; minute: number; dayOffset: number } | null = null;
-    if (hourKnown && lng && Number.isFinite(lng)) {
-      trueSolar = correctSolarTime({
-        year: u.birthYear, month: u.birthMonth, day: u.birthDay,
-        hour: u.birthHour, minute: u.birthMinute ?? 0,
-        lng, calendar, isLeap: calendar === 'lunar' && u.isLeapMonth === true,
-      });
-    }
+    // 排盘时间口径（全站唯一入口 resolveBirthTime）：有出生时辰时，跟随全局「真太阳时」开关
+    // （默认关 = 按钟表时间，与八字页/紫微页同一口径）。
+    // 时辰未知时跳过——基准本身是推定的，再校正只是制造假精确。
+    const trueSolar = hourKnown
+      ? resolveBirthTime(
+        {
+          year: u.birthYear, month: u.birthMonth, day: u.birthDay,
+          hour: u.birthHour, minute: u.birthMinute ?? 0,
+          lng,
+          calendar, isLeap: calendar === 'lunar' && u.isLeapMonth === true,
+        },
+        isTrueSolarPref(),
+      )
+      : null;
 
     // 晚子时流派固定取默认 2，与八字页表单的 initialValue 一致。
     // ⚠️ 若用户在八字页手动改过流派，23:00–24:00 出生的人两处会差一天——已知范围，不追。

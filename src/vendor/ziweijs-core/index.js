@@ -991,14 +991,17 @@ function fixLeapMonth(date, globalConfigs) {
         }
         if ("normal" === globalConfigs._monthDivision) {
             const day = targetDay.getDay();
-            if (day < 15 || 15 === day && 23 !== date.getHour()) {
-                targetDay = targetDay.next(-30);
-                targetMonth = targetDay.getLunarMonth();
-            } else {
-                targetDay = targetDay.next(30);
-                targetMonth = targetDay.getLunarMonth();
-            }
-            targetYear = targetMonth.getLunarYear();
+            const toNext = !(day < 15 || 15 === day && 23 !== date.getHour());
+            // 爻一爻 厂内补丁（2026-11-26）：
+            // 上游用 targetDay.next(±30) 把日期平移到相邻月——农历有大小月，平移 30 天后
+            // **日数会跟着漂**（闰月 29 天时「廿五」变成下月「廿六」；廿九/三十甚至越过整月），
+            // 于是紫微/天府按错误的日数安星，极端情况命宫也错一个月。
+            // 正确做法：月折算到同号的非闰月，**日数保持不变**（与 iztro / 主流软件一致）。
+            // 目标月没有这一天时（闰月三十出生而次月只有廿九）退到该月最后一天。
+            const leapMonth = targetMonth;
+            const adjMonth = leapMonth.next(toNext ? 1 : -1);
+            const adjDay = Math.min(day, adjMonth.getDayCount());
+            return LunarHour.fromYmdHms(adjMonth.getYear(), adjMonth.getMonthWithLeap(), adjDay, date.getHour(), date.getMinute(), date.getSecond());
         }
         return LunarHour.fromYmdHms(targetYear.getYear(), targetMonth.getMonthWithLeap(), targetDay.getDay(), date.getHour(), date.getMinute(), date.getSecond());
     }

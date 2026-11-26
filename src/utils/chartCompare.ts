@@ -6,7 +6,7 @@
 // 排盘口径复用 utils/personChart.ts（与合盘同一入口），真太阳时复用 UserContext 的统一入口，
 // 禁止在本文件内另写四柱构造 —— 项目曾因此出现"合盘与八字页结论不一致"。
 
-import { getCityLng, correctSolarTime } from './solarTime';
+import { resolveBirthTime } from './solarTime';
 import { buildPerson, normalizeWanZi, type PersonChart, type WanZiSect } from './personChart';
 import { compareShenShaCharts, type ShaSimilarityResult } from './shenShaSimilarity';
 import { isValidSolarDate, isSolarFuture, isValidLunarDate, isLunarFuture } from './dateValidation';
@@ -21,13 +21,15 @@ export interface PersonForm {
   minute?: number;
   gender: 'male' | 'female';
   name?: string;
-  /** 出生地（区划编码数组，省/市/区），用于真太阳时校正；不传按东八区 120°E */
+/** 出生地（区划编码数组，省/市/区），仅在 trueSolar=true 时用于真太阳时校正；否则不参与排盘 */
   birthplace?: string[];
   /**
    * 晚子时（23:00–23:59）日柱归属流派：1=算次日 / 2=算当天（缺省 2）。
    * 只影响晚子时出生者；八字与紫微两侧同取此值，避免同一张盘里两套口径。
    */
   ziShiSect?: WanZiSect;
+  /** 按真太阳时排盘（默认 false = 按钟表时间；true 时才会用 birthplace 做经度校正） */
+  trueSolar?: boolean;
 }
 
 /** 表单校验：返回错误文案，null = 通过 */
@@ -45,21 +47,24 @@ export function validatePersonForm(f: PersonForm): string | null {
   return null;
 }
 
-/** 出生信息 → 命盘（真太阳时校正走 UserContext 统一入口） */
+/** 出生信息 → 命盘（排盘时间口径走 solarTime.resolveBirthTime：默认钟表时间，显式开启才校正） */
 export function formToChart(f: PersonForm): PersonChart {
-  const bp = f.birthplace;
-  const lng = bp && bp.length >= 2 ? getCityLng(bp[0], bp[1], bp[2]) : 120;
-  const ts = correctSolarTime({
-    year: f.year, month: f.month, day: f.day,
-    hour: f.hour, minute: f.minute || 0, lng,
-    calendar: f.calendar, isLeap: !!f.isLeap,
-  });
-  return buildPerson(
+  const ts = resolveBirthTime(
+    {
+      year: f.year, month: f.month, day: f.day,
+      hour: f.hour, minute: f.minute || 0, birthplace: f.birthplace,
+      calendar: f.calendar, isLeap: !!f.isLeap,
+    },
+    f.trueSolar === true,
+  );
+  const chart = buildPerson(
     f.year, f.month, f.day, ts.hour, ts.minute,
     f.gender === 'male' ? 'male' : 'female',
-    ts.dayOffset || 0, f.calendar, !!f.isLeap, f.name,
+    ts.dayOffset, f.calendar, !!f.isLeap, f.name,
     normalizeWanZi(f.ziShiSect),
   );
+  if (ts.note) chart.timeNote = ts.note;
+  return chart;
 }
 
 export interface ChartCompareResult {

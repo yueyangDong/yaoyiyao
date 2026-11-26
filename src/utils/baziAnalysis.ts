@@ -910,8 +910,10 @@ export function analyzeLove(
   const secondarySpouseName = male ? '偏财' : '七杀';
   const secondarySpousePillars = findShiShenPillars(pillars, secondarySpouseName);
 
+  // 日主身份（「你是X日主——像…」）只在爱情段开场出现一次；其余板块直接讲该板块的特质，
+  // 避免同一张盘在爱情/社交/家庭里反复复述同一句日主画像（用户反馈：雷同、啰嗦）。
+  const loveAnchor = dayGanProfile ? `${dayGanProfile.love}。\n\n` : '';
   let spouseFeature = '';
-  const loveAnchor = dayGanProfile ? `${dayGanProfile.core}。${dayGanProfile.love}。\n\n` : '';
 
   if (spousePillars.length > 0) {
     const sp = spousePillars[0];
@@ -1121,7 +1123,12 @@ export function analyzeLove(
   if (!adviceItems.length) {
     // 无冲无刑无偏星时，基于日主+夫妻宫生成个性化建议，而非万能句
     if (dayGanProfile && spousePalace) {
-      adviceItems.push(`${dayGanProfile.love}；${spousePalace.split('——')[1] || spousePalace}`);
+      // 夫妻宫画像已在「配偶特征」里出现过——这里不再复述同一句，改成可执行的分工建议
+      adviceItems.push(
+        spousePillars.length > 0
+          ? '别照搬"谁主外谁主内"的模板：把家务、财务、育儿拆成清单，按各自擅长认领，比按性别分工更少怨气'
+          : `${spousePalace.split('——')[1] || spousePalace}`,
+      );
     } else {
       adviceItems.push('你的夫妻宫没有冲刑，感情底子是"稳"的——真正的风险不是吵架，而是稳定到懒得表达。把"这个月有没有认真聊过一次"当体检指标，比什么技巧都实用');
     }
@@ -1762,16 +1769,13 @@ export function analyzeSocial(
 
   // 日主社交锚（10天干）
   const dayGanProfile = DAY_GAN_PROFILE[dayGan];
-  // 命局主气锚
-  const dominant = dominantShiShen(pillars);
-  const dominantLead = dominant && SHISHEN_SIGNATURE[dominant.name]
-    ? `${SHISHEN_SIGNATURE[dominant.name]}。`
-    : '';
+  // ⚠️ 命局主气（SHISHEN_SIGNATURE）只在「事业财运」段作为职业气质底色出现一次；
+  //    社交段不再复述同一句，避免两块开头雷同。
 
   if (hasShiShang && biJieCount >= 2) {
     const ssInfo = [...shiShenPs, ...shangGuanPs].map(p => `${p.shiShen}在${p.pillar}`).join('、');
     const bjInfo = [...biJianPs, ...jieCaiPs].map(p => `${p.shiShen}在${p.pillar}`).join('、');
-    socialTrait = `${dominantLead}你的八字中食伤（${ssInfo}，代表口才和表达力）和比劫（${bjInfo}，代表朋友和圈子）都很旺。你在社交中是"核心人物"类型——有话题、有能量、有人缘。`;
+    socialTrait = `你的八字中食伤（${ssInfo}，代表口才和表达力）和比劫（${bjInfo}，代表朋友和圈子）都很旺。你在社交中是"核心人物"类型——有话题、有能量、有人缘。`;
     socialTrait += '在各种场合你都能自然融入，朋友有什么活动都喜欢叫上你。但要注意，社交应酬多了也会累——学会偶尔拒绝也是对自己好。';
     if (dayGanProfile) {
       socialTrait += `另外，${dayGanProfile.social}——这是你在热闹之外的真实底色。`;
@@ -1790,7 +1794,7 @@ export function analyzeSocial(
     }
   } else if (biJieCount >= 2) {
     const bjInfo = [...biJianPs, ...jieCaiPs].map(p => `${p.shiShen}在${p.pillar}（${p.ganZhi}）`).join('、');
-    socialTrait = `${dominantLead}你的八字比劫较旺（${bjInfo}），比劫代表同辈朋友、伙伴、团队。你讲义气、重感情，朋友圈子广，是那种"兄弟/姐妹需要帮忙立马就到"的类型。`;
+    socialTrait = `你的八字比劫较旺（${bjInfo}），比劫代表同辈朋友、伙伴、团队。你讲义气、重感情，朋友圈子广，是那种"兄弟/姐妹需要帮忙立马就到"的类型。`;
     if (hasJieCai) {
       socialTrait += '但比劫多（尤其劫财多）也意味着朋友之间的界限常常模糊——你帮出去的多，能收回来的少。筛选标准可以很简单：借钱之后关系不变味的，留；只在你"有用"时才出现的，淡出。';
     }
@@ -1800,7 +1804,7 @@ export function analyzeSocial(
   } else {
     // 根据日主天干个性化分析（10种，替代原5行五行版）
     if (dayGanProfile) {
-      socialTrait = `${dominantLead}${dayGanProfile.core}。${dayGanProfile.social}。`;
+      socialTrait = `${dayGanProfile.social}。`;
     } else {
       socialTrait = '你的社交风格自然随和——不是人群里最高调的那个，但握着一圈稳定的关系。你属于"长期相处不累"的类型，这点在十年以上的关系里，比会说话更值钱。';
     }
